@@ -44,7 +44,7 @@ Briefly list major limitations or missing features and any workarounds.
 
 ## Contacts
 - Project lead: Name — email  
-- Non‑profit contact: Name — email  
+- Non‑profit contact: Rami and Zachi 
 - Instructor / TA: Name — email
 
 ## License
