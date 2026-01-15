@@ -7,6 +7,11 @@ One-line description (e.g., "Volunteer scheduling app for [Non‑Profit Name]")
 ## Overview
 Briefly describe what the project does, who it serves, and the main value (1–2 sentences).
 
+## Project Goals
+- Add signup features to existing website
+- Create platform for managers to track participent signup
+- Add notifications features
+
 ## Non‑Profit
 - Organization: [Non‑Profit Name]  
 - Primary stakeholder(s): Name — role — email  
