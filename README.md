@@ -56,7 +56,7 @@ Briefly list major limitations or missing features and any workarounds.
 - Non‑profit contact: Rami and Zachi 
 - Instructor / TA: Name — email
 
-
+Update Wiki workflow
 
 ## License
 Specify license (e.g., MIT) and any IP/ownership notes relevant to the non‑profit.
