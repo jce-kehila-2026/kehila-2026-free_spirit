@@ -13,8 +13,13 @@ Briefly describe what the project does, who it serves, and the main value (1–2
 - Key deliverable for them: e.g., "Simple roster export and sign-up form."
 
 ## Team
-- Team lead — Name — email — GitHub  
+- Team lead — Liba Yaffe — email — GitHub  
 - Members — Name — role — GitHub  
+Include student IDs if required.
+
+## Team Introduction
+- Team lead — Leeba Yafe — email — GitHub  
+- Members — Noa Sherf, Dvir Hadad, Daniel Ohana — role — GitHub  
 Include student IDs if required.
 
 ## Quick start (local)
@@ -43,9 +48,15 @@ List data collected (names, emails), storage location, and retention policy. Nev
 Briefly list major limitations or missing features and any workarounds.
 
 ## Contacts
+- Dvir Hadad - Fullstack - dvirhadad61@gmail.com 
+- Liba Yaffe - FullStack    
+- Noa Sherf - FullStack
+- Daniel Ohana - FullStack
 - Project lead: Name — email  
-- Non‑profit contact: Name — email  
+- Non‑profit contact: Rami and Zachi 
 - Instructor / TA: Name — email
+
+Added Team Workflow info to the Wiki.
 
 ## License
 Specify license (e.g., MIT) and any IP/ownership notes relevant to the non‑profit.
