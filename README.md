@@ -5,7 +5,7 @@ One-line description (e.g., "Volunteer scheduling app for [Non‑Profit Name]")
 - [Overview](#overview) • [Non‑Profit](#non-profit) • [Team](#team) • [Quick start](#quick-start) • [Handover](#handover) • [Privacy](#privacy) • [Contacts](#contacts)
 
 ## Overview
-Briefly describe what the project does, who it serves, and the main value (1–2 sentences).
+Collaborating with the Free Spirit non-profit to develop a streamlined management system featuring enhanced tracking for current and prospective participants, automated reporting tools, and synchronized calendar updates for both managers and participants.
 
 ## Non‑Profit
 - Organization: [Non‑Profit Name]  
