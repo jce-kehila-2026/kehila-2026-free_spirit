@@ -13,10 +13,10 @@ Briefly describe what the project does, who it serves, and the main value (1–2
 - Key deliverable for them: e.g., "Simple roster export and sign-up form."
 
 ## Team
-- Team lead — 332283472 - Leeba Yaffe — Leebaf1234@gmail.com   
-- Members - 322278755 - Noa Sherf — noalela4@gmail.com 
-          - 207192915 - Dvir Hadad - Dvirhadad61@gmail.com
-          - 212889331 - Daniel Ohana - danielohana47@gmail.com
+- Team lead — 332283472 - Leeba Yaffe — Leebaf1234@gmail.com. 
+- Members - 322278755 - Noa Sherf — noalela4@gmail.com.
+          - 207192915 - Dvir Hadad - Dvirhadad61@gmail.com.
+          - 212889331 - Daniel Ohana - danielohana47@gmail.com.
 
 ## Quick start (local)
 1. git clone https://github.com/<org>/<repo>.git
