@@ -2,7 +2,7 @@
 information system for managing the participants of the Free Spirit Association.
 
 ## Contents
-- [Overview](#overview) • [Non‑Profit](#non-profit) • [Team](#team) • [Quick start](#quick-start) •[Demo / Deployment](#Demo / Deployment) • [Handover](#handover) • [Privacy](#privacy) •[Known limitations](#Known limitations) •[Contacts](#Contacts) • [License](#License) 
+- [Overview](#overview) • [Non‑Profit](#non-profit) • [Team](#team) • [Quick start](#quick-start) •[Demo/Deployment](#Demo/Deployment) • [Handover](#handover) • [Privacy](#privacy) •[Known-limitations](#Known-limitations) •[Contacts](#Contacts) • [License](#License) 
 
 ## Overview
 The project is the development of an information system for managing participants of the Free Spirit Association, which centralizes data, documents, meetings and reminders, with an interface for a calendar and email.
