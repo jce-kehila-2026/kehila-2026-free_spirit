@@ -1,16 +1,17 @@
 # Project Title
-One-line description (e.g., "Volunteer scheduling app for [Non‑Profit Name]")
+information system for managing the participants of the Free Spirit Association.
 
 ## Contents
-- [Overview](#overview) • [Non‑Profit](#non-profit) • [Team](#team) • [Quick start](#quick-start) • [Handover](#handover) • [Privacy](#privacy) • [Contacts](#contacts)
+- [Overview](#overview) • [Non‑Profit](#non-profit) • [Team](#team) • [Quick start](#quick-start) •[Demo / Deployment](#Demo / Deployment) • [Handover](#handover) • [Privacy](#privacy) •[Known limitations](#Known limitations) •[Contacts](#Contacts) • [License](#License) 
 
 ## Overview
-Collaborating with the Free Spirit non-profit to develop a streamlined management system featuring enhanced tracking for current and prospective participants, automated reporting tools, and synchronized calendar updates for both managers and participants.
+The project is the development of an information system for managing participants of the Free Spirit Association, which centralizes data, documents, meetings and reminders, with an interface for a calendar and email.
+The system will serve the association's managers and enable operational efficiency, improved monitoring of participants while ensuring a high-quality and professional treatment continuum for each participant in the association.
 
 ## Non‑Profit
-- Organization: [Non‑Profit Name]  
-- Primary stakeholder(s): Name — role — email  
-- Key deliverable for them: e.g., "Simple roster export and sign-up form."
+- Organization: Free Spirit  
+- Primary stakeholder(s): Rami and Zachi - administrators. 
+- Key deliverable for them:Information System for Managing the Participants of the Free Spirit Association.
 
 ## Team
 - Team lead — 332283472 - Leeba Yaffe — Leebaf1234@gmail.com. 
