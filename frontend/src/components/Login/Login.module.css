@@ -1,0 +1,182 @@
+/* Centers the login form on the page. */
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 32%),
+    linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+/* Styles the main login form container. */
+.form {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+/* Groups the title and subtitle. */
+.header {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+/* Styles the main form title. */
+.title {
+  margin: 0;
+  color: #111827;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Styles the supporting text below the title. */
+.subtitle {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* Adds spacing between form fields. */
+.field {
+  margin-bottom: 18px;
+}
+
+/* Styles each input label. */
+.label {
+  display: block;
+  margin-bottom: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Styles the text inputs. */
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Sets a softer placeholder color. */
+.input::placeholder {
+  color: #94a3b8;
+}
+
+/* Highlights the active input field. */
+.input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+/* Styles validation error messages. */
+.error {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* Styles Firebase authentication errors. */
+.authError {
+  margin: 0 0 16px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Styles the submit button. */
+.button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 16px;
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* Shows a visual response when hovering over the button. */
+.button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Keeps the button stable while it is clicked. */
+.button:active {
+  transform: translateY(0);
+}
+
+/* Styles the divider between login methods. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+/* Styles the divider horizontal lines. */
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+/* Styles the divider label text. */
+.dividerText {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Styles the Google login button. */
+.googleButton {
+  width: 100%;
+  padding: 12px 16px;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* Shows a visual response when hovering over the Google button. */
+.googleButton:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+/* Shows the disabled state during an active login request. */
+.button:disabled,
+.googleButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
