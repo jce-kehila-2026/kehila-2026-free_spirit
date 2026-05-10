@@ -3,8 +3,7 @@
 import Login from "@/components/Login/Login.jsx";
 
 export default function Home() {
-  // Now simply rendering the Login component. 
-  // Next.js handles the routing context automatically!
+  // Public landing route for unauthenticated users.
   return (
     <main>
       <Login />
