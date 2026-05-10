@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   GoogleAuthProvider,
+  setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
@@ -28,6 +31,9 @@ export default function Login() {
   // Holds the loading state while Firebase processes the login request.
   const [isLoading, setIsLoading] = useState(false);
 
+  // Holds the user's preferred session persistence option.
+  const [rememberMe, setRememberMe] = useState(false);
+
   // Converts Firebase error codes into user-friendly messages.
   const getFirebaseErrorMessage = (error) => {
     switch (error.code) {
@@ -51,6 +57,11 @@ export default function Login() {
       ...currentCredentials,
       [name]: value,
     }));
+  };
+
+  // Updates the Remember Me checkbox state.
+  const handleRememberMeChange = (event) => {
+    setRememberMe(event.target.checked);
   };
 
   // Validates required fields before submitting the form.
@@ -81,6 +92,10 @@ export default function Login() {
 
     try {
       setIsLoading(true);
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence,
+      );
       await signInWithEmailAndPassword(
         auth,
         credentials.email,
@@ -153,9 +168,25 @@ export default function Login() {
           {errors.password && <p className={styles.error}>{errors.password}</p>}
         </div>
 
+        {/* Remember Me checkbox */}
+        <label
+          className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-700"
+          htmlFor="rememberMe"
+        >
+          <input
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500"
+            id="rememberMe"
+            name="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={handleRememberMeChange}
+          />
+          Remember Me
+        </label>
+
         {authError && <p className={styles.authError}>{authError}</p>}
 
-        <button className={styles.button} type="submit">
+        <button className={styles.button} type="submit" disabled={isLoading}>
           {isLoading ? "Signing In..." : "Sign In"}
         </button>
 
