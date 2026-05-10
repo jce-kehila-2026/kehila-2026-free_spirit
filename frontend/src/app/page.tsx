@@ -1,20 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import Login from "@/components/Login/Login";
-
-const RouterProvider = dynamic(
-  () => import("@/components/RouterProvider/RouterProvider"),
-  {
-    ssr: false,
-  },
-);
+import Login from "@/components/Login/Login.jsx";
 
 export default function Home() {
-  // Renders the login component as the main page content.
+  // Now simply rendering the Login component. 
+  // Next.js handles the routing context automatically!
   return (
-    <RouterProvider>
+    <main>
       <Login />
-    </RouterProvider>
+    </main>
   );
 }

@@ -6,12 +6,12 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import styles from "./Login.module.css";
 
 export default function Login() {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   // Holds the current email and password values.
   const [credentials, setCredentials] = useState({
@@ -86,7 +86,7 @@ export default function Login() {
         credentials.email,
         credentials.password,
       );
-      navigate("/dashboard");
+      router.push("/manage-programs");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -103,7 +103,7 @@ export default function Login() {
     try {
       setIsLoading(true);
       await signInWithPopup(auth, provider);
-      navigate("/dashboard");
+      router.push("/manage-programs");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
