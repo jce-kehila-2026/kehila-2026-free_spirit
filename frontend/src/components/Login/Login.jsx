@@ -1,17 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
   GoogleAuthProvider,
+  onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import styles from "./Login.module.css";
+
+// Inline Google mark used by the OAuth button without adding another asset file.
+function GoogleLogo() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
 
 export default function Login() {
   const router = useRouter();
@@ -31,8 +62,25 @@ export default function Login() {
   // Holds the loading state while Firebase processes the login request.
   const [isLoading, setIsLoading] = useState(false);
 
+  // Holds the loading state while Firebase restores a persisted session.
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   // Holds the user's preferred session persistence option.
   const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    // If Firebase restores an existing session, skip the login form entirely.
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace("/manage-programs");
+        return;
+      }
+
+      setIsCheckingAuth(false);
+    });
+
+    return unsubscribe;
+  }, [router]);
 
   // Converts Firebase error codes into user-friendly messages.
   const getFirebaseErrorMessage = (error) => {
@@ -92,10 +140,13 @@ export default function Login() {
 
     try {
       setIsLoading(true);
+
+      // Remember Me controls whether Firebase stores the session locally or per tab.
       await setPersistence(
         auth,
         rememberMe ? browserLocalPersistence : browserSessionPersistence,
       );
+
       await signInWithEmailAndPassword(
         auth,
         credentials.email,
@@ -117,6 +168,8 @@ export default function Login() {
 
     try {
       setIsLoading(true);
+
+      // Google sign-in uses the same Firebase auth state as email/password login.
       await signInWithPopup(auth, provider);
       router.push("/manage-programs");
     } catch (error) {
@@ -125,6 +178,16 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.form}>
+          <p className={styles.subtitle}>Checking your session...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -190,6 +253,14 @@ export default function Login() {
           {isLoading ? "Signing In..." : "Sign In"}
         </button>
 
+        {/* Public route for users who still need to create an account. */}
+        <p className="mt-5 text-center text-sm font-medium text-slate-600">
+          Don&apos;t have an account?{" "}
+          <Link className="font-bold text-blue-600 hover:text-blue-700" href="/signup">
+            Sign Up
+          </Link>
+        </p>
+
         {/* Separates email login from Google login. */}
         <div className={styles.divider}>
           <span className={styles.dividerLine}></span>
@@ -203,7 +274,8 @@ export default function Login() {
           onClick={handleGoogleLogin}
           disabled={isLoading}
         >
-          Sign in with Google
+          <GoogleLogo />
+          <span>Sign in with Google</span>
         </button>
       </form>
     </main>

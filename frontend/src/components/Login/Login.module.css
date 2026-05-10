@@ -152,6 +152,10 @@
 /* Styles the Google login button. */
 .googleButton {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   padding: 12px 16px;
   color: #1f2937;
   background: #ffffff;
