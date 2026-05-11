@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, getDocs, doc, setDoc, Timestamp } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { db } from "@/firebase/firebase";
 import styles from "./ManagePrograms.module.css";
 
 export default function ManagePrograms() {
