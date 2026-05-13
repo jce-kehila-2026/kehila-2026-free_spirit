@@ -9,11 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
     "firebase": "^12.12.1",
     "next": "^16.2.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.14.2"
+    "react-hook-form": "^7.75.0",
+    "react-router-dom": "^7.14.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
