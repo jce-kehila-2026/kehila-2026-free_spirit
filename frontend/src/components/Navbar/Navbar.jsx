@@ -69,6 +69,16 @@ export default function Navbar() {
               >
                 Manage Programs
               </Link>
+              <Link
+                className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                  pathname.startsWith("/clients")
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
+                }`}
+                href="/clients"
+              >
+                Clients
+              </Link>
               <button
                 className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
                 type="button"
