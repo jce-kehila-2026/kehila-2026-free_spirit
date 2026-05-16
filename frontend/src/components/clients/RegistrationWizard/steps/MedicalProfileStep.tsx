@@ -182,10 +182,9 @@ export default function MedicalProfileStep() {
             <select
               id="mp_medical_clearance_status"
               className={selectCls(!!mp?.medical_clearance_status)}
-              defaultValue=""
               {...register("medical_profile.medical_clearance_status")}
             >
-              <option value="" disabled>
+              <option value="">
                 Select clearance status…
               </option>
               {MEDICAL_CLEARANCE_STATUS.map((s) => (

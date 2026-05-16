@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm, FormProvider, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   collection,
   addDoc,
@@ -26,8 +27,25 @@ import ContactsStep from "./steps/ContactsStep";
 
 const STEP_FIELDS: Record<number, FieldPath<ClientFormInput>[]> = {
   1: ["first_name", "last_name", "email", "phone"],
-  2: ["passport_id"],
-  3: [],
+  2: [
+    "passport_id",
+    "dob",
+    "gender",
+    "address",
+    "education_status",
+    "diagnosis",
+    "personal_notes",
+  ],
+  3: [
+    "medical_profile.physician_name",
+    "medical_profile.physician_phone",
+    "medical_profile.insurance_company",
+    "medical_profile.policy_number",
+    "medical_profile.medical_clearance_status",
+    "medical_profile.allergies",
+    "medical_profile.medications",
+    "medical_profile.dietary_restrictions",
+  ],
   4: [],
 };
 
@@ -194,8 +212,8 @@ export default function WizardController({
               k,
               v.map((item) =>
                 item !== null &&
-                typeof item === "object" &&
-                !Array.isArray(item)
+                  typeof item === "object" &&
+                  !Array.isArray(item)
                   ? sanitizeForFirestore(item)
                   : item
               ),
@@ -224,8 +242,8 @@ export default function WizardController({
           updated_at: serverTimestamp(),
         });
 
-        alert(
-          `✓ "${data.first_name} ${data.last_name}" updated successfully!`
+        toast.success(
+          `"${data.first_name} ${data.last_name}" updated successfully!`
         );
       } else {
         // ── Create new document ───────────────────────────────────────
@@ -234,10 +252,10 @@ export default function WizardController({
           created_at: serverTimestamp(),
         });
 
-        alert(
+        toast.success(
           data.status === "interested"
-            ? `✓ "${data.first_name} ${data.last_name}" saved as an Interested Contact.`
-            : `✓ "${data.first_name} ${data.last_name}" registered successfully!`
+            ? `"${data.first_name} ${data.last_name}" saved as an Interested Contact.`
+            : `"${data.first_name} ${data.last_name}" registered successfully!`
         );
       }
 
@@ -247,6 +265,9 @@ export default function WizardController({
       }
     } catch (error) {
       console.error("[WizardController] Firestore write failed:", error);
+      toast.error(
+        "Failed to save the client record. Please check your connection and try again."
+      );
       setSubmitError(
         "Failed to save the client record. Please check your connection and try again."
       );
@@ -277,6 +298,15 @@ export default function WizardController({
   // ── Final submit (Step 4) ──────────────────────────────────────────────
 
   const onSubmit = async (data: ClientFormInput) => {
+    // Guard: only allow the real save when the user is on the final step.
+    // This prevents accidental submissions triggered by Enter key or
+    // browser quirks on intermediate steps.
+    if (currentStep !== TOTAL_STEPS) {
+      console.warn(
+        `[WizardController] onSubmit blocked — user is on step ${currentStep}, not the final step.`
+      );
+      return;
+    }
     await saveToFirestore(data);
   };
 
@@ -321,7 +351,7 @@ export default function WizardController({
                         "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
                         isDone && "bg-emerald-500 text-white",
                         isActive &&
-                          "bg-indigo-600 text-white ring-2 ring-indigo-300 ring-offset-1",
+                        "bg-indigo-600 text-white ring-2 ring-indigo-300 ring-offset-1",
                         isUpcoming && "bg-slate-200 text-slate-500",
                       ]
                         .filter(Boolean)
@@ -368,7 +398,18 @@ export default function WizardController({
         )}
 
         {/* ── Step content card ── */}
-        <form onSubmit={handleSubmit(onSubmit, onInvalid)}>
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              currentStep !== TOTAL_STEPS &&
+              (e.target as HTMLElement).tagName !== "TEXTAREA"
+            ) {
+              e.preventDefault();
+            }
+          }}
+        >
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             {currentStep === 1 ? (
               <BasicInfoStep
@@ -399,12 +440,13 @@ export default function WizardController({
 
               {isLastStep ? (
                 <button
-                  type="submit"
+                  type="button"
                   id="wizard-submit-btn"
                   disabled={isSaving}
+                  onClick={methods.handleSubmit(onSubmit, onInvalid)}
                   className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving
+                  {isSaving || formState.isSubmitting
                     ? "Saving…"
                     : isEditMode
                       ? "Update Client"

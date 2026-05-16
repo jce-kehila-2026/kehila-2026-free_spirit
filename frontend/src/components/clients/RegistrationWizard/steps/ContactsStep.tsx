@@ -191,6 +191,7 @@ export default function ContactsStep() {
                     placeholder="e.g. Miriam Cohen"
                     className={inputCls(!!ce?.contact_name)}
                     {...register(`contacts.${index}.contact_name`)}
+                    defaultValue={field.contact_name}
                   />
                 </FieldWrapper>
 
@@ -204,10 +205,10 @@ export default function ContactsStep() {
                   <select
                     id={`relationship_${index}`}
                     className={selectCls(!!ce?.relationship)}
-                    defaultValue=""
                     {...register(`contacts.${index}.relationship`)}
+                    defaultValue={field.relationship}
                   >
-                    <option value="" disabled>
+                    <option value="">
                       Select relationship…
                     </option>
                     {CONTACT_RELATIONSHIP.map((r) => (
@@ -231,6 +232,7 @@ export default function ContactsStep() {
                     placeholder="e.g. 050-1234567"
                     className={inputCls(!!ce?.phone)}
                     {...register(`contacts.${index}.phone`)}
+                    defaultValue={field.phone}
                   />
                 </FieldWrapper>
 
@@ -246,6 +248,7 @@ export default function ContactsStep() {
                     placeholder="e.g. miriam@email.com"
                     className={inputCls(!!ce?.email)}
                     {...register(`contacts.${index}.email`)}
+                    defaultValue={field.email}
                   />
                 </FieldWrapper>
 
@@ -259,9 +262,8 @@ export default function ContactsStep() {
                       id={`is_emergency_${index}`}
                       type="checkbox"
                       className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      {...register(
-                        `contacts.${index}.is_emergency_contact`
-                      )}
+                      {...register(`contacts.${index}.is_emergency_contact`)}
+                      defaultChecked={field.is_emergency_contact}
                     />
                     <span className="text-sm font-medium text-slate-700">
                       Emergency contact

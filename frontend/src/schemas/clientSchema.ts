@@ -14,7 +14,6 @@ export const EDUCATION_STATUS_OPTIONS = [
   "none",
   "elementary",
   "high_school",
-  "vocational",
   "bachelor",
   "master",
   "doctorate",
@@ -36,7 +35,6 @@ export const CONTACT_RELATIONSHIP = [
   "sibling",
   "child",
   "friend",
-  "guardian",
   "social_worker",
   "other",
 ] as const;
@@ -66,7 +64,7 @@ export const medicalProfileSchema = z.object({
   dietary_restrictions: z.string().trim().max(500).optional().or(z.literal("")),
   insurance_company: z.string().trim().max(100).optional().or(z.literal("")),
   policy_number: z.string().trim().max(50).optional().or(z.literal("")),
-  medical_clearance_status: z.enum(MEDICAL_CLEARANCE_STATUS).optional(),
+  medical_clearance_status: z.enum(MEDICAL_CLEARANCE_STATUS).optional().or(z.literal("")),
 });
 
 export type MedicalProfile = z.infer<typeof medicalProfileSchema>;
@@ -79,8 +77,8 @@ export type MedicalProfile = z.infer<typeof medicalProfileSchema>;
 export const contactSchema = z.object({
   contact_name: z.string().trim().min(1, "Contact name is required").max(100),
   relationship: z.enum(CONTACT_RELATIONSHIP, {
-    errorMap: () => ({ message: "Select a valid relationship" }),
-  }),
+    errorMap: () => ({ message: "Please select a relationship" }),
+  }).or(z.literal("")),
   phone: z
     .string()
     .trim()
@@ -125,19 +123,19 @@ const clientBaseSchema = z.object({
       message: "Enter a valid Israeli phone number (e.g. 050-1234567)",
     }),
   status: z.enum(CLIENT_STATUS, {
-    errorMap: () => ({ message: "Select a valid status" }),
-  }),
+    errorMap: () => ({ message: "Please select a valid status" }),
+  }).or(z.literal("")),
 
   // ── Registration fields (required only when status === "registered") ──
   passport_id: z.string().trim().max(20).optional().or(z.literal("")),
-  gender: z.enum(GENDER_OPTIONS).optional(),
+  gender: z.enum(GENDER_OPTIONS).optional().or(z.literal("")),
   address: z.string().trim().max(200).optional().or(z.literal("")),
   dob: z
     .string()
     .optional()
     .or(z.literal("")),
   referrer: z.string().trim().max(100).optional().or(z.literal("")),
-  education_status: z.enum(EDUCATION_STATUS_OPTIONS).optional(),
+  education_status: z.enum(EDUCATION_STATUS_OPTIONS).optional().or(z.literal("")),
   program_ids: z.array(z.string()).default([]),
   diagnosis: z.string().trim().max(1000).optional().or(z.literal("")),
   personal_notes: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -154,8 +152,7 @@ const clientBaseSchema = z.object({
 export const clientSchema = clientBaseSchema.superRefine((data, ctx) => {
   if (data.status !== "registered") return;
 
-  // ── Only passport_id is strictly mandatory for a registered client ───
-  // Address, DOB, physician info, and contacts can be filled out later.
+  // ── passport_id is strictly mandatory for a registered client ────────
   if (!data.passport_id) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -163,6 +160,18 @@ export const clientSchema = clientBaseSchema.superRefine((data, ctx) => {
       path: ["passport_id"],
     });
   }
+
+  // ── DOB is strictly mandatory for a registered client ───────────────
+  if (!data.dob) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Date of birth is required for registered clients",
+      path: ["dob"],
+    });
+  }
+
+  // NOTE: medical_clearance_status is completely optional regardless of
+  // status — no conditional enforcement here.
 });
 
 // ============================================================================

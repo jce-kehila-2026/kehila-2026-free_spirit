@@ -151,10 +151,9 @@ export default function DemographicsStep() {
           <select
             id="gender"
             className={selectCls(!!errors.gender)}
-            defaultValue=""
             {...register("gender")}
           >
-            <option value="" disabled>
+            <option value="">
               Select gender…
             </option>
             {GENDER_OPTIONS.map((g) => (
@@ -174,10 +173,9 @@ export default function DemographicsStep() {
           <select
             id="education_status"
             className={selectCls(!!errors.education_status)}
-            defaultValue=""
             {...register("education_status")}
           >
-            <option value="" disabled>
+            <option value="">
               Select education level…
             </option>
             {EDUCATION_STATUS_OPTIONS.map((e) => (

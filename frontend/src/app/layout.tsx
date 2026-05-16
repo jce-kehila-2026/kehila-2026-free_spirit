@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import Navbar from "@/components/Navbar/Navbar";
 import "./globals.css";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
         {/* Navbar is mounted globally so auth links and logout are available everywhere. */}
         <Navbar />
         {children}
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );
