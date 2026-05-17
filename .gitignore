@@ -28,3 +28,7 @@ backend/privateKey.json
 # Firebase
 .firebase/
 .firebaserc
+
+# Local AI Agent files
+.agents/
+skills-lock.json

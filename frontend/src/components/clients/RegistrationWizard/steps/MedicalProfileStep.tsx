@@ -151,7 +151,7 @@ export default function MedicalProfileStep() {
           <input
             id="mp_insurance_company"
             type="text"
-            placeholder="e.g. Clalit, Maccabi"
+            placeholder="e.g. Harel, Phoenix, Menora"
             className={inputCls(!!mp?.insurance_company)}
             {...register("medical_profile.insurance_company")}
           />

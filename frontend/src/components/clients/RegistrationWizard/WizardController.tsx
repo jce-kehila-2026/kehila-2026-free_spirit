@@ -14,6 +14,7 @@ import {
 import { db } from "@/firebase/firebase";
 
 import {
+  basicInfoSchema,
   clientSchema,
   type ClientFormInput,
 } from "@/schemas/clientSchema";
@@ -279,12 +280,27 @@ export default function WizardController({
   // ── Step 1 branching actions ───────────────────────────────────────────
 
   async function handleSaveAsInterested() {
-    setValue("status", "interested");
+    // Get the current status BEFORE changing anything
+    const currentStatus = methods.getValues("status");
+
+    // Decide what status we should be saving
+    const statusToSave = currentStatus === "registered" ? "registered" : "interested";
+
+    // Update the form state with the correct status
+    setValue("status", statusToSave);
+
+    // Validate only the fields required for the current step
     const fields = STEP_FIELDS[1];
     const valid = await trigger(fields);
+
     if (valid) {
-      const data = methods.getValues();
-      await saveToFirestore({ ...data, status: "interested" });
+      const rawData = methods.getValues();
+
+      // Pass the raw data through Zod to apply trim() and toLowerCase()
+      const cleanData = basicInfoSchema.parse(rawData);
+
+      // Save to Firestore
+      await saveToFirestore({ ...cleanData, status: statusToSave });
     }
   }
 
@@ -316,7 +332,7 @@ export default function WizardController({
     );
     if (errorSteps.length > 0) {
       setSubmitError(
-        `Please fix errors on previous steps: ${errorSteps.join(", ")}`
+        `Please fix validation errors on the following steps: ${errorSteps.join(", ")}`
       );
     } else {
       setSubmitError("Please fix all validation errors before submitting.");

@@ -104,7 +104,7 @@ export default function BasicInfoStep({
             id="first_name"
             type="text"
             autoComplete="given-name"
-            placeholder="e.g. Sarah"
+            placeholder="e.g. John"
             className={inputCls(!!errors.first_name)}
             {...register("first_name")}
           />
@@ -120,7 +120,7 @@ export default function BasicInfoStep({
             id="last_name"
             type="text"
             autoComplete="family-name"
-            placeholder="e.g. Cohen"
+            placeholder="e.g. Doe"
             className={inputCls(!!errors.last_name)}
             {...register("last_name")}
           />
@@ -137,7 +137,7 @@ export default function BasicInfoStep({
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="e.g. sarah.cohen@email.com"
+              placeholder="e.g. john.doe@gmail.com"
               className={inputCls(!!errors.email)}
               {...register("email")}
             />
