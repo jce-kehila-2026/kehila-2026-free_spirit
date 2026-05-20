@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ClientDoc } from "@/components/clients/ClientList";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -32,6 +33,13 @@ function TabContent({ activeTab }: { activeTab: TabId }) {
   );
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface ClientProfileDashboardProps {
+  client: ClientDoc;
+  onBack: () => void;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
@@ -41,11 +49,29 @@ function TabContent({ activeTab }: { activeTab: TabId }) {
  * Contains five tabs: Profile & Demographics, Medical, Contacts, Documents,
  * and Financial Aid. Tab content areas are placeholders awaiting implementation.
  */
-export default function ClientProfileDashboard() {
+export default function ClientProfileDashboard({
+  client,
+  onBack,
+}: ClientProfileDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
 
   return (
     <div className="mx-auto max-w-5xl">
+      {/* ── Back button and title ── */}
+      <div className="mb-6 flex flex-col items-start">
+        <button
+          type="button"
+          id="btn-back-to-clients"
+          onClick={onBack}
+          className="mb-4 inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+        >
+          ← Back to Clients
+        </button>
+        <h1 className="text-2xl font-bold text-slate-800">
+          Client Profile: <span className="text-indigo-600 font-semibold">{client.first_name} {client.last_name}</span>
+        </h1>
+      </div>
+
       {/* ── Tab bar ── */}
       <nav
         aria-label="Client profile sections"

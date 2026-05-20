@@ -155,7 +155,7 @@ export default function WizardController({
     mode: "onTouched",
   });
 
-  const { setValue, trigger, handleSubmit, formState, reset } = methods;
+  const { setValue, trigger, formState, reset } = methods;
 
   // Reset form when initialData changes (entering/exiting edit mode)
   useEffect(() => {
@@ -176,6 +176,7 @@ export default function WizardController({
     } else {
       reset(DEFAULT_VALUES);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentStep(1);
     setSubmitError(null);
   }, [initialData, reset]);
