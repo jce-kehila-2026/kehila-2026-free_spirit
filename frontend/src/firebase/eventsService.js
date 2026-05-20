@@ -1,11 +1,14 @@
 import {
-    addDoc,
-    collection,
-    getDocs,
-    orderBy,
-    query,
-    serverTimestamp,
-  } from "firebase/firestore";
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
   
   import { db } from "./firebase";
   
@@ -26,13 +29,48 @@ import {
   export async function getEvents() {
     const eventsQuery = query(
       collection(db, EVENTS_COLLECTION),
-      orderBy("date", "asc"),
+      orderBy("date", "asc")
     );
   
     const snapshot = await getDocs(eventsQuery);
   
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const now = new Date();
+  
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((event) => {
+        const eventDateTime = new Date(
+          `${event.date}T${event.time}`,
+        );
+
+        return (
+          eventDateTime > now &&
+          event.status === "scheduled"
+        );
+      });
+  }
+
+  export async function completeEvent(eventId) {
+    const eventRef = doc(db, EVENTS_COLLECTION, eventId);
+  
+    await updateDoc(eventRef, {
+      status: "completed",
+    });
+  }
+  
+  export async function cancelEvent(eventId) {
+    const eventRef = doc(db, EVENTS_COLLECTION, eventId);
+  
+    await updateDoc(eventRef, {
+      status: "cancelled",
+    });
+  }
+  
+  export async function deleteEvent(eventId) {
+    const eventRef = doc(db, EVENTS_COLLECTION, eventId);
+  
+    await deleteDoc(eventRef);
   }
