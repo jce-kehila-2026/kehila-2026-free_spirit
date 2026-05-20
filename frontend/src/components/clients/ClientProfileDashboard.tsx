@@ -2,33 +2,26 @@
 
 import { useState } from "react";
 import type { ClientDoc } from "@/components/clients/ClientList";
+import ProfileTab from "@/components/clients/tabs/ProfileTab";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "profile",     label: "Profile & Demographics" },
-  { id: "medical",     label: "Medical" },
-  { id: "contacts",    label: "Contacts" },
-  { id: "documents",   label: "Documents" },
-  { id: "financial",   label: "Financial Aid" },
+  { id: "profile",   label: "Profile & Demographics" },
+  { id: "medical",   label: "Medical" },
+  { id: "contacts",  label: "Contacts" },
+  { id: "documents", label: "Documents" },
+  { id: "financial", label: "Financial Aid" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-// ─── Tab content placeholders ─────────────────────────────────────────────────
+// ─── Placeholder panel for not-yet-built tabs ─────────────────────────────────
 
-function TabContent({ activeTab }: { activeTab: TabId }) {
-  const labels: Record<TabId, string> = {
-    profile:   "Profile & Demographics Tab Content Goes Here",
-    medical:   "Medical Tab Content Goes Here",
-    contacts:  "Contacts Tab Content Goes Here",
-    documents: "Documents Tab Content Goes Here",
-    financial: "Financial Aid Tab Content Goes Here",
-  };
-
+function PlaceholderPanel({ label }: { label: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{labels[activeTab]}</p>
+      <p className="text-sm font-medium text-slate-500">{label} Tab Content Goes Here</p>
     </div>
   );
 }
@@ -46,8 +39,8 @@ interface ClientProfileDashboardProps {
  * ClientProfileDashboard
  *
  * A horizontally-tabbed shell for viewing and editing an existing client record.
- * Contains five tabs: Profile & Demographics, Medical, Contacts, Documents,
- * and Financial Aid. Tab content areas are placeholders awaiting implementation.
+ * Tab 1 (Profile & Demographics) is fully implemented via ProfileTab.
+ * Tabs 2-5 are placeholders awaiting implementation.
  */
 export default function ClientProfileDashboard({
   client,
@@ -68,22 +61,21 @@ export default function ClientProfileDashboard({
           ← Back to Clients
         </button>
         <h1 className="text-2xl font-bold text-slate-800">
-          Client Profile: <span className="text-indigo-600 font-semibold">{client.first_name} {client.last_name}</span>
+          Client Profile:{" "}
+          <span className="font-semibold text-indigo-600">
+            {client.first_name} {client.last_name}
+          </span>
         </h1>
       </div>
 
       {/* ── Tab bar ── */}
-      <nav
-        aria-label="Client profile sections"
-        className="mb-6 overflow-x-auto"
-      >
+      <nav aria-label="Client profile sections" className="mb-6 overflow-x-auto">
         <ol
           role="tablist"
           className="flex min-w-max gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
         >
           {TABS.map((tab) => {
             const isActive = tab.id === activeTab;
-
             return (
               <li key={tab.id} role="presentation" className="flex-1">
                 <button
@@ -108,13 +100,17 @@ export default function ClientProfileDashboard({
         </ol>
       </nav>
 
-      {/* ── Tab panel ── */}
+      {/* ── Tab panels ── */}
       <div
         role="tabpanel"
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        <TabContent activeTab={activeTab} />
+        {activeTab === "profile"   && <ProfileTab client={client} />}
+        {activeTab === "medical"   && <PlaceholderPanel label="Medical" />}
+        {activeTab === "contacts"  && <PlaceholderPanel label="Contacts" />}
+        {activeTab === "documents" && <PlaceholderPanel label="Documents" />}
+        {activeTab === "financial" && <PlaceholderPanel label="Financial Aid" />}
       </div>
     </div>
   );
