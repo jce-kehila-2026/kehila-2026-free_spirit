@@ -6,6 +6,7 @@ import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
 import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
+import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -18,16 +19,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
-
-// ─── Placeholder panel for not-yet-built tabs ─────────────────────────────────
-
-function PlaceholderPanel({ label }: { label: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{label} Tab Content Goes Here</p>
-    </div>
-  );
-}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +103,7 @@ export default function ClientProfileDashboard({
         {activeTab === "profile"   && <ProfileTab client={client} />}
         {activeTab === "medical"   && <MedicalTab client={client} />}
         {activeTab === "contacts"  && <ContactsTab client={client} />}
-        {activeTab === "documents" && <PlaceholderPanel label="Documents" />}
+        {activeTab === "documents" && <DocumentsTab client={client} />}
         {activeTab === "financial" && <FinancialAidTab client={client} />}
       </div>
     </div>

@@ -9,7 +9,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import type { ClientFormInput, FinancialAidApplication } from "@/schemas/clientSchema";
+import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schemas/clientSchema";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +20,10 @@ export interface ClientDoc extends ClientFormInput {
   updated_at?: Timestamp;
   /** Financial aid applications — stored as a top-level array on the document. */
   financial_aid_applications?: FinancialAidApplication[];
+  /** Uploaded document records — stored as a top-level array on the document. */
+  client_documents?: ClientDocument[];
 }
+
 
 interface ClientListProps {
   onEdit: (client: ClientDoc) => void;
