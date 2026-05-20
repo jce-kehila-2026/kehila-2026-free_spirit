@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -224,9 +224,9 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
     client.client_documents ?? []
   );
 
+  const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -258,7 +258,8 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
   // ── Upload handler ────────────────────────────────────────────────────────
 
   const onSubmit = useCallback(async (formData: UploadDocumentFormData) => {
-    const file = fileInputRef.current?.files?.[0];
+    const fileInput = document.getElementById("doc-file-input") as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
     if (!file) {
       setFileError("Please select a file to upload.");
       return;
@@ -272,10 +273,10 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
 
     setFileError(null);
     setUploadProgress(0);
+    setIsLoading(true);
 
     try {
       // 1. Upload to Firebase Storage
-      // eslint-disable-next-line react-hooks/purity
       const timestamp = Date.now();
       const storageRef = ref(
         storage,
@@ -292,10 +293,16 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
             );
             setUploadProgress(pct);
           },
-          reject,
+          (error) => {
+            reject(error);
+          },
           async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(url);
+            } catch (err) {
+              reject(err);
+            }
           }
         );
       });
@@ -322,15 +329,15 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
       // 4. Update local state + reset form
       setDocs(updatedDocs);
       reset();
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setUploadProgress(null);
+      if (fileInput) fileInput.value = "";
       toast.success(`"${file.name}" uploaded successfully.`);
-    } catch (err) {
-      console.error("[DocumentsTab] Upload failed:", err);
-      setUploadProgress(null);
+    } catch (error) {
+      console.error(error);
       toast.error("Upload failed. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+      setUploadProgress(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client.id, docs, reset]);
 
   // ── Delete handler ────────────────────────────────────────────────────────
@@ -349,13 +356,12 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
       console.error("[DocumentsTab] Delete failed:", err);
       toast.error("Could not remove the document. Please try again.");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client.id, docs]);
 
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const isUploading = isSubmitting || uploadProgress !== null;
+  const isUploading = isLoading || isSubmitting || uploadProgress !== null;
 
   return (
     <div className="space-y-6">
@@ -435,7 +441,6 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
                 <input
                   id="doc-file-input"
                   type="file"
-                  ref={fileInputRef}
                   accept={ACCEPTED_TYPES.join(",")}
                   className="sr-only"
                   onChange={() => setFileError(null)}
