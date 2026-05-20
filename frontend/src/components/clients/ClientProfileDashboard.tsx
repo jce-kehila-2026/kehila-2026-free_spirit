@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ClientDoc } from "@/components/clients/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
+import ContactsTab from "@/components/clients/tabs/ContactsTab";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ export default function ClientProfileDashboard({
       >
         {activeTab === "profile"   && <ProfileTab client={client} />}
         {activeTab === "medical"   && <MedicalTab client={client} />}
-        {activeTab === "contacts"  && <PlaceholderPanel label="Contacts" />}
+        {activeTab === "contacts"  && <ContactsTab client={client} />}
         {activeTab === "documents" && <PlaceholderPanel label="Documents" />}
         {activeTab === "financial" && <PlaceholderPanel label="Financial Aid" />}
       </div>
