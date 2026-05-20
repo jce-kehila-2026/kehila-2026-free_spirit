@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
  
 // Firebase client configuration is read from public Next.js environment values.
 const firebaseConfig = {
@@ -22,3 +23,6 @@ export const auth = getAuth(app);
 
 // Firestore database service for application data such as accounts and programs.
 export const db = getFirestore(app);
+
+// Firebase Storage service for uploading and managing files.
+export const storage = getStorage(app);
