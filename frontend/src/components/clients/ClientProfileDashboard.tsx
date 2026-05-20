@@ -5,6 +5,7 @@ import type { ClientDoc } from "@/components/clients/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
+import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export default function ClientProfileDashboard({
         {activeTab === "medical"   && <MedicalTab client={client} />}
         {activeTab === "contacts"  && <ContactsTab client={client} />}
         {activeTab === "documents" && <PlaceholderPanel label="Documents" />}
-        {activeTab === "financial" && <PlaceholderPanel label="Financial Aid" />}
+        {activeTab === "financial" && <FinancialAidTab client={client} />}
       </div>
     </div>
   );
