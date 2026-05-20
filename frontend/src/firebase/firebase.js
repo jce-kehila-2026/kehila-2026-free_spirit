@@ -14,6 +14,13 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENTID
 };
  
+
+//TEMP
+
+console.log("Firebase API key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+console.log("Firebase project:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+
+
 // Shared Firebase app instance used by Auth and Firestore across the frontend.
 const app = initializeApp(firebaseConfig);
  
