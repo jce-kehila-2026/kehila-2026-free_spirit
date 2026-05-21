@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ClientDoc } from "@/components/clients/ClientList";
+import ClientProgressBanner from "@/components/clients/ClientProgressBanner";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
@@ -129,6 +130,11 @@ export default function ClientProfileDashboard({
             )}
           </button>
         </div>
+      </div>
+
+      {/* ── Progress Banner ── */}
+      <div className="mb-6">
+        <ClientProgressBanner client={client} />
       </div>
 
       {/* ── Tab bar ── */}
