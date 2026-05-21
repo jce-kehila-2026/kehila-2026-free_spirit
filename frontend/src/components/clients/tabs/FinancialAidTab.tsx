@@ -19,6 +19,8 @@ import type { ClientDoc } from "@/components/clients/ClientList";
 
 interface FinancialAidTabProps {
   client: ClientDoc;
+  /** When false (default) all fields are read-only and the Save footer is hidden. */
+  isEditable: boolean;
 }
 
 // ─── Default values for a new blank application ───────────────────────────────
@@ -51,6 +53,7 @@ function humanize(value: string) {
 
 // ─── Shared styling helpers ───────────────────────────────────────────────────
 
+// Edit-mode classes
 function inputCls(hasError: boolean) {
   return [
     "w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-800 outline-none",
@@ -83,6 +86,14 @@ function textareaCls(hasError: boolean) {
       : "border-slate-300 bg-white hover:border-slate-400",
   ].join(" ");
 }
+
+// View-mode classes (clean typography, no interactive chrome)
+const VIEW_INPUT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none";
+const VIEW_SELECT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none appearance-none";
+const VIEW_TEXTAREA_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none resize-none";
 
 // ─── FieldWrapper ─────────────────────────────────────────────────────────────
 
@@ -143,7 +154,7 @@ function sanitizeItem(obj: Record<string, any>): Record<string, any> {
  * Uses the same standalone useForm + useFieldArray + sticky-footer pattern
  * established in ContactsTab.
  */
-export default function FinancialAidTab({ client }: FinancialAidTabProps) {
+export default function FinancialAidTab({ client, isEditable }: FinancialAidTabProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const {
@@ -217,18 +228,21 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                 Track aid requests, awarded amounts, and review notes over time.
               </p>
             </div>
-            <button
-              type="button"
-              id="btn-financial-add"
-              onClick={() => append(EMPTY_APPLICATION)}
-              className={[
-                "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
-                "text-sm font-semibold text-white shadow-sm",
-                "transition-colors hover:bg-indigo-700",
-              ].join(" ")}
-            >
-              + New Application
-            </button>
+            {/* New Application button — edit mode only */}
+            {isEditable && (
+              <button
+                type="button"
+                id="btn-financial-add"
+                onClick={() => append(EMPTY_APPLICATION)}
+                className={[
+                  "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
+                  "text-sm font-semibold text-white shadow-sm",
+                  "transition-colors hover:bg-indigo-700",
+                ].join(" ")}
+              >
+                + New Application
+              </button>
+            )}
           </div>
 
           {/* Empty state */}
@@ -279,14 +293,17 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         {humanize(currentStatus)}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      id={`btn-financial-remove-${index}`}
-                      onClick={() => remove(index)}
-                      className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-                    >
-                      ✕ Remove
-                    </button>
+                    {/* Remove button — edit mode only */}
+                    {isEditable && (
+                      <button
+                        type="button"
+                        id={`btn-financial-remove-${index}`}
+                        onClick={() => remove(index)}
+                        className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
                   </div>
 
                   {/* Card fields */}
@@ -299,9 +316,10 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         error={ae?.status?.message}
                         required
                       >
-                        <select
+                      <select
                           id={`fa-status-${index}`}
-                          className={selectCls(!!ae?.status)}
+                          disabled={!isEditable}
+                          className={isEditable ? selectCls(!!ae?.status) : VIEW_SELECT_CLS}
                           {...register(
                             `financial_aid_applications.${index}.status`
                           )}
@@ -328,7 +346,8 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         min="0"
                         step="1"
                         placeholder="e.g. 5000"
-                        className={inputCls(!!ae?.requested_amount)}
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ae?.requested_amount) : VIEW_INPUT_CLS}
                         {...register(
                           `financial_aid_applications.${index}.requested_amount`
                         )}
@@ -348,7 +367,8 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         min="0"
                         step="1"
                         placeholder="e.g. 3000"
-                        className={inputCls(!!ae?.awarded_amount)}
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ae?.awarded_amount) : VIEW_INPUT_CLS}
                         {...register(
                           `financial_aid_applications.${index}.awarded_amount`
                         )}
@@ -365,7 +385,8 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         <input
                           id={`fa-date-${index}`}
                           type="date"
-                          className={inputCls(!!ae?.application_date)}
+                          readOnly={!isEditable}
+                          className={isEditable ? inputCls(!!ae?.application_date) : VIEW_INPUT_CLS}
                           {...register(
                             `financial_aid_applications.${index}.application_date`
                           )}
@@ -383,7 +404,8 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
                         <textarea
                           id={`fa-notes-${index}`}
                           placeholder="Reason for decision, conditions attached, follow-up actions… (optional)"
-                          className={textareaCls(!!ae?.review_notes)}
+                          readOnly={!isEditable}
+                          className={isEditable ? textareaCls(!!ae?.review_notes) : VIEW_TEXTAREA_CLS}
                           {...register(
                             `financial_aid_applications.${index}.review_notes`
                           )}
@@ -397,29 +419,31 @@ export default function FinancialAidTab({ client }: FinancialAidTabProps) {
           </div>
         </div>
 
-        {/* ── Sticky footer with Save button ── */}
-        <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
-          {isDirty ? (
-            <p className="text-xs font-medium text-amber-600">
-              You have unsaved changes.
-            </p>
-          ) : (
-            <p className="text-xs text-slate-400">All changes are saved.</p>
-          )}
-          <button
-            type="submit"
-            id="btn-financial-save"
-            disabled={isSaving || !isDirty}
-            className={[
-              "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
-              isSaving || !isDirty
-                ? "cursor-not-allowed bg-indigo-300"
-                : "bg-indigo-600 hover:bg-indigo-700",
-            ].join(" ")}
-          >
-            {isSaving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
+        {/* ── Sticky footer with Save button (edit mode only) ── */}
+        {isEditable && (
+          <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
+            {isDirty ? (
+              <p className="text-xs font-medium text-amber-600">
+                You have unsaved changes.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">All changes are saved.</p>
+            )}
+            <button
+              type="submit"
+              id="btn-financial-save"
+              disabled={isSaving || !isDirty}
+              className={[
+                "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
+                isSaving || !isDirty
+                  ? "cursor-not-allowed bg-indigo-300"
+                  : "bg-indigo-600 hover:bg-indigo-700",
+              ].join(" ")}
+            >
+              {isSaving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        )}
       </div>
     </form>
   );

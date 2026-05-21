@@ -19,6 +19,8 @@ import type { ClientDoc } from "@/components/clients/ClientList";
 
 interface ContactsTabProps {
   client: ClientDoc;
+  /** When false (default) all fields are read-only and the Save footer is hidden. */
+  isEditable: boolean;
 }
 
 // ─── Default values for a new blank contact ───────────────────────────────────
@@ -33,6 +35,7 @@ const EMPTY_CONTACT: Contact = {
 
 // ─── Shared styling helpers ───────────────────────────────────────────────────
 
+// Edit-mode classes
 function inputCls(hasError: boolean) {
   return [
     "w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-800 outline-none",
@@ -55,6 +58,12 @@ function selectCls(hasError: boolean) {
       : "border-slate-300 bg-white hover:border-slate-400",
   ].join(" ");
 }
+
+// View-mode classes (clean typography, no interactive chrome)
+const VIEW_INPUT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none";
+const VIEW_SELECT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none appearance-none";
 
 /** Human-readable label for enum values (title-case, underscores → spaces). */
 function humanize(value: string) {
@@ -116,7 +125,7 @@ function sanitizeItem(obj: Record<string, any>): Record<string, any> {
  * Owns its own react-hook-form instance (pre-filled from client.contacts)
  * and writes the entire contacts array to Firestore on "Save Changes".
  */
-export default function ContactsTab({ client }: ContactsTabProps) {
+export default function ContactsTab({ client, isEditable }: ContactsTabProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const {
@@ -183,18 +192,21 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                 Emergency and reference contacts for this client.
               </p>
             </div>
-            <button
-              type="button"
-              id="btn-contacts-add"
-              onClick={() => append(EMPTY_CONTACT)}
-              className={[
-                "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
-                "text-sm font-semibold text-white shadow-sm",
-                "transition-colors hover:bg-indigo-700",
-              ].join(" ")}
-            >
-              + Add Contact
-            </button>
+            {/* Add button — edit mode only */}
+            {isEditable && (
+              <button
+                type="button"
+                id="btn-contacts-add"
+                onClick={() => append(EMPTY_CONTACT)}
+                className={[
+                  "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
+                  "text-sm font-semibold text-white shadow-sm",
+                  "transition-colors hover:bg-indigo-700",
+                ].join(" ")}
+              >
+                + Add Contact
+              </button>
+            )}
           </div>
 
           {/* Array-level error */}
@@ -236,14 +248,17 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                     <h3 className="text-sm font-bold text-slate-700">
                       Contact #{index + 1}
                     </h3>
-                    <button
-                      type="button"
-                      id={`btn-contacts-remove-${index}`}
-                      onClick={() => remove(index)}
-                      className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-                    >
-                      ✕ Remove
-                    </button>
+                    {/* Remove button — edit mode only */}
+                    {isEditable && (
+                      <button
+                        type="button"
+                        id={`btn-contacts-remove-${index}`}
+                        onClick={() => remove(index)}
+                        className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
                   </div>
 
                   {/* Card fields */}
@@ -259,7 +274,8 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                         id={`ct-contact_name-${index}`}
                         type="text"
                         placeholder="e.g. Miriam Cohen"
-                        className={inputCls(!!ce?.contact_name)}
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ce?.contact_name) : VIEW_INPUT_CLS}
                         {...register(`contacts.${index}.contact_name`)}
                       />
                     </FieldWrapper>
@@ -273,7 +289,8 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                     >
                       <select
                         id={`ct-relationship-${index}`}
-                        className={selectCls(!!ce?.relationship)}
+                        disabled={!isEditable}
+                        className={isEditable ? selectCls(!!ce?.relationship) : VIEW_SELECT_CLS}
                         {...register(`contacts.${index}.relationship`)}
                       >
                         <option value="">Select relationship…</option>
@@ -296,7 +313,8 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                         id={`ct-phone-${index}`}
                         type="tel"
                         placeholder="e.g. 050-1234567"
-                        className={inputCls(!!ce?.phone)}
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ce?.phone) : VIEW_INPUT_CLS}
                         {...register(`contacts.${index}.phone`)}
                       />
                     </FieldWrapper>
@@ -311,7 +329,8 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                         id={`ct-email-${index}`}
                         type="email"
                         placeholder="e.g. miriam@email.com"
-                        className={inputCls(!!ce?.email)}
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ce?.email) : VIEW_INPUT_CLS}
                         {...register(`contacts.${index}.email`)}
                       />
                     </FieldWrapper>
@@ -320,11 +339,15 @@ export default function ContactsTab({ client }: ContactsTabProps) {
                     <div className="sm:col-span-2">
                       <label
                         htmlFor={`ct-is_emergency-${index}`}
-                        className="inline-flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 transition-colors hover:bg-slate-50"
+                        className={[
+                          "inline-flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 transition-colors",
+                          isEditable ? "cursor-pointer hover:bg-slate-50" : "cursor-default",
+                        ].join(" ")}
                       >
                         <input
                           id={`ct-is_emergency-${index}`}
                           type="checkbox"
+                          disabled={!isEditable}
                           className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           {...register(`contacts.${index}.is_emergency_contact`)}
                         />
@@ -340,29 +363,31 @@ export default function ContactsTab({ client }: ContactsTabProps) {
           </div>
         </div>
 
-        {/* ── Sticky footer with Save button ── */}
-        <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
-          {isDirty ? (
-            <p className="text-xs font-medium text-amber-600">
-              You have unsaved changes.
-            </p>
-          ) : (
-            <p className="text-xs text-slate-400">All changes are saved.</p>
-          )}
-          <button
-            type="submit"
-            id="btn-contacts-save"
-            disabled={isSaving || !isDirty}
-            className={[
-              "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
-              isSaving || !isDirty
-                ? "cursor-not-allowed bg-indigo-300"
-                : "bg-indigo-600 hover:bg-indigo-700",
-            ].join(" ")}
-          >
-            {isSaving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
+        {/* ── Sticky footer with Save button (edit mode only) ── */}
+        {isEditable && (
+          <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
+            {isDirty ? (
+              <p className="text-xs font-medium text-amber-600">
+                You have unsaved changes.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">All changes are saved.</p>
+            )}
+            <button
+              type="submit"
+              id="btn-contacts-save"
+              disabled={isSaving || !isDirty}
+              className={[
+                "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
+                isSaving || !isDirty
+                  ? "cursor-not-allowed bg-indigo-300"
+                  : "bg-indigo-600 hover:bg-indigo-700",
+              ].join(" ")}
+            >
+              {isSaving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        )}
       </div>
     </form>
   );

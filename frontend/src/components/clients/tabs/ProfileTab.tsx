@@ -19,10 +19,13 @@ import type { ClientDoc } from "@/components/clients/ClientList";
 
 interface ProfileTabProps {
   client: ClientDoc;
+  /** When false (default) all fields are read-only and the Save footer is hidden. */
+  isEditable: boolean;
 }
 
 // ─── Shared styling helpers ───────────────────────────────────────────────────
 
+// Edit-mode classes (interactive borders, focus rings)
 function inputCls(hasError: boolean) {
   return [
     "w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-800 outline-none",
@@ -57,6 +60,14 @@ function textareaCls(hasError: boolean) {
       : "border-slate-300 bg-white hover:border-slate-400",
   ].join(" ");
 }
+
+// View-mode classes (clean typography, no interactive chrome)
+const VIEW_INPUT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none";
+const VIEW_SELECT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none appearance-none";
+const VIEW_TEXTAREA_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none resize-none";
 
 /** Human-readable label for enum values (title-case, underscores → spaces). */
 function humanize(value: string) {
@@ -144,7 +155,7 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  * Owns its own react-hook-form instance (pre-filled from the client prop)
  * and writes directly to Firestore on "Save Changes".
  */
-export default function ProfileTab({ client }: ProfileTabProps) {
+export default function ProfileTab({ client, isEditable }: ProfileTabProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const {
@@ -218,7 +229,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                   type="text"
                   autoComplete="given-name"
                   placeholder="e.g. John"
-                  className={inputCls(!!errors.first_name)}
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.first_name) : VIEW_INPUT_CLS}
                   {...register("first_name")}
                 />
               </FieldWrapper>
@@ -235,7 +247,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                   type="text"
                   autoComplete="family-name"
                   placeholder="e.g. Doe"
-                  className={inputCls(!!errors.last_name)}
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.last_name) : VIEW_INPUT_CLS}
                   {...register("last_name")}
                 />
               </FieldWrapper>
@@ -253,7 +266,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                     type="email"
                     autoComplete="email"
                     placeholder="e.g. john.doe@gmail.com"
-                    className={inputCls(!!errors.email)}
+                    readOnly={!isEditable}
+                    className={isEditable ? inputCls(!!errors.email) : VIEW_INPUT_CLS}
                     {...register("email")}
                   />
                 </FieldWrapper>
@@ -272,7 +286,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                     type="tel"
                     autoComplete="tel"
                     placeholder="e.g. 050-1234567"
-                    className={inputCls(!!errors.phone)}
+                    readOnly={!isEditable}
+                    className={isEditable ? inputCls(!!errors.phone) : VIEW_INPUT_CLS}
                     {...register("phone")}
                   />
                 </FieldWrapper>
@@ -300,7 +315,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                   id="profile-passport_id"
                   type="text"
                   placeholder="e.g. 123456789"
-                  className={inputCls(!!errors.passport_id)}
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.passport_id) : VIEW_INPUT_CLS}
                   {...register("passport_id")}
                 />
               </FieldWrapper>
@@ -314,7 +330,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                 <input
                   id="profile-dob"
                   type="date"
-                  className={inputCls(!!errors.dob)}
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.dob) : VIEW_INPUT_CLS}
                   {...register("dob")}
                 />
               </FieldWrapper>
@@ -327,7 +344,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
               >
                 <select
                   id="profile-gender"
-                  className={selectCls(!!errors.gender)}
+                  disabled={!isEditable}
+                  className={isEditable ? selectCls(!!errors.gender) : VIEW_SELECT_CLS}
                   {...register("gender")}
                 >
                   <option value="">Select gender…</option>
@@ -347,7 +365,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
               >
                 <select
                   id="profile-education_status"
-                  className={selectCls(!!errors.education_status)}
+                  disabled={!isEditable}
+                  className={isEditable ? selectCls(!!errors.education_status) : VIEW_SELECT_CLS}
                   {...register("education_status")}
                 >
                   <option value="">Select education level…</option>
@@ -371,7 +390,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                     type="text"
                     autoComplete="street-address"
                     placeholder="e.g. 12 Ben Yehuda St, Tel Aviv"
-                    className={inputCls(!!errors.address)}
+                    readOnly={!isEditable}
+                    className={isEditable ? inputCls(!!errors.address) : VIEW_INPUT_CLS}
                     {...register("address")}
                   />
                 </FieldWrapper>
@@ -388,7 +408,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                     id="profile-referrer"
                     type="text"
                     placeholder="e.g. Social worker, community center…"
-                    className={inputCls(!!errors.referrer)}
+                    readOnly={!isEditable}
+                    className={isEditable ? inputCls(!!errors.referrer) : VIEW_INPUT_CLS}
                     {...register("referrer")}
                   />
                 </FieldWrapper>
@@ -404,7 +425,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                   <textarea
                     id="profile-diagnosis"
                     placeholder="Primary diagnosis or condition (optional)"
-                    className={textareaCls(!!errors.diagnosis)}
+                    readOnly={!isEditable}
+                    className={isEditable ? textareaCls(!!errors.diagnosis) : VIEW_TEXTAREA_CLS}
                     {...register("diagnosis")}
                   />
                 </FieldWrapper>
@@ -420,7 +442,8 @@ export default function ProfileTab({ client }: ProfileTabProps) {
                   <textarea
                     id="profile-personal_notes"
                     placeholder="Any additional notes about the client (optional)"
-                    className={textareaCls(!!errors.personal_notes)}
+                    readOnly={!isEditable}
+                    className={isEditable ? textareaCls(!!errors.personal_notes) : VIEW_TEXTAREA_CLS}
                     {...register("personal_notes")}
                   />
                 </FieldWrapper>
@@ -429,29 +452,31 @@ export default function ProfileTab({ client }: ProfileTabProps) {
           </section>
         </div>
 
-        {/* ── Sticky footer with Save button ── */}
-        <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
-          {isDirty ? (
-            <p className="text-xs font-medium text-amber-600">
-              You have unsaved changes.
-            </p>
-          ) : (
-            <p className="text-xs text-slate-400">All changes are saved.</p>
-          )}
-          <button
-            type="submit"
-            id="btn-profile-save"
-            disabled={isSaving || !isDirty}
-            className={[
-              "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
-              isSaving || !isDirty
-                ? "bg-indigo-300 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700",
-            ].join(" ")}
-          >
-            {isSaving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
+        {/* ── Sticky footer with Save button (edit mode only) ── */}
+        {isEditable && (
+          <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
+            {isDirty ? (
+              <p className="text-xs font-medium text-amber-600">
+                You have unsaved changes.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">All changes are saved.</p>
+            )}
+            <button
+              type="submit"
+              id="btn-profile-save"
+              disabled={isSaving || !isDirty}
+              className={[
+                "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
+                isSaving || !isDirty
+                  ? "bg-indigo-300 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700",
+              ].join(" ")}
+            >
+              {isSaving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        )}
       </div>
     </form>
   );

@@ -18,10 +18,13 @@ import type { ClientDoc } from "@/components/clients/ClientList";
 
 interface MedicalTabProps {
   client: ClientDoc;
+  /** When false (default) all fields are read-only and the Save footer is hidden. */
+  isEditable: boolean;
 }
 
 // ─── Shared styling helpers ───────────────────────────────────────────────────
 
+// Edit-mode classes
 function inputCls(hasError: boolean) {
   return [
     "w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-800 outline-none",
@@ -56,6 +59,14 @@ function textareaCls(hasError: boolean) {
       : "border-slate-300 bg-white hover:border-slate-400",
   ].join(" ");
 }
+
+// View-mode classes (clean typography, no interactive chrome)
+const VIEW_INPUT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none";
+const VIEW_SELECT_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none appearance-none";
+const VIEW_TEXTAREA_CLS =
+  "w-full border-0 bg-transparent px-0 py-1 text-sm text-slate-800 outline-none resize-none";
 
 /** Human-readable label for enum values (title-case, underscores → spaces). */
 function humanize(value: string) {
@@ -124,7 +135,7 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  * Owns its own react-hook-form instance (pre-filled from client.medical_profile)
  * and writes to the Firestore `medical_profile` nested field on "Save Changes".
  */
-export default function MedicalTab({ client }: MedicalTabProps) {
+export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const mp = client.medical_profile ?? {};
@@ -195,7 +206,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 id="med-physician_name"
                 type="text"
                 placeholder="e.g. Dr. David Levi"
-                className={inputCls(!!errors.physician_name)}
+                readOnly={!isEditable}
+                className={isEditable ? inputCls(!!errors.physician_name) : VIEW_INPUT_CLS}
                 {...register("physician_name")}
               />
             </FieldWrapper>
@@ -210,7 +222,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 id="med-physician_phone"
                 type="tel"
                 placeholder="e.g. 03-1234567"
-                className={inputCls(!!errors.physician_phone)}
+                readOnly={!isEditable}
+                className={isEditable ? inputCls(!!errors.physician_phone) : VIEW_INPUT_CLS}
                 {...register("physician_phone")}
               />
             </FieldWrapper>
@@ -225,7 +238,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 id="med-insurance_company"
                 type="text"
                 placeholder="e.g. Harel, Phoenix, Menora"
-                className={inputCls(!!errors.insurance_company)}
+                readOnly={!isEditable}
+                className={isEditable ? inputCls(!!errors.insurance_company) : VIEW_INPUT_CLS}
                 {...register("insurance_company")}
               />
             </FieldWrapper>
@@ -240,7 +254,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 id="med-policy_number"
                 type="text"
                 placeholder="e.g. POL-12345"
-                className={inputCls(!!errors.policy_number)}
+                readOnly={!isEditable}
+                className={isEditable ? inputCls(!!errors.policy_number) : VIEW_INPUT_CLS}
                 {...register("policy_number")}
               />
             </FieldWrapper>
@@ -254,7 +269,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
               >
                 <select
                   id="med-medical_clearance_status"
-                  className={selectCls(!!errors.medical_clearance_status)}
+                  disabled={!isEditable}
+                  className={isEditable ? selectCls(!!errors.medical_clearance_status) : VIEW_SELECT_CLS}
                   {...register("medical_clearance_status")}
                 >
                   <option value="">Select clearance status…</option>
@@ -277,7 +293,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 <textarea
                   id="med-allergies"
                   placeholder="List any known allergies (optional)"
-                  className={textareaCls(!!errors.allergies)}
+                  readOnly={!isEditable}
+                  className={isEditable ? textareaCls(!!errors.allergies) : VIEW_TEXTAREA_CLS}
                   {...register("allergies")}
                 />
               </FieldWrapper>
@@ -293,7 +310,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 <textarea
                   id="med-medications"
                   placeholder="Current medications and dosages (optional)"
-                  className={textareaCls(!!errors.medications)}
+                  readOnly={!isEditable}
+                  className={isEditable ? textareaCls(!!errors.medications) : VIEW_TEXTAREA_CLS}
                   {...register("medications")}
                 />
               </FieldWrapper>
@@ -309,7 +327,8 @@ export default function MedicalTab({ client }: MedicalTabProps) {
                 <textarea
                   id="med-dietary_restrictions"
                   placeholder="Dietary needs or restrictions (optional)"
-                  className={textareaCls(!!errors.dietary_restrictions)}
+                  readOnly={!isEditable}
+                  className={isEditable ? textareaCls(!!errors.dietary_restrictions) : VIEW_TEXTAREA_CLS}
                   {...register("dietary_restrictions")}
                 />
               </FieldWrapper>
@@ -317,29 +336,31 @@ export default function MedicalTab({ client }: MedicalTabProps) {
           </div>
         </div>
 
-        {/* ── Sticky footer with Save button ── */}
-        <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
-          {isDirty ? (
-            <p className="text-xs font-medium text-amber-600">
-              You have unsaved changes.
-            </p>
-          ) : (
-            <p className="text-xs text-slate-400">All changes are saved.</p>
-          )}
-          <button
-            type="submit"
-            id="btn-medical-save"
-            disabled={isSaving || !isDirty}
-            className={[
-              "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
-              isSaving || !isDirty
-                ? "cursor-not-allowed bg-indigo-300"
-                : "bg-indigo-600 hover:bg-indigo-700",
-            ].join(" ")}
-          >
-            {isSaving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
+        {/* ── Sticky footer with Save button (edit mode only) ── */}
+        {isEditable && (
+          <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
+            {isDirty ? (
+              <p className="text-xs font-medium text-amber-600">
+                You have unsaved changes.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">All changes are saved.</p>
+            )}
+            <button
+              type="submit"
+              id="btn-medical-save"
+              disabled={isSaving || !isDirty}
+              className={[
+                "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
+                isSaving || !isDirty
+                  ? "cursor-not-allowed bg-indigo-300"
+                  : "bg-indigo-600 hover:bg-indigo-700",
+              ].join(" ")}
+            >
+              {isSaving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        )}
       </div>
     </form>
   );
