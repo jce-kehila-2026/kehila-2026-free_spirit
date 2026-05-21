@@ -8,15 +8,21 @@ import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
 import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
 import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
+import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
+import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
+import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "profile",   label: "Profile & Demographics" },
-  { id: "medical",   label: "Medical" },
-  { id: "contacts",  label: "Contacts" },
-  { id: "documents", label: "Documents" },
-  { id: "financial", label: "Financial Aid" },
+  { id: "profile",      label: "Profile & Demographics" },
+  { id: "medical",      label: "Medical" },
+  { id: "contacts",     label: "Contacts" },
+  { id: "logistics",    label: "Logistics" },
+  { id: "questionnaire",label: "Questionnaire" },
+  { id: "legal",        label: "Legal Consents" },
+  { id: "documents",    label: "Documents" },
+  { id: "financial",    label: "Financial Aid" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -175,11 +181,14 @@ export default function ClientProfileDashboard({
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        {activeTab === "profile"   && <ProfileTab    client={client} isEditable={isEditable} />}
-        {activeTab === "medical"   && <MedicalTab    client={client} isEditable={isEditable} />}
-        {activeTab === "contacts"  && <ContactsTab   client={client} isEditable={isEditable} />}
-        {activeTab === "documents" && <DocumentsTab  client={client} />}
-        {activeTab === "financial" && <FinancialAidTab client={client} isEditable={isEditable} />}
+        {activeTab === "profile"       && <ProfileTab      client={client} isEditable={isEditable} />}
+        {activeTab === "medical"       && <MedicalTab       client={client} isEditable={isEditable} />}
+        {activeTab === "contacts"      && <ContactsTab      client={client} isEditable={isEditable} />}
+        {activeTab === "logistics"     && <LogisticsTab     client={client} isEditable={isEditable} />}
+        {activeTab === "questionnaire" && <QuestionnaireTab client={client} isEditable={isEditable} />}
+        {activeTab === "legal"         && <LegalConsentsTab client={client} isEditable={isEditable} />}
+        {activeTab === "documents"     && <DocumentsTab     client={client} />}
+        {activeTab === "financial"     && <FinancialAidTab  client={client} isEditable={isEditable} />}
       </div>
     </div>
   );
