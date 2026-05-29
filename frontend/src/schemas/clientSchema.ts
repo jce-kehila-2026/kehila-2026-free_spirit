@@ -265,6 +265,9 @@ const clientBaseSchema = z.object({
   logistics:       logisticsSchema.optional().default({}),
   questionnaire:   questionnaireSchema.optional().default({}),
   legal_consents:  legalConsentsSchema.optional().default({}),
+
+  // ── Soft-delete flag ───────────────────────────────────────────────────
+  is_archived:     z.boolean().default(false).optional(),
 });
 
 // ============================================================================

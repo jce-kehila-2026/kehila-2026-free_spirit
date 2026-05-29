@@ -249,11 +249,16 @@ export default function FinancialAidTab({ client, isEditable }: FinancialAidTabP
           {fields.length === 0 && (
             <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
               <p className="text-sm text-slate-400">
-                No financial aid applications on record. Click{" "}
+                No financial aid applications on record. <br/>
+                Add the first one by clicking above on{" "}
+                <strong className="text-slate-600">
+                  &quot;+ Edit Profile&quot;
+                </strong>{" "} 
+                and then{" "}
                 <strong className="text-slate-600">
                   &quot;+ New Application&quot;
-                </strong>{" "}
-                above to add the first one.
+                </strong>{" "} 
+                .
               </p>
             </div>
           )}

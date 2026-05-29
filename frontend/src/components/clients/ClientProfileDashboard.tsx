@@ -181,7 +181,7 @@ export default function ClientProfileDashboard({
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        {activeTab === "profile"       && <ProfileTab      client={client} isEditable={isEditable} />}
+        {activeTab === "profile"       && <ProfileTab      client={client} isEditable={isEditable} onBack={onBack} />}
         {activeTab === "medical"       && <MedicalTab       client={client} isEditable={isEditable} />}
         {activeTab === "contacts"      && <ContactsTab      client={client} isEditable={isEditable} />}
         {activeTab === "logistics"     && <LogisticsTab     client={client} isEditable={isEditable} />}

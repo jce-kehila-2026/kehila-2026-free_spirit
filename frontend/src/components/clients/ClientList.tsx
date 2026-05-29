@@ -87,7 +87,9 @@ export default function ClientList({ onEdit }: ClientListProps) {
           id: doc.id,
           ...doc.data(),
         })) as ClientDoc[];
-        setClients(docs);
+        // Exclude archived clients — filter client-side so docs that were
+        // created before the is_archived field existed are still shown.
+        setClients(docs.filter((c) => c.is_archived !== true));
         setIsLoading(false);
       },
       (error) => {
