@@ -38,8 +38,6 @@ const STEP_FIELDS: Record<number, FieldPath<ClientFormInput>[]> = {
     "personal_notes",
   ],
   3: [
-    "medical_profile.physician_name",
-    "medical_profile.physician_phone",
     "medical_profile.insurance_company",
     "medical_profile.policy_number",
     "medical_profile.medical_clearance_status",

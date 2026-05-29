@@ -88,8 +88,6 @@ function FieldWrapper({
  * All fields use dotted `register('medical_profile.xyz')` notation
  * so react-hook-form writes to the correct nested path.
  *
- * physician_name and physician_phone are required for registered clients
- * (enforced by superRefine in the schema).
  */
 export default function MedicalProfileStep() {
   const {
@@ -112,36 +110,7 @@ export default function MedicalProfileStep() {
 
       {/* ── Fields grid ── */}
       <div className="grid gap-5 sm:grid-cols-2">
-        {/* Physician Name */}
-        <FieldWrapper
-          label="Physician Name"
-          htmlFor="mp_physician_name"
-          error={mp?.physician_name?.message}
-        >
-          <input
-            id="mp_physician_name"
-            type="text"
-            placeholder="e.g. Dr. David Levi"
-            className={inputCls(!!mp?.physician_name)}
-            {...register("medical_profile.physician_name")}
-          />
-        </FieldWrapper>
-
-        {/* Physician Phone */}
-        <FieldWrapper
-          label="Physician Phone"
-          htmlFor="mp_physician_phone"
-          error={mp?.physician_phone?.message}
-        >
-          <input
-            id="mp_physician_phone"
-            type="tel"
-            placeholder="e.g. 03-1234567"
-            className={inputCls(!!mp?.physician_phone)}
-            {...register("medical_profile.physician_phone")}
-          />
-        </FieldWrapper>
-
+        
         {/* Insurance Company */}
         <FieldWrapper
           label="Insurance Company"
