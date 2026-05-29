@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Control, UseFormRegister, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -12,6 +12,7 @@ import {
   FINANCIAL_AID_STATUS,
   type FinancialAidTabFormData,
   type FinancialAidApplication,
+  type PaymentInstallment,
 } from "@/schemas/clientSchema";
 import type { ClientDoc } from "@/components/clients/ClientList";
 
@@ -31,6 +32,15 @@ const EMPTY_APPLICATION: FinancialAidApplication = {
   awarded_amount: undefined,
   application_date: "",
   review_notes: "",
+  financial_aid_parent_names: "",
+  financial_aid_circumstances: "",
+  payment_installments: [],
+};
+
+const EMPTY_INSTALLMENT: PaymentInstallment = {
+  amount: 0,
+  due_date: "",
+  status: "",
 };
 
 // ─── Status badge colors ──────────────────────────────────────────────────────
@@ -138,7 +148,324 @@ function FieldWrapper({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitizeItem(obj: Record<string, any>): Record<string, any> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v !== undefined && v !== "")
+    Object.entries(obj)
+      .filter(([, v]) => v !== undefined && v !== "")
+      .map(([k, v]) => {
+        if (Array.isArray(v)) {
+          return [k, v.map((item) => typeof item === "object" ? sanitizeItem(item) : item)];
+        }
+        if (v !== null && typeof v === "object") {
+          return [k, sanitizeItem(v)];
+        }
+        return [k, v];
+      })
+  );
+}
+
+// ─── FinancialAidApplicationCard ──────────────────────────────────────────────
+
+interface FinancialAidApplicationCardProps {
+  nestIndex: number;
+  control: Control<FinancialAidTabFormData>;
+  register: UseFormRegister<FinancialAidTabFormData>;
+  errors: FieldErrors<FinancialAidTabFormData>;
+  isEditable: boolean;
+  onRemove: () => void;
+  status: FinancialAidApplication["status"];
+}
+
+function FinancialAidApplicationCard({
+  nestIndex,
+  control,
+  register,
+  errors,
+  isEditable,
+  onRemove,
+  status,
+}: FinancialAidApplicationCardProps) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `financial_aid_applications.${nestIndex}.payment_installments`,
+  });
+
+  const appErrors = errors.financial_aid_applications;
+  const ae = Array.isArray(appErrors) ? appErrors[nestIndex] : undefined;
+
+  const currentStatus = status ?? "pending";
+  const badge = STATUS_BADGE[currentStatus] ?? STATUS_BADGE.pending;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
+      {/* Card header */}
+      <div className="flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-white px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-bold text-slate-700">
+            Application #{nestIndex + 1}
+          </h3>
+          {/* Live status badge */}
+          <span
+            className={[
+              "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+              badge.bg,
+              badge.text,
+              "border-transparent",
+            ].join(" ")}
+          >
+            {humanize(currentStatus)}
+          </span>
+        </div>
+        {/* Remove button — edit mode only */}
+        {isEditable && (
+          <button
+            type="button"
+            id={`btn-financial-remove-${nestIndex}`}
+            onClick={onRemove}
+            className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+          >
+            ✕ Remove
+          </button>
+        )}
+      </div>
+
+      {/* Card fields */}
+      <div className="grid gap-4 p-5 sm:grid-cols-2">
+        {/* Status — full width */}
+        <div className="sm:col-span-2">
+          <FieldWrapper
+            label="Application Status"
+            htmlFor={`fa-status-${nestIndex}`}
+            error={ae?.status?.message}
+            required
+          >
+          <select
+              id={`fa-status-${nestIndex}`}
+              disabled={!isEditable}
+              className={isEditable ? selectCls(!!ae?.status) : VIEW_SELECT_CLS}
+              {...register(
+                `financial_aid_applications.${nestIndex}.status`
+              )}
+            >
+              {FINANCIAL_AID_STATUS.map((s) => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
+          </FieldWrapper>
+        </div>
+
+        {/* Requested Amount */}
+        <FieldWrapper
+          label="Requested Amount (₪)"
+          htmlFor={`fa-requested-${nestIndex}`}
+          hint="Leave blank if not yet determined"
+          error={ae?.requested_amount?.message}
+        >
+          <input
+            id={`fa-requested-${nestIndex}`}
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g. 5000"
+            readOnly={!isEditable}
+            className={isEditable ? inputCls(!!ae?.requested_amount) : VIEW_INPUT_CLS}
+            {...register(
+              `financial_aid_applications.${nestIndex}.requested_amount`
+            )}
+          />
+        </FieldWrapper>
+
+        {/* Awarded Amount */}
+        <FieldWrapper
+          label="Awarded Amount (₪)"
+          htmlFor={`fa-awarded-${nestIndex}`}
+          hint="Fill once the decision is made"
+          error={ae?.awarded_amount?.message}
+        >
+          <input
+            id={`fa-awarded-${nestIndex}`}
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g. 3000"
+            readOnly={!isEditable}
+            className={isEditable ? inputCls(!!ae?.awarded_amount) : VIEW_INPUT_CLS}
+            {...register(
+              `financial_aid_applications.${nestIndex}.awarded_amount`
+            )}
+          />
+        </FieldWrapper>
+
+        {/* Application Date — full width */}
+        <div className="sm:col-span-2">
+          <FieldWrapper
+            label="Application Date"
+            htmlFor={`fa-date-${nestIndex}`}
+            error={ae?.application_date?.message}
+          >
+            <input
+              id={`fa-date-${nestIndex}`}
+              type="date"
+              readOnly={!isEditable}
+              className={isEditable ? inputCls(!!ae?.application_date) : VIEW_INPUT_CLS}
+              {...register(
+                `financial_aid_applications.${nestIndex}.application_date`
+              )}
+            />
+          </FieldWrapper>
+        </div>
+
+        {/* Financial Aid Parent Names */}
+        <div className="sm:col-span-2">
+          <FieldWrapper
+            label="Financial Aid Parent Names"
+            htmlFor={`fa-parents-${nestIndex}`}
+            error={ae?.financial_aid_parent_names?.message}
+          >
+            <input
+              id={`fa-parents-${nestIndex}`}
+              type="text"
+              placeholder="e.g. John and Jane Doe"
+              readOnly={!isEditable}
+              className={isEditable ? inputCls(!!ae?.financial_aid_parent_names) : VIEW_INPUT_CLS}
+              {...register(
+                `financial_aid_applications.${nestIndex}.financial_aid_parent_names`
+              )}
+            />
+          </FieldWrapper>
+        </div>
+
+        {/* Financial Aid Circumstances */}
+        <div className="sm:col-span-2">
+          <FieldWrapper
+            label="Circumstances"
+            htmlFor={`fa-circumstances-${nestIndex}`}
+            error={ae?.financial_aid_circumstances?.message}
+          >
+            <textarea
+              id={`fa-circumstances-${nestIndex}`}
+              placeholder="Details on financial circumstances…"
+              readOnly={!isEditable}
+              className={isEditable ? textareaCls(!!ae?.financial_aid_circumstances) : VIEW_TEXTAREA_CLS}
+              {...register(
+                `financial_aid_applications.${nestIndex}.financial_aid_circumstances`
+              )}
+            />
+          </FieldWrapper>
+        </div>
+
+        {/* Review Notes — full width */}
+        <div className="sm:col-span-2">
+          <FieldWrapper
+            label="Review Notes"
+            htmlFor={`fa-notes-${nestIndex}`}
+            error={ae?.review_notes?.message}
+          >
+            <textarea
+              id={`fa-notes-${nestIndex}`}
+              placeholder="Reason for decision, conditions attached, follow-up actions… (optional)"
+              readOnly={!isEditable}
+              className={isEditable ? textareaCls(!!ae?.review_notes) : VIEW_TEXTAREA_CLS}
+              {...register(
+                `financial_aid_applications.${nestIndex}.review_notes`
+              )}
+            />
+          </FieldWrapper>
+        </div>
+      </div>
+
+      <div className="border-t border-slate-200 px-5 py-4">
+        <div className="mb-4 flex items-center justify-between">
+          <h4 className="text-sm font-bold text-slate-700">Payment Installments</h4>
+          {isEditable && (
+            <button
+              type="button"
+              onClick={() => append(EMPTY_INSTALLMENT)}
+              className="rounded-md bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+            >
+              + Add Installment
+            </button>
+          )}
+        </div>
+
+        {fields.length === 0 ? (
+          <p className="text-xs text-slate-400">No installments added yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {fields.map((instField, instIndex) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const instErrors = ae?.payment_installments as any;
+              const ie = Array.isArray(instErrors) ? instErrors[instIndex] : undefined;
+
+              return (
+                <div key={instField.id} className="relative rounded-lg border border-slate-200 bg-white p-4">
+                  {isEditable && (
+                    <button
+                      type="button"
+                      onClick={() => remove(instIndex)}
+                      className="absolute right-3 top-3 text-red-500 hover:text-red-700 focus:outline-none"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-3 pr-6">
+                    <FieldWrapper
+                      label="Amount"
+                      htmlFor={`inst-amount-${nestIndex}-${instIndex}`}
+                      error={ie?.amount?.message}
+                    >
+                      <input
+                        id={`inst-amount-${nestIndex}-${instIndex}`}
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Amount"
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ie?.amount) : VIEW_INPUT_CLS}
+                        {...register(
+                          `financial_aid_applications.${nestIndex}.payment_installments.${instIndex}.amount`
+                        )}
+                      />
+                    </FieldWrapper>
+                    <FieldWrapper
+                      label="Due Date"
+                      htmlFor={`inst-due_date-${nestIndex}-${instIndex}`}
+                      error={ie?.due_date?.message}
+                    >
+                      <input
+                        id={`inst-due_date-${nestIndex}-${instIndex}`}
+                        type="date"
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ie?.due_date) : VIEW_INPUT_CLS}
+                        {...register(
+                          `financial_aid_applications.${nestIndex}.payment_installments.${instIndex}.due_date`
+                        )}
+                      />
+                    </FieldWrapper>
+                    <FieldWrapper
+                      label="Status"
+                      htmlFor={`inst-status-${nestIndex}-${instIndex}`}
+                      error={ie?.status?.message}
+                    >
+                      <input
+                        id={`inst-status-${nestIndex}-${instIndex}`}
+                        type="text"
+                        placeholder="Status"
+                        readOnly={!isEditable}
+                        className={isEditable ? inputCls(!!ie?.status) : VIEW_INPUT_CLS}
+                        {...register(
+                          `financial_aid_applications.${nestIndex}.payment_installments.${instIndex}.status`
+                        )}
+                      />
+                    </FieldWrapper>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -174,6 +501,13 @@ export default function FinancialAidTab({ client, isEditable }: FinancialAidTabP
         awarded_amount:    app.awarded_amount,
         application_date:  app.application_date  ?? "",
         review_notes:      app.review_notes      ?? "",
+        financial_aid_parent_names: app.financial_aid_parent_names ?? "",
+        financial_aid_circumstances: app.financial_aid_circumstances ?? "",
+        payment_installments: (app.payment_installments ?? []).map((inst) => ({
+          amount: inst.amount ?? 0,
+          due_date: inst.due_date ?? "",
+          status: inst.status ?? "",
+        })),
       })),
     },
   });
@@ -266,159 +600,20 @@ export default function FinancialAidTab({ client, isEditable }: FinancialAidTabP
           {/* Application cards */}
           <div className="space-y-6">
             {fields.map((field, index) => {
-              // Per-card error accessor
-              const appErrors = errors.financial_aid_applications;
-              const ae = Array.isArray(appErrors) ? appErrors[index] : undefined;
-
-              // Live status for the badge
               const currentStatus =
                 watchedStatuses?.[index]?.status ?? field.status;
-              const badge = STATUS_BADGE[currentStatus] ?? STATUS_BADGE.pending;
 
               return (
-                <div
+                <FinancialAidApplicationCard
                   key={field.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 shadow-sm"
-                >
-                  {/* Card header */}
-                  <div className="flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-white px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-sm font-bold text-slate-700">
-                        Application #{index + 1}
-                      </h3>
-                      {/* Live status badge */}
-                      <span
-                        className={[
-                          "rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                          badge.bg,
-                          badge.text,
-                          "border-transparent",
-                        ].join(" ")}
-                      >
-                        {humanize(currentStatus)}
-                      </span>
-                    </div>
-                    {/* Remove button — edit mode only */}
-                    {isEditable && (
-                      <button
-                        type="button"
-                        id={`btn-financial-remove-${index}`}
-                        onClick={() => remove(index)}
-                        className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-                      >
-                        ✕ Remove
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Card fields */}
-                  <div className="grid gap-4 p-5 sm:grid-cols-2">
-                    {/* Status — full width */}
-                    <div className="sm:col-span-2">
-                      <FieldWrapper
-                        label="Application Status"
-                        htmlFor={`fa-status-${index}`}
-                        error={ae?.status?.message}
-                        required
-                      >
-                      <select
-                          id={`fa-status-${index}`}
-                          disabled={!isEditable}
-                          className={isEditable ? selectCls(!!ae?.status) : VIEW_SELECT_CLS}
-                          {...register(
-                            `financial_aid_applications.${index}.status`
-                          )}
-                        >
-                          {FINANCIAL_AID_STATUS.map((s) => (
-                            <option key={s} value={s}>
-                              {humanize(s)}
-                            </option>
-                          ))}
-                        </select>
-                      </FieldWrapper>
-                    </div>
-
-                    {/* Requested Amount */}
-                    <FieldWrapper
-                      label="Requested Amount (₪)"
-                      htmlFor={`fa-requested-${index}`}
-                      hint="Leave blank if not yet determined"
-                      error={ae?.requested_amount?.message}
-                    >
-                      <input
-                        id={`fa-requested-${index}`}
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="e.g. 5000"
-                        readOnly={!isEditable}
-                        className={isEditable ? inputCls(!!ae?.requested_amount) : VIEW_INPUT_CLS}
-                        {...register(
-                          `financial_aid_applications.${index}.requested_amount`
-                        )}
-                      />
-                    </FieldWrapper>
-
-                    {/* Awarded Amount */}
-                    <FieldWrapper
-                      label="Awarded Amount (₪)"
-                      htmlFor={`fa-awarded-${index}`}
-                      hint="Fill once the decision is made"
-                      error={ae?.awarded_amount?.message}
-                    >
-                      <input
-                        id={`fa-awarded-${index}`}
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="e.g. 3000"
-                        readOnly={!isEditable}
-                        className={isEditable ? inputCls(!!ae?.awarded_amount) : VIEW_INPUT_CLS}
-                        {...register(
-                          `financial_aid_applications.${index}.awarded_amount`
-                        )}
-                      />
-                    </FieldWrapper>
-
-                    {/* Application Date — full width */}
-                    <div className="sm:col-span-2">
-                      <FieldWrapper
-                        label="Application Date"
-                        htmlFor={`fa-date-${index}`}
-                        error={ae?.application_date?.message}
-                      >
-                        <input
-                          id={`fa-date-${index}`}
-                          type="date"
-                          readOnly={!isEditable}
-                          className={isEditable ? inputCls(!!ae?.application_date) : VIEW_INPUT_CLS}
-                          {...register(
-                            `financial_aid_applications.${index}.application_date`
-                          )}
-                        />
-                      </FieldWrapper>
-                    </div>
-
-                    {/* Review Notes — full width */}
-                    <div className="sm:col-span-2">
-                      <FieldWrapper
-                        label="Review Notes"
-                        htmlFor={`fa-notes-${index}`}
-                        error={ae?.review_notes?.message}
-                      >
-                        <textarea
-                          id={`fa-notes-${index}`}
-                          placeholder="Reason for decision, conditions attached, follow-up actions… (optional)"
-                          readOnly={!isEditable}
-                          className={isEditable ? textareaCls(!!ae?.review_notes) : VIEW_TEXTAREA_CLS}
-                          {...register(
-                            `financial_aid_applications.${index}.review_notes`
-                          )}
-                        />
-                      </FieldWrapper>
-                    </div>
-                  </div>
-                </div>
+                  nestIndex={index}
+                  control={control}
+                  register={register}
+                  errors={errors}
+                  isEditable={isEditable}
+                  onRemove={() => remove(index)}
+                  status={currentStatus}
+                />
               );
             })}
           </div>

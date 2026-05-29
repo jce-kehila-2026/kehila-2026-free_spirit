@@ -38,6 +38,7 @@ export const CONTACT_RELATIONSHIP = [
   "sibling",
   "child",
   "friend",
+  "host_family",
   "social_worker",
   "other",
 ] as const;
@@ -476,6 +477,13 @@ export type FinancialAidStatus = (typeof FINANCIAL_AID_STATUS)[number];
  * One financial aid application entry.
  * Stored as an array `financial_aid_applications[]` on the client document.
  */
+export const paymentInstallmentSchema = z.object({
+  amount: z.coerce.number().nonnegative().optional().or(z.literal(0)),
+  due_date: z.string().optional().or(z.literal("")),
+  status: z.string().trim().max(50).optional().or(z.literal("")),
+});
+export type PaymentInstallment = z.infer<typeof paymentInstallmentSchema>;
+
 export const financialAidApplicationSchema = z.object({
   status: z.enum(FINANCIAL_AID_STATUS, {
     errorMap: () => ({ message: "Please select a status" }),
@@ -507,6 +515,10 @@ export const financialAidApplicationSchema = z.object({
     .max(2000, "Notes are too long")
     .optional()
     .or(z.literal("")),
+
+  financial_aid_parent_names: z.string().trim().max(200).optional().or(z.literal("")),
+  financial_aid_circumstances: z.string().trim().max(2000).optional().or(z.literal("")),
+  payment_installments: z.array(paymentInstallmentSchema).default([]),
 });
 
 export type FinancialAidApplication = z.infer<
