@@ -385,6 +385,12 @@ export const basicInfoSchema = clientBaseSchema.pick({
   program_ids: true,
   diagnosis: true,
   personal_notes: true,
+  passport_number: true,
+  passport_country: true,
+  citizenship: true,
+  home_address: true,
+  cohabitants: true,
+  dependents: true,
 });
 
 export type BasicInfoFormData = z.infer<typeof basicInfoSchema>;

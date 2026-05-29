@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -12,6 +12,7 @@ import {
   GENDER_OPTIONS,
   EDUCATION_STATUS_OPTIONS,
   type BasicInfoFormData,
+  type Dependent,
 } from "@/schemas/clientSchema";
 import type { ClientDoc } from "@/components/clients/ClientList";
 
@@ -146,6 +147,14 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
   );
 }
 
+// ─── Default values for a new blank dependent ───────────────────────────────
+
+const EMPTY_DEPENDENT: Dependent = {
+  name: "",
+  relationship: "",
+  dob: "",
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
@@ -164,6 +173,7 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isDirty },
   } = useForm<BasicInfoFormData>({
@@ -184,7 +194,26 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
       program_ids: client.program_ids ?? [],
       diagnosis: client.diagnosis ?? "",
       personal_notes: client.personal_notes ?? "",
+      passport_number: client.passport_number ?? "",
+      passport_country: client.passport_country ?? "",
+      citizenship: client.citizenship ?? "",
+      home_address: client.home_address ?? "",
+      cohabitants: client.cohabitants ?? "",
+      dependents: (client.dependents ?? []).map((d) => ({
+        name: d.name ?? "",
+        relationship: d.relationship ?? "",
+        dob: d.dob ?? "",
+      })),
     },
+  });
+
+  const {
+    fields: dependentFields,
+    append: appendDependent,
+    remove: removeDependent,
+  } = useFieldArray({
+    control,
+    name: "dependents",
   });
 
   // ── Save handler ──────────────────────────────────────────────────────────
@@ -346,6 +375,54 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 />
               </FieldWrapper>
 
+              {/* Passport Number */}
+              <FieldWrapper
+                label="Passport Number"
+                htmlFor="profile-passport_number"
+                error={errors.passport_number?.message}
+              >
+                <input
+                  id="profile-passport_number"
+                  type="text"
+                  placeholder="e.g. A12345678"
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.passport_number) : VIEW_INPUT_CLS}
+                  {...register("passport_number")}
+                />
+              </FieldWrapper>
+
+              {/* Passport Country */}
+              <FieldWrapper
+                label="Passport Country"
+                htmlFor="profile-passport_country"
+                error={errors.passport_country?.message}
+              >
+                <input
+                  id="profile-passport_country"
+                  type="text"
+                  placeholder="e.g. United States"
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.passport_country) : VIEW_INPUT_CLS}
+                  {...register("passport_country")}
+                />
+              </FieldWrapper>
+
+              {/* Citizenship */}
+              <FieldWrapper
+                label="Citizenship"
+                htmlFor="profile-citizenship"
+                error={errors.citizenship?.message}
+              >
+                <input
+                  id="profile-citizenship"
+                  type="text"
+                  placeholder="e.g. American"
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.citizenship) : VIEW_INPUT_CLS}
+                  {...register("citizenship")}
+                />
+              </FieldWrapper>
+
               {/* Date of Birth */}
               <FieldWrapper
                 label="Date of Birth"
@@ -403,10 +480,26 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 </select>
               </FieldWrapper>
 
-              {/* Address — full width */}
+              {/* Referrer */}
+              <FieldWrapper
+                label="Referred By"
+                htmlFor="profile-referrer"
+                error={errors.referrer?.message}
+              >
+                <input
+                  id="profile-referrer"
+                  type="text"
+                  placeholder="e.g. Social worker, community center…"
+                  readOnly={!isEditable}
+                  className={isEditable ? inputCls(!!errors.referrer) : VIEW_INPUT_CLS}
+                  {...register("referrer")}
+                />
+              </FieldWrapper>
+
+              {/* Local Address — full width */}
               <div className="sm:col-span-2">
                 <FieldWrapper
-                  label="Address"
+                  label="Local Address"
                   htmlFor="profile-address"
                   error={errors.address?.message}
                 >
@@ -422,20 +515,37 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 </FieldWrapper>
               </div>
 
-              {/* Referrer — full width */}
+              {/* Home Address (Permanent) — full width */}
               <div className="sm:col-span-2">
                 <FieldWrapper
-                  label="Referred By"
-                  htmlFor="profile-referrer"
-                  error={errors.referrer?.message}
+                  label="Home Address (Permanent)"
+                  htmlFor="profile-home_address"
+                  error={errors.home_address?.message}
                 >
                   <input
-                    id="profile-referrer"
+                    id="profile-home_address"
                     type="text"
-                    placeholder="e.g. Social worker, community center…"
+                    placeholder="e.g. 123 Main St, New York, NY"
                     readOnly={!isEditable}
-                    className={isEditable ? inputCls(!!errors.referrer) : VIEW_INPUT_CLS}
-                    {...register("referrer")}
+                    className={isEditable ? inputCls(!!errors.home_address) : VIEW_INPUT_CLS}
+                    {...register("home_address")}
+                  />
+                </FieldWrapper>
+              </div>
+
+              {/* Cohabitants — full width */}
+              <div className="sm:col-span-2">
+                <FieldWrapper
+                  label="Cohabitants"
+                  htmlFor="profile-cohabitants"
+                  error={errors.cohabitants?.message}
+                >
+                  <textarea
+                    id="profile-cohabitants"
+                    placeholder="List names and relationships of people living with the client (optional)"
+                    readOnly={!isEditable}
+                    className={isEditable ? textareaCls(!!errors.cohabitants) : VIEW_TEXTAREA_CLS}
+                    {...register("cohabitants")}
                   />
                 </FieldWrapper>
               </div>
@@ -473,6 +583,137 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                   />
                 </FieldWrapper>
               </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <hr className="border-slate-100" />
+
+          {/* ════ Section 3: Dependents ════ */}
+          <section>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">Dependents</h2>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Immediate family members or other dependents of the client.
+                </p>
+              </div>
+              {/* Add button — edit mode only */}
+              {isEditable && (
+                <button
+                  type="button"
+                  id="btn-dependents-add"
+                  onClick={() => appendDependent(EMPTY_DEPENDENT)}
+                  className={[
+                    "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
+                    "text-sm font-semibold text-white shadow-sm",
+                    "transition-colors hover:bg-indigo-700",
+                  ].join(" ")}
+                >
+                  + Add Dependent
+                </button>
+              )}
+            </div>
+
+            {/* Empty state */}
+            {dependentFields.length === 0 && (
+              <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
+                <p className="text-sm text-slate-400">
+                  No dependents added yet.
+                  {isEditable && (
+                    <>
+                      {" "}Click{" "}
+                      <strong className="text-slate-600">&quot;+ Add Dependent&quot;</strong>{" "}
+                      above to get started.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Dependent cards */}
+            <div className="space-y-5">
+              {dependentFields.map((field, index) => {
+                const dependentErrors = errors.dependents as
+                  | Record<number, Record<string, { message?: string }>>
+                  | undefined;
+                const de = dependentErrors?.[index];
+
+                return (
+                  <div
+                    key={field.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm"
+                  >
+                    {/* Card header */}
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-700">
+                        Dependent #{index + 1}
+                      </h3>
+                      {/* Remove button — edit mode only */}
+                      {isEditable && (
+                        <button
+                          type="button"
+                          id={`btn-dependents-remove-${index}`}
+                          onClick={() => removeDependent(index)}
+                          className="rounded-md px-3 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Card fields */}
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {/* Dependent Name */}
+                      <FieldWrapper
+                        label="Name"
+                        htmlFor={`dp-name-${index}`}
+                        error={de?.name?.message}
+                      >
+                        <input
+                          id={`dp-name-${index}`}
+                          type="text"
+                          placeholder="e.g. Jane Doe"
+                          readOnly={!isEditable}
+                          className={isEditable ? inputCls(!!de?.name) : VIEW_INPUT_CLS}
+                          {...register(`dependents.${index}.name`)}
+                        />
+                      </FieldWrapper>
+
+                      {/* Relationship */}
+                      <FieldWrapper
+                        label="Relationship"
+                        htmlFor={`dp-relationship-${index}`}
+                        error={de?.relationship?.message}
+                      >
+                        <input
+                          id={`dp-relationship-${index}`}
+                          type="text"
+                          placeholder="e.g. Daughter, Spouse"
+                          readOnly={!isEditable}
+                          className={isEditable ? inputCls(!!de?.relationship) : VIEW_INPUT_CLS}
+                          {...register(`dependents.${index}.relationship`)}
+                        />
+                      </FieldWrapper>
+
+                      {/* Date of Birth */}
+                      <FieldWrapper
+                        label="Date of Birth"
+                        htmlFor={`dp-dob-${index}`}
+                        error={de?.dob?.message}
+                      >
+                        <input
+                          id={`dp-dob-${index}`}
+                          type="date"
+                          readOnly={!isEditable}
+                          className={isEditable ? inputCls(!!de?.dob) : VIEW_INPUT_CLS}
+                          {...register(`dependents.${index}.dob`)}
+                        />
+                      </FieldWrapper>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>
