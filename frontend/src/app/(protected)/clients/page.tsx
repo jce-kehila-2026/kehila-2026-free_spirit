@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useEffect } from "react";
 import {
   collection,
@@ -25,6 +25,10 @@ export default function ClientsPage() {
   // ── Analytics panel toggle ────────────────────────────────────────────
   const [showMetrics, setShowMetrics] = useState(false);
 
+  // ── Search & filter state ─────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "draft" | "archived">("all");
+
   // ── Shared Firestore snapshot ─────────────────────────────────────────
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +52,36 @@ export default function ClientsPage() {
     );
     return unsubscribe;
   }, []);
+
+  // ── Filtered clients (search + status) ───────────────────────────────
+  const filteredClients = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    return allDocs.filter((client) => {
+      // ── Status gate ──────────────────────────────────────────────────
+      if (statusFilter === "archived") {
+        if (client.is_archived !== true) return false;
+      } else if (statusFilter === "draft") {
+        if (client.is_archived === true) return false;
+        if (client.status !== "draft") return false;
+      } else if (statusFilter === "active") {
+        // "active" in UI = any non-archived client
+        if (client.is_archived === true) return false;
+      }
+      // statusFilter === "all" → no status gate
+
+      // ── Search gate ──────────────────────────────────────────────────
+      if (!q) return true;
+
+      return [
+        client.first_name,
+        client.last_name,
+        client.phone,
+        client.passport_id,
+        client.passport_number,
+      ].some((field) => field?.toLowerCase().includes(q));
+    });
+  }, [allDocs, searchQuery, statusFilter]);
 
   // ── Actions ────────────────────────────────────────────────────────────
 
@@ -137,11 +171,85 @@ export default function ClientsPage() {
           </div>
         )}
 
+        {/* ── Search & Filter bar ── */}
+        {view === "list" && (
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Search input */}
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+              <input
+                id="input-client-search"
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, passport ID, or phone…"
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+            </div>
+
+            {/* Status dropdown */}
+            <div className="relative sm:w-44">
+              <select
+                id="select-client-status-filter"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as "all" | "active" | "draft" | "archived"
+                  )
+                }
+                className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-9 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="all">All Clients</option>
+                <option value="active">Active</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+              {/* Chevron icon */}
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+            </div>
+
+            {/* Result count chip — only shown when a filter is active */}
+            {(searchQuery.trim() || statusFilter !== "all") && (
+              <span className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm">
+                {filteredClients.length} result{filteredClients.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* ── View toggle ── */}
         {view === "list" ? (
           <ClientList
             onEdit={handleEdit}
-            externalDocs={allDocs}
+            externalDocs={filteredClients}
             externalLoading={isLoading}
           />
         ) : view === "dashboard" && editingClient ? (
