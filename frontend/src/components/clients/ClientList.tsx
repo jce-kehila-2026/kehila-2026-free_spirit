@@ -30,6 +30,11 @@ export interface ClientDoc extends ClientFormInput {
 
 interface ClientListProps {
   onEdit: (client: ClientDoc) => void;
+  /** Optional: pre-fetched docs from parent. If omitted, ClientList manages its own subscription. */
+  externalDocs?: ClientDoc[];
+  externalLoading?: boolean;
+  /** Called whenever the internal subscription updates — lets the parent mirror the data. */
+  onDocsChange?: (docs: ClientDoc[]) => void;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -192,10 +197,14 @@ function RestoreModal({ client, onCancel, onConfirm, isRestoring }: RestoreModal
  *
  * Columns: Name, Email, Phone, Status, Actions.
  */
-export default function ClientList({ onEdit }: ClientListProps) {
+export default function ClientList({ onEdit, externalDocs, externalLoading, onDocsChange }: ClientListProps) {
   // ── All raw docs from Firestore (unfiltered) ───────────────────────────
-  const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [internalDocs, setInternalDocs] = useState<ClientDoc[]>([]);
+  const [internalLoading, setInternalLoading] = useState(true);
+
+  // Use external data when provided, otherwise fall back to the internal subscription
+  const allDocs = externalDocs ?? internalDocs;
+  const isLoading = externalLoading ?? internalLoading;
 
   // ── View mode ──────────────────────────────────────────────────────────
   const [showArchived, setShowArchived] = useState(false);
@@ -204,8 +213,11 @@ export default function ClientList({ onEdit }: ClientListProps) {
   const [restoreTarget, setRestoreTarget] = useState<ClientDoc | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  // ── Firestore subscription ─────────────────────────────────────────────
+  // ── Firestore subscription (only runs when no external docs provided) ──
   useEffect(() => {
+    // If the parent is managing data externally, skip the internal subscription
+    if (externalDocs !== undefined) return;
+
     const q = query(collection(db, "clients"), orderBy("created_at", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -215,16 +227,18 @@ export default function ClientList({ onEdit }: ClientListProps) {
           id: d.id,
           ...d.data(),
         })) as ClientDoc[];
-        setAllDocs(docs);
-        setIsLoading(false);
+        setInternalDocs(docs);
+        setInternalLoading(false);
+        onDocsChange?.(docs);
       },
       (error) => {
         console.error("[ClientList] onSnapshot error:", error);
-        setIsLoading(false);
+        setInternalLoading(false);
       }
     );
 
     return unsubscribe;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Derived filtered list ──────────────────────────────────────────────

@@ -77,8 +77,6 @@ const DEFAULT_VALUES: ClientFormInput = {
   diagnosis: "",
   personal_notes: "",
   medical_profile: {
-    physician_name: "",
-    physician_phone: "",
     allergies: "",
     medications: "",
     dietary_restrictions: "",
