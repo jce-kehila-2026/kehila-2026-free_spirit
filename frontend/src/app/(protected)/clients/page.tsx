@@ -18,6 +18,58 @@ import ClientProfileDashboard from "@/components/clients/ClientProfileDashboard"
 
 type View = "list" | "form" | "dashboard";
 
+// ─── CSV export helper ────────────────────────────────────────────────────────
+
+/**
+ * Converts an array of ClientDoc objects into a CSV string and triggers a
+ * native browser download. The filename includes today's date.
+ */
+function exportToCSV(rows: ClientDoc[]): void {
+  const escaped = (val: unknown) =>
+    `"${String(val ?? "").replace(/"/g, '""')}"`;
+
+  const HEADERS = [
+    "First Name",
+    "Last Name",
+    "Email",
+    "Phone",
+    "Status",
+    "Passport ID",
+  ];
+
+  const csvRows = [
+    HEADERS.join(","),
+    ...rows.map((c) =>
+      [
+        escaped(c.first_name),
+        escaped(c.last_name),
+        escaped(c.email),
+        escaped(c.phone),
+        escaped(c.status),
+        // Force Excel to treat the passport as a literal text string using ="value"
+        c.passport_id ? `="${String(c.passport_id).replace(/"/g, '""')}"` : '""',
+      ].join(",")
+    ),
+  ];
+
+  const blob = new Blob(["\uFEFF" + csvRows.join("\n")], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const today = new Date().toISOString().slice(0, 10); // e.g. "2026-06-03"
+  const filename = `free-spirit-clients-${today}.csv`;
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 export default function ClientsPage() {
   const [view, setView] = useState<View>("list");
   const [editingClient, setEditingClient] = useState<ClientDoc | null>(null);
@@ -242,6 +294,29 @@ export default function ClientsPage() {
                 {filteredClients.length} result{filteredClients.length !== 1 ? "s" : ""}
               </span>
             )}
+
+            {/* Export to CSV button */}
+            <button
+              type="button"
+              id="btn-export-csv"
+              onClick={() => exportToCSV(filteredClients)}
+              disabled={filteredClients.length === 0}
+              aria-label="Export filtered clients to CSV"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {/* Download arrow icon */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4 text-slate-500"
+                aria-hidden="true"
+              >
+                <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+                <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+              </svg>
+              Export CSV
+            </button>
           </div>
         )}
 
