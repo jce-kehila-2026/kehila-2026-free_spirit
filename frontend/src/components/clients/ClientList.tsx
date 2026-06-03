@@ -12,6 +12,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import { QuickCopy } from "@/components/ui/QuickCopy";
 import { toast } from "sonner";
 import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schemas/clientSchema";
 
@@ -391,9 +392,21 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
                   <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-800">
                     {client.first_name} {client.last_name}
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600">{client.email}</td>
+                  <td className="px-5 py-3.5 text-slate-600">
+                    <div className="group flex items-center gap-2">
+                      <span>{client.email}</span>
+                      {client.email && (
+                        <QuickCopy text={client.email} label="email" />
+                      )}
+                    </div>
+                  </td>
                   <td className="hidden px-5 py-3.5 text-slate-600 sm:table-cell">
-                    {client.phone}
+                    <div className="group flex items-center gap-2">
+                      <span>{client.phone}</span>
+                      {client.phone && (
+                        <QuickCopy text={client.phone} label="phone" />
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5">
                     <StatusBadge status={client.status} />
