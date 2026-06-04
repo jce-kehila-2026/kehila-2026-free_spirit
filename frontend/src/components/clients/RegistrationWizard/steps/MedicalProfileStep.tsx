@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ClientFormInput } from "@/schemas/clientSchema";
 import { MEDICAL_CLEARANCE_STATUS } from "@/schemas/clientSchema";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +90,11 @@ function FieldWrapper({
  * All fields use dotted `register('medical_profile.xyz')` notation
  * so react-hook-form writes to the correct nested path.
  *
+ * Sections:
+ *   1. "Insurance & Clearance" — open by default
+ *   2. "Health Details" — closed by default
+ *
+ * Auto-expands a section when it contains a validation error.
  */
 export default function MedicalProfileStep() {
   const {
@@ -95,78 +102,125 @@ export default function MedicalProfileStep() {
     formState: { errors },
   } = useFormContext<ClientFormInput>();
 
-  // Shorthand for nested errors
   const mp = errors.medical_profile;
 
+  const [open, setOpen] = useState({ insurance: true, health: false });
+
+  function toggle(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  // Auto-expand sections that contain validation errors
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (
+        mp?.insurance_company ||
+        mp?.policy_number ||
+        mp?.medical_clearance_status
+      ) {
+        setOpen((prev) => ({ ...prev, insurance: true }));
+      }
+      if (mp?.allergies || mp?.medications || mp?.dietary_restrictions) {
+        setOpen((prev) => ({ ...prev, health: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    mp?.insurance_company,
+    mp?.policy_number,
+    mp?.medical_clearance_status,
+    mp?.allergies,
+    mp?.medications,
+    mp?.dietary_restrictions,
+  ]);
+
+  const insuranceHasError = !!(
+    mp?.insurance_company ||
+    mp?.policy_number ||
+    mp?.medical_clearance_status
+  );
+
+  const healthHasError = !!(
+    mp?.allergies ||
+    mp?.medications ||
+    mp?.dietary_restrictions
+  );
+
   return (
-    <div>
-      {/* ── Section heading ── */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-slate-800">Medical Profile</h2>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Primary physician, insurance, and health information.
-        </p>
-      </div>
-
-      {/* ── Fields grid ── */}
-      <div className="grid gap-5 sm:grid-cols-2">
-        
-        {/* Insurance Company */}
-        <FieldWrapper
-          label="Insurance Company"
-          htmlFor="mp_insurance_company"
-          error={mp?.insurance_company?.message}
-        >
-          <input
-            id="mp_insurance_company"
-            type="text"
-            placeholder="e.g. Harel, Phoenix, Menora"
-            className={inputCls(!!mp?.insurance_company)}
-            {...register("medical_profile.insurance_company")}
-          />
-        </FieldWrapper>
-
-        {/* Policy Number */}
-        <FieldWrapper
-          label="Policy Number"
-          htmlFor="mp_policy_number"
-          error={mp?.policy_number?.message}
-        >
-          <input
-            id="mp_policy_number"
-            type="text"
-            placeholder="e.g. POL-12345"
-            className={inputCls(!!mp?.policy_number)}
-            {...register("medical_profile.policy_number")}
-          />
-        </FieldWrapper>
-
-        {/* Medical Clearance Status */}
-        <div className="sm:col-span-2">
+    <div className="space-y-3">
+      {/* ── Section 1: Insurance & Clearance ── */}
+      <AccordionSection
+        title="Insurance & Clearance"
+        description="Health insurance details and medical clearance status."
+        isOpen={open.insurance}
+        onToggle={() => toggle("insurance")}
+        hasError={insuranceHasError}
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          {/* Insurance Company */}
           <FieldWrapper
-            label="Medical Clearance Status"
-            htmlFor="mp_medical_clearance_status"
-            error={mp?.medical_clearance_status?.message}
+            label="Insurance Company"
+            htmlFor="mp_insurance_company"
+            error={mp?.insurance_company?.message}
           >
-            <select
-              id="mp_medical_clearance_status"
-              className={selectCls(!!mp?.medical_clearance_status)}
-              {...register("medical_profile.medical_clearance_status")}
-            >
-              <option value="">
-                Select clearance status…
-              </option>
-              {MEDICAL_CLEARANCE_STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {humanize(s)}
-                </option>
-              ))}
-            </select>
+            <input
+              id="mp_insurance_company"
+              type="text"
+              placeholder="e.g. Harel, Phoenix, Menora"
+              className={inputCls(!!mp?.insurance_company)}
+              {...register("medical_profile.insurance_company")}
+            />
           </FieldWrapper>
-        </div>
 
-        {/* Allergies — full width */}
-        <div className="sm:col-span-2">
+          {/* Policy Number */}
+          <FieldWrapper
+            label="Policy Number"
+            htmlFor="mp_policy_number"
+            error={mp?.policy_number?.message}
+          >
+            <input
+              id="mp_policy_number"
+              type="text"
+              placeholder="e.g. POL-12345"
+              className={inputCls(!!mp?.policy_number)}
+              {...register("medical_profile.policy_number")}
+            />
+          </FieldWrapper>
+
+          {/* Medical Clearance Status — full width */}
+          <div className="sm:col-span-2">
+            <FieldWrapper
+              label="Medical Clearance Status"
+              htmlFor="mp_medical_clearance_status"
+              error={mp?.medical_clearance_status?.message}
+            >
+              <select
+                id="mp_medical_clearance_status"
+                className={selectCls(!!mp?.medical_clearance_status)}
+                {...register("medical_profile.medical_clearance_status")}
+              >
+                <option value="">Select clearance status…</option>
+                {MEDICAL_CLEARANCE_STATUS.map((s) => (
+                  <option key={s} value={s}>
+                    {humanize(s)}
+                  </option>
+                ))}
+              </select>
+            </FieldWrapper>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ── Section 2: Health Details ── */}
+      <AccordionSection
+        title="Health Details"
+        description="Allergies, medications, and dietary restrictions."
+        isOpen={open.health}
+        onToggle={() => toggle("health")}
+        hasError={healthHasError}
+      >
+        <div className="grid gap-5">
+          {/* Allergies */}
           <FieldWrapper
             label="Allergies"
             htmlFor="mp_allergies"
@@ -179,10 +233,8 @@ export default function MedicalProfileStep() {
               {...register("medical_profile.allergies")}
             />
           </FieldWrapper>
-        </div>
 
-        {/* Medications — full width */}
-        <div className="sm:col-span-2">
+          {/* Medications */}
           <FieldWrapper
             label="Medications"
             htmlFor="mp_medications"
@@ -195,10 +247,8 @@ export default function MedicalProfileStep() {
               {...register("medical_profile.medications")}
             />
           </FieldWrapper>
-        </div>
 
-        {/* Dietary Restrictions — full width */}
-        <div className="sm:col-span-2">
+          {/* Dietary Restrictions */}
           <FieldWrapper
             label="Dietary Restrictions"
             htmlFor="mp_dietary_restrictions"
@@ -212,7 +262,7 @@ export default function MedicalProfileStep() {
             />
           </FieldWrapper>
         </div>
-      </div>
+      </AccordionSection>
     </div>
   );
 }

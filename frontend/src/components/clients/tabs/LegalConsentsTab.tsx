@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
 import { z } from "zod";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 import { legalConsentsSchema } from "@/schemas/clientSchema";
 import type { ClientDoc } from "@/components/clients/ClientList";
 
@@ -83,22 +84,7 @@ function FieldWrapper({
   );
 }
 
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      )}
-    </div>
-  );
-}
+// SectionHeading retired — AccordionSection renders its own header
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitize(obj: Record<string, any>): Record<string, any> {
@@ -128,6 +114,12 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  */
 export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTabProps) {
   const [isSaving, setIsSaving] = useState(false);
+
+  // ── Accordion state ──────────────────────────────────────────────────────────
+  const [open, setOpen] = useState({ release: true, waiver: false });
+  function toggleSection(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const lc = client.legal_consents;
 
@@ -191,18 +183,49 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
 
   const le = errors.legal_consents;
 
+  // ── Auto-expand sections that contain validation errors ───────────────────────
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (
+        le?.release_authorizing_person ||
+        le?.info_to_disclose ||
+        le?.release_reason ||
+        le?.release_expiration_date ||
+        le?.release_expiration_event ||
+        le?.authorized_agencies
+      ) {
+        setOpen((prev) => ({ ...prev, release: true }));
+      }
+      if (le?.visit_waiver_child_name || le?.visit_waiver_signatures) {
+        setOpen((prev) => ({ ...prev, waiver: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    le?.release_authorizing_person,
+    le?.info_to_disclose,
+    le?.release_reason,
+    le?.release_expiration_date,
+    le?.release_expiration_event,
+    le?.authorized_agencies,
+    le?.visit_waiver_child_name,
+    le?.visit_waiver_signatures,
+  ]);
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* ── Scrollable body ── */}
-        <div className="space-y-10 p-6 sm:p-8">
+        <div className="space-y-3 p-6 sm:p-8">
 
           {/* ════ Section 1: Release of Information ════ */}
-          <section>
-            <SectionHeading
-              title="Release of Information"
-              description="Authorization details for sharing client information with third parties."
-            />
+          <AccordionSection
+            title="Release of Information"
+            description="Authorization details for sharing client information with third parties."
+            isOpen={open.release}
+            onToggle={() => toggleSection("release")}
+            hasError={!!(le?.release_authorizing_person || le?.info_to_disclose || le?.release_reason || le?.release_expiration_date || le?.release_expiration_event || le?.authorized_agencies)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Authorizing Person */}
               <div className="sm:col-span-2">
@@ -371,16 +394,16 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
                 ))}
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 2: Visit Waiver ════ */}
-          <section>
-            <SectionHeading
-              title="Visit Waiver"
-              description="Child name and signatures on file for visit consent."
-            />
+          <AccordionSection
+            title="Visit Waiver"
+            description="Child name and signatures on file for visit consent."
+            isOpen={open.waiver}
+            onToggle={() => toggleSection("waiver")}
+            hasError={!!(le?.visit_waiver_child_name || le?.visit_waiver_signatures)}
+          >
             <div className="grid gap-5">
               <FieldWrapper
                 label="Child Name (Waiver)"
@@ -465,7 +488,7 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
                 ))}
               </div>
             </div>
-          </section>
+          </AccordionSection>
         </div>
 
         {/* ── Sticky footer (edit mode only) ── */}

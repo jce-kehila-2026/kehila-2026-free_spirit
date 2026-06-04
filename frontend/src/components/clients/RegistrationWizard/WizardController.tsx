@@ -423,20 +423,24 @@ export default function WizardController({
             }
           }}
         >
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            {currentStep === 1 ? (
+          {currentStep === 1 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <BasicInfoStep
                 onSaveAsInterested={handleSaveAsInterested}
                 onContinueRegistration={handleContinueRegistration}
               />
-            ) : currentStep === 2 ? (
-              <DemographicsStep />
-            ) : currentStep === 3 ? (
-              <MedicalProfileStep />
-            ) : (
-              <ContactsStep />
-            )}
-          </div>
+            </div>
+          ) : (
+            <div>
+              {currentStep === 2 ? (
+                <DemographicsStep />
+              ) : currentStep === 3 ? (
+                <MedicalProfileStep />
+              ) : (
+                <ContactsStep />
+              )}
+            </div>
+          )}
 
           {/* ── Navigation buttons (Steps 2-4) ── */}
           {currentStep > 1 && (

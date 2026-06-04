@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -124,24 +125,7 @@ function FieldWrapper({
   );
 }
 
-// ─── Section heading ──────────────────────────────────────────────────────────
 
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      )}
-    </div>
-  );
-}
 
 // ─── Boolean badge (view-mode display for boolean flags) ──────────────────────
 
@@ -199,6 +183,22 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  */
 export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
   const [isSaving, setIsSaving] = useState(false);
+
+  // ── Accordion open/close state (section 1 open, rest closed) ─────────────────
+  const [open, setOpen] = useState({
+    insurance:      true,
+    vitals:         false,
+    providers:      false,
+    screening:      false,
+    conditions:     false,
+    history:        false,
+    vaccinations:   false,
+    hospitalizations: false,
+  });
+
+  function toggleSection(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
   const [conditionInput, setConditionInput] = useState("");
 
   const mp = client.medical_profile ?? {};
@@ -322,6 +322,47 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
     setValue("medical_conditions_checklist", next, { shouldDirty: true });
   }
 
+  // ── Auto-expand sections with validation errors ────────────────────────────────
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (errors.insurance_company || errors.policy_number || errors.medical_clearance_status) {
+        setOpen((prev) => ({ ...prev, insurance: true }));
+      }
+      if (errors.physical_height || errors.physical_weight || errors.physical_blood_pressure || errors.physical_pulse_rate || errors.pulse_irregularities) {
+        setOpen((prev) => ({ ...prev, vitals: true }));
+      }
+      if (errors.healthcare_providers) {
+        setOpen((prev) => ({ ...prev, providers: true }));
+      }
+      if (errors.uses_narcotics_alcohol || errors.pending_medical_exams || errors.trip_for_medical_care || errors.pending_surgery || errors.recent_hospitalizations || errors.medical_air_transport_rider || errors.alcohol_glasses_per_day || errors.seasickness_meds_pref) {
+        setOpen((prev) => ({ ...prev, screening: true }));
+      }
+      if (errors.medical_conditions_checklist) {
+        setOpen((prev) => ({ ...prev, conditions: true }));
+      }
+      if (errors.allergies || errors.medications || errors.dietary_restrictions || errors.psychiatric_history || errors.developmental_history || errors.treatment_history_details || errors.physical_accommodations || errors.general_accommodations) {
+        setOpen((prev) => ({ ...prev, history: true }));
+      }
+      if (errors.vaccination_history) {
+        setOpen((prev) => ({ ...prev, vaccinations: true }));
+      }
+      if (errors.hospitalization_history) {
+        setOpen((prev) => ({ ...prev, hospitalizations: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    errors.insurance_company, errors.policy_number, errors.medical_clearance_status,
+    errors.physical_height, errors.physical_weight, errors.physical_blood_pressure, errors.physical_pulse_rate, errors.pulse_irregularities,
+    errors.healthcare_providers,
+    errors.uses_narcotics_alcohol, errors.pending_medical_exams, errors.trip_for_medical_care, errors.pending_surgery, errors.recent_hospitalizations, errors.medical_air_transport_rider, errors.alcohol_glasses_per_day, errors.seasickness_meds_pref,
+    errors.medical_conditions_checklist,
+    errors.allergies, errors.medications, errors.dietary_restrictions, errors.psychiatric_history, errors.developmental_history, errors.treatment_history_details, errors.physical_accommodations, errors.general_accommodations,
+    errors.vaccination_history,
+    errors.hospitalization_history,
+  ]);
+
   // ── Save handler ──────────────────────────────────────────────────────────────
 
   async function onSubmit(data: MedicalProfile) {
@@ -346,14 +387,16 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="space-y-10 p-6 sm:p-8">
+        <div className="space-y-3 p-6 sm:p-8">
 
           {/* ════ Section 1: Insurance & Clearance ════ */}
-          <section>
-            <SectionHeading
-              title="Insurance & Clearance"
-              description="Health insurance details and program medical clearance status."
-            />
+          <AccordionSection
+            title="Insurance & Clearance"
+            description="Health insurance details and program medical clearance status."
+            isOpen={open.insurance}
+            onToggle={() => toggleSection("insurance")}
+            hasError={!!(errors.insurance_company || errors.policy_number || errors.medical_clearance_status)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               <FieldWrapper
                 label="Insurance Company"
@@ -407,16 +450,16 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 2: Physical Vitals ════ */}
-          <section>
-            <SectionHeading
-              title="Physical Vitals"
-              description="Physical measurements recorded at intake."
-            />
+          <AccordionSection
+            title="Physical Vitals"
+            description="Physical measurements recorded at intake."
+            isOpen={open.vitals}
+            onToggle={() => toggleSection("vitals")}
+            hasError={!!(errors.physical_height || errors.physical_weight || errors.physical_blood_pressure || errors.physical_pulse_rate || errors.pulse_irregularities)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               <FieldWrapper
                 label="Height"
@@ -505,22 +548,18 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 )}
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 3: Healthcare Providers ════ */}
-          <section>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  Healthcare Providers
-                </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Physicians, specialists, and other care providers.
-                </p>
-              </div>
-              {isEditable && (
+          <AccordionSection
+            title="Healthcare Providers"
+            description="Physicians, specialists, and other care providers."
+            isOpen={open.providers}
+            onToggle={() => toggleSection("providers")}
+            hasError={!!errors.healthcare_providers}
+          >
+            {isEditable && (
+              <div className="mb-5">
                 <button
                   type="button"
                   id="btn-providers-add"
@@ -529,8 +568,8 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 >
                   + Add Provider
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {providerFields.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
@@ -671,16 +710,16 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 );
               })}
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 4: Screening Questions ════ */}
-          <section>
-            <SectionHeading
-              title="Screening Questions"
-              description="Health screening flags completed during intake."
-            />
+          <AccordionSection
+            title="Screening Questions"
+            description="Health screening flags completed during intake."
+            isOpen={open.screening}
+            onToggle={() => toggleSection("screening")}
+            hasError={!!(errors.uses_narcotics_alcohol || errors.pending_medical_exams || errors.trip_for_medical_care || errors.pending_surgery || errors.recent_hospitalizations || errors.medical_air_transport_rider || errors.alcohol_glasses_per_day || errors.seasickness_meds_pref)}
+          >
             <div className="space-y-5">
               {/* Boolean flag grid */}
               <div className="grid gap-3 sm:grid-cols-2">
@@ -789,16 +828,16 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 5: Medical Conditions ════ */}
-          <section>
-            <SectionHeading
-              title="Medical Conditions"
-              description="A free-form list of known medical conditions or diagnoses."
-            />
+          <AccordionSection
+            title="Medical Conditions"
+            description="A free-form list of known medical conditions or diagnoses."
+            isOpen={open.conditions}
+            onToggle={() => toggleSection("conditions")}
+            hasError={!!errors.medical_conditions_checklist}
+          >
 
             {/* Add condition input — edit mode only */}
             {isEditable && (
@@ -860,16 +899,16 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 ))}
               </div>
             )}
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 6: Medical History & Accommodations ════ */}
-          <section>
-            <SectionHeading
-              title="Medical History & Accommodations"
-              description="Detailed history, treatment records, and special accommodation needs."
-            />
+          <AccordionSection
+            title="Medical History & Accommodations"
+            description="Detailed history, treatment records, and special accommodation needs."
+            isOpen={open.history}
+            onToggle={() => toggleSection("history")}
+            hasError={!!(errors.allergies || errors.medications || errors.dietary_restrictions || errors.psychiatric_history || errors.developmental_history || errors.treatment_history_details || errors.physical_accommodations || errors.general_accommodations)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <FieldWrapper
@@ -999,22 +1038,18 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 7: Vaccination History ════ */}
-          <section>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  Vaccination History
-                </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Immunizations received, pending, or declined.
-                </p>
-              </div>
-              {isEditable && (
+          <AccordionSection
+            title="Vaccination History"
+            description="Immunizations received, pending, or declined."
+            isOpen={open.vaccinations}
+            onToggle={() => toggleSection("vaccinations")}
+            hasError={!!errors.vaccination_history}
+          >
+            {isEditable && (
+              <div className="mb-5">
                 <button
                   type="button"
                   id="btn-vaccinations-add"
@@ -1023,8 +1058,8 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 >
                   + Add Vaccination
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {vaccinationFields.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
@@ -1138,22 +1173,18 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 );
               })}
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 8: Hospitalization History ════ */}
-          <section>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  Hospitalization History
-                </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Past hospitalizations, surgeries, and significant medical events.
-                </p>
-              </div>
-              {isEditable && (
+          <AccordionSection
+            title="Hospitalization History"
+            description="Past hospitalizations, surgeries, and significant medical events."
+            isOpen={open.hospitalizations}
+            onToggle={() => toggleSection("hospitalizations")}
+            hasError={!!errors.hospitalization_history}
+          >
+            {isEditable && (
+              <div className="mb-5">
                 <button
                   type="button"
                   id="btn-hospitalizations-add"
@@ -1162,8 +1193,8 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 >
                   + Add Event
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {hospitalizationFields.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
@@ -1260,7 +1291,7 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
                 );
               })}
             </div>
-          </section>
+          </AccordionSection>
 
         </div>
 

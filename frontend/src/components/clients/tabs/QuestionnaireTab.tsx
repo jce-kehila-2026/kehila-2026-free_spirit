@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
 import { z } from "zod";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 import { questionnaireSchema } from "@/schemas/clientSchema";
 import type { ClientDoc } from "@/components/clients/ClientList";
 
@@ -70,22 +71,7 @@ function FieldWrapper({
   );
 }
 
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      )}
-    </div>
-  );
-}
+// SectionHeading retired — AccordionSection renders its own header
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitize(obj: Record<string, any>): Record<string, any> {
@@ -112,6 +98,12 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  */
 export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTabProps) {
   const [isSaving, setIsSaving] = useState(false);
+
+  // ── Accordion state ──────────────────────────────────────────────────────────
+  const [open, setOpen] = useState({ identity: true, program: false, goals: false });
+  function toggleSection(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const {
     register,
@@ -161,18 +153,55 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
 
   const qe = errors.questionnaire;
 
+  // ── Auto-expand sections that contain validation errors ───────────────────────
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (
+        qe?.talents_and_skills ||
+        qe?.main_strengths ||
+        qe?.passions ||
+        qe?.dream_jobs
+      ) {
+        setOpen((prev) => ({ ...prev, identity: true }));
+      }
+      if (
+        qe?.community_contribution ||
+        qe?.ideal_roommate ||
+        qe?.favorite_foods ||
+        qe?.desired_activities
+      ) {
+        setOpen((prev) => ({ ...prev, program: true }));
+      }
+      if (
+        qe?.main_goals ||
+        qe?.personal_challenge ||
+        qe?.program_worries ||
+        qe?.staff_assistance
+      ) {
+        setOpen((prev) => ({ ...prev, goals: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    qe?.talents_and_skills, qe?.main_strengths, qe?.passions, qe?.dream_jobs,
+    qe?.community_contribution, qe?.ideal_roommate, qe?.favorite_foods, qe?.desired_activities,
+    qe?.main_goals, qe?.personal_challenge, qe?.program_worries, qe?.staff_assistance,
+  ]);
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* ── Scrollable body ── */}
-        <div className="space-y-10 p-6 sm:p-8">
+        <div className="space-y-3 p-6 sm:p-8">
 
           {/* ════ Section 1: Personal Identity & Strengths ════ */}
-          <section>
-            <SectionHeading
-              title="Personal Identity &amp; Strengths"
-              description="Open-ended answers from the intake questionnaire."
-            />
+          <AccordionSection
+            title="Personal Identity & Strengths"
+            description="Open-ended answers from the intake questionnaire."
+            isOpen={open.identity}
+            onToggle={() => toggleSection("identity")}
+            hasError={!!(qe?.talents_and_skills || qe?.main_strengths || qe?.passions || qe?.dream_jobs)}
+          >
             <div className="grid gap-5">
               <FieldWrapper
                 label="Talents &amp; Skills"
@@ -238,16 +267,16 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
                 />
               </FieldWrapper>
             </div>
-          </section>
+          </AccordionSection>
 
-          <hr className="border-slate-100" />
-
-          {/* ════ Section 2: Program Fit ════ */}
-          <section>
-            <SectionHeading
-              title="Program Fit &amp; Preferences"
-              description="Answers to help our staff tailor the program experience."
-            />
+          {/* ════ Section 2: Program Fit & Preferences ════ */}
+          <AccordionSection
+            title="Program Fit & Preferences"
+            description="Answers to help our staff tailor the program experience."
+            isOpen={open.program}
+            onToggle={() => toggleSection("program")}
+            hasError={!!(qe?.community_contribution || qe?.ideal_roommate || qe?.favorite_foods || qe?.desired_activities)}
+          >
             <div className="grid gap-5">
               <FieldWrapper
                 label="Community Contribution"
@@ -315,16 +344,16 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
                 />
               </FieldWrapper>
             </div>
-          </section>
+          </AccordionSection>
 
-          <hr className="border-slate-100" />
-
-          {/* ════ Section 3: Goals & Support ════ */}
-          <section>
-            <SectionHeading
-              title="Goals &amp; Support Needs"
-              description="What the client hopes to achieve and where they need help."
-            />
+          {/* ════ Section 3: Goals & Support Needs ════ */}
+          <AccordionSection
+            title="Goals & Support Needs"
+            description="What the client hopes to achieve and where they need help."
+            isOpen={open.goals}
+            onToggle={() => toggleSection("goals")}
+            hasError={!!(qe?.main_goals || qe?.personal_challenge || qe?.program_worries || qe?.staff_assistance)}
+          >
             <div className="grid gap-5">
               <FieldWrapper
                 label="Main Goals"
@@ -390,7 +419,7 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
                 />
               </FieldWrapper>
             </div>
-          </section>
+          </AccordionSection>
         </div>
 
         {/* ── Sticky footer (edit mode only) ── */}
