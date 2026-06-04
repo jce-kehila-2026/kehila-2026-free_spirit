@@ -60,10 +60,6 @@ export default function Signup() {
 
   // Converts Firebase and custom registration errors into user-facing messages.
   const getFirebaseErrorMessage = (error) => {
-    if (error.message) {
-      return error.message;
-    }
-
     switch (error.code) {
       case "auth/email-already-in-use":
         return "An account with this email already exists.";
