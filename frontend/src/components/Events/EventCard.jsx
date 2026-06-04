@@ -1,6 +1,7 @@
 export default function EventCard({
   event,
   isActionLoading = false,
+  onEdit,
   onComplete,
   onCancel,
   onDelete,
@@ -65,7 +66,26 @@ export default function EventCard({
         </span>
       </div>
 
+      <div className="mt-3 flex items-center justify-between rounded-2xl bg-blue-50 px-4 py-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
+          Calendar sync
+        </p>
+
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700">
+          {event.calendarSyncLabel || "Not synced to calendar yet"}
+        </span>
+      </div>
+
       <div className="mt-5 flex flex-wrap gap-2">
+       <button
+          type="button"
+          onClick={() => onEdit(event)}
+          disabled={isActionLoading}
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Edit
+        </button>
+
         <button
           type="button"
           onClick={() => onComplete(event.id)}

@@ -13,6 +13,8 @@ import {
   updateNotificationsByEventId,
 } from "@/firebase/notificationsService";
 
+import ScheduleMeetingForm from "./ScheduleMeetingForm";
+
 import EventCard from "./EventCard";
 
 export default function EventList({
@@ -22,6 +24,7 @@ export default function EventList({
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [eventToEdit, setEventToEdit] = useState(null);
 
   async function loadEvents() {
     try {
@@ -34,6 +37,16 @@ export default function EventList({
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleEditCompleted() {
+    setEventToEdit(null);
+  
+    if (onDataChanged) {
+      onDataChanged();
+    }
+  
+    loadEvents();
   }
 
   async function handleComplete(eventId) {
@@ -178,15 +191,41 @@ export default function EventList({
       ) : (
         <div className="space-y-4">
           {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              isActionLoading={actionLoadingId === event.id}
-              onComplete={handleComplete}
-              onCancel={handleCancel}
-              onDelete={handleDelete}
-            />
+           <EventCard
+           key={event.id}
+           event={event}
+           isActionLoading={actionLoadingId === event.id}
+           onEdit={setEventToEdit}
+           onComplete={handleComplete}
+           onCancel={handleCancel}
+           onDelete={handleDelete}
+         />
           ))}
+        </div>
+      )}
+      {eventToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-white p-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between px-2">
+              <h3 className="text-xl font-black text-slate-950">
+                Edit Meeting
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => setEventToEdit(null)}
+                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Close
+              </button>
+            </div>
+
+            <ScheduleMeetingForm
+              initialData={eventToEdit}
+              isEditMode={true}
+              onEditCompleted={handleEditCompleted}
+            />
+          </div>
         </div>
       )}
     </section>

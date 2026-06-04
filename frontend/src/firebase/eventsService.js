@@ -74,3 +74,12 @@ import {
   
     await deleteDoc(eventRef);
   }
+
+  export async function updateEvent(eventId, updatedData) {
+    const eventRef = doc(db, EVENTS_COLLECTION, eventId);
+  
+    await updateDoc(eventRef, {
+      ...updatedData,
+      updatedAt: serverTimestamp(),
+    });
+  }

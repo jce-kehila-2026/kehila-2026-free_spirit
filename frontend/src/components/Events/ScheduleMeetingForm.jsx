@@ -5,22 +5,29 @@ import { useState } from "react";
 import { createEvent } from "@/firebase/eventsService";
 import { createNotifications } from "@/firebase/notificationsService";
 import { buildReminderSchedule } from "@/firebase/reminderScheduleService";
+import { updateEvent } from "@/firebase/eventsService";
+import { deleteNotificationsByEventId } from "@/firebase/notificationsService";
+
 
 export default function ScheduleMeetingForm({
   clientId = null,
   clientName = "",
   onMeetingCreated,
+
+  initialData = null,
+  isEditMode = false,
+  onEditCompleted,
 }) {
   const [formData, setFormData] = useState({
-    title: "",
-    notes: "",
-    date: "",
-    time: "",
-    priority: "normal",
-    reminderMode: "preset",
-    reminderOption: "one_day_before",
-    customReminderDate: "",
-    customReminderTime: "",
+    title: initialData?.title || "",
+    notes: initialData?.notes || "",
+    date: initialData?.date || "",
+    time: initialData?.time || "",
+    priority: initialData?.priority || "normal",
+    reminderMode: initialData?.reminderMode || "preset",
+    reminderOption: initialData?.reminderOption || "one_day_before",
+    customReminderDate: initialData?.customReminderDate || "",
+    customReminderTime: initialData?.customReminderTime || "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -100,17 +107,17 @@ export default function ScheduleMeetingForm({
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
-
+  
     const validationMessage = validateForm();
-
+  
     if (validationMessage) {
       setFormError(validationMessage);
       return;
     }
-
+  
     try {
       setLoading(true);
-
+  
       const eventPayload = {
         title: formData.title,
         notes: formData.notes,
@@ -121,29 +128,58 @@ export default function ScheduleMeetingForm({
         reminderOption: formData.reminderOption,
         customReminderDate: formData.customReminderDate,
         customReminderTime: formData.customReminderTime,
-        clientId,
-        clientName,
-        googleCalendarEventId: null,
+        
+        calendarSyncStatus: initialData?.calendarSyncStatus || "not_synced",
+        calendarSyncLabel:
+          initialData?.calendarSyncLabel || "Not synced to calendar yet",
+  
+        clientId: initialData?.clientId || clientId,
+        clientName: initialData?.clientName || clientName,
+  
+        googleCalendarEventId: initialData?.googleCalendarEventId || null,
         status: "scheduled",
       };
-
+  
+      if (isEditMode && initialData?.id) {
+        await updateEvent(initialData.id, eventPayload);
+  
+        await deleteNotificationsByEventId(initialData.id);
+  
+        const reminders = buildReminderSchedule(
+          eventPayload,
+          initialData.id,
+        );
+  
+        await createNotifications(reminders);
+  
+        if (onEditCompleted) {
+          onEditCompleted();
+        }
+  
+        alert("Meeting updated successfully!");
+        return;
+      }
+  
       const eventId = await createEvent(eventPayload);
-
-      const reminders = buildReminderSchedule(eventPayload, eventId);
-
+  
+      const reminders = buildReminderSchedule(
+        eventPayload,
+        eventId,
+      );
+  
       await createNotifications(reminders);
-
+  
       if (onMeetingCreated) {
         onMeetingCreated();
       }
-
+  
       alert("Meeting created successfully!");
       resetForm();
     } catch (error) {
       console.error(error);
       setFormError(
         error.message ||
-          "Failed to create meeting. Please check the details and try again.",
+          "Failed to save meeting. Please check the details and try again.",
       );
     } finally {
       setLoading(false);
@@ -158,7 +194,7 @@ export default function ScheduleMeetingForm({
         </div>
 
         <h2 className="text-2xl font-black text-slate-950">
-          Schedule a New Meeting
+          {isEditMode ? "Edit Meeting" : "Schedule a New Meeting"}
         </h2>
 
         {clientName ? (
@@ -330,12 +366,18 @@ export default function ScheduleMeetingForm({
           </div>
         )}
 
-        <button
+       <button
           type="submit"
           disabled={loading}
           className="w-full rounded-2xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
         >
-          {loading ? "Creating meeting..." : "Create Meeting"}
+          {loading
+            ? isEditMode
+              ? "Updating meeting..."
+              : "Creating meeting..."
+            : isEditMode
+              ? "Update Meeting"
+              : "Create Meeting"}
         </button>
       </form>
     </section>
