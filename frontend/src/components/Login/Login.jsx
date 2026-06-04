@@ -11,10 +11,9 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth, db } from "@/firebase/firebase";
+import { auth } from "@/firebase/firebase";
 import styles from "./Login.module.css";
 
 // Inline Google mark used by the OAuth button without adding another asset file.
@@ -50,6 +49,7 @@ export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const wasAccessDenied = searchParams.get("accessDenied") === "1";
+  const wasEmailNotVerified = searchParams.get("emailNotVerified") === "1";
 
   // Holds the current email and password values.
   const [credentials, setCredentials] = useState({
@@ -77,8 +77,8 @@ export default function Login() {
   useEffect(() => {
     // If Firebase restores an existing session, skip login unless showing a denial.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !wasAccessDenied) {
-        router.replace("/manage-programs");
+      if (user && !wasAccessDenied && !wasEmailNotVerified) {
+        router.replace("/home");
         return;
       }
 
@@ -86,7 +86,7 @@ export default function Login() {
     });
 
     return unsubscribe;
-  }, [router, wasAccessDenied]);
+  }, [router, wasAccessDenied, wasEmailNotVerified]);
 
   useEffect(() => {
     if (!showAccessDenied) {
@@ -173,7 +173,7 @@ export default function Login() {
         credentials.email,
         credentials.password,
       );
-      router.push("/manage-programs");
+      router.push("/home");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -191,27 +191,9 @@ export default function Login() {
     try {
       setIsLoading(true);
 
-      // Google sign-in uses the same Firebase auth state as email/password login.
-      const userCredential = await signInWithPopup(auth, provider);
-      const { user } = userCredential;
-      const accountRef = doc(db, "accounts", user.uid);
-      const accountSnapshot = await getDoc(accountRef);
-
-      if (accountSnapshot.exists()) {
-        await updateDoc(accountRef, {
-          last_login: serverTimestamp(),
-        });
-      } else {
-        await setDoc(accountRef, {
-          account_id: user.uid,
-          email: user.email || "",
-          role: "User",
-          created_at: serverTimestamp(),
-          last_login: serverTimestamp(),
-        });
-      }
-
-      router.push("/manage-programs");
+      // Firestore account creation is handled by ProtectedRoute after verification.
+      await signInWithPopup(auth, provider);
+      router.push("/home");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {

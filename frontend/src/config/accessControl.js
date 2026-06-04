@@ -1,3 +1,4 @@
+//HERE WE DEFINE THE ACCESS CONTROL FOR THE FRONTEND. THIS INCLUDES DEFINING WHICH NAVIGATION LINKS ARE VISIBLE TO WHICH USERS, AND ALSO A FUNCTION TO CHECK IF A USER CAN ACCESS A PARTICULAR PATH BASED ON THEIR ROLE.
 export const navigationLinks = [
   {
     label: "Login",
@@ -10,13 +11,18 @@ export const navigationLinks = [
     visibility: "guest",
   },
   {
+    label: "Home",
+    href: "/home",
+    visibility: "authenticated",
+  },
+  {
     label: "Manage Programs",
     href: "/manage-programs",
     visibility: "authenticated",
     allowedRoles: ["Admin", "Program Manager"],
   },
 ];
-
+// Function to filter navigation links based on user authentication status and role
 export const getVisibleLinks = (links, currentUser, userRole) =>
   links.filter((link) => {
     if (link.visibility === "guest") {
@@ -34,14 +40,14 @@ export const getVisibleLinks = (links, currentUser, userRole) =>
 
     return link.allowedRoles.includes(userRole);
   });
-
+// Function to check if a user can access a specific path based on their role and the defined navigation links
 const getRoutePolicy = (pathname) =>
   navigationLinks.find(
     (link) =>
       link.visibility === "authenticated" &&
       (pathname === link.href || pathname.startsWith(`${link.href}/`)),
   );
-
+// This function can be used in route guards or protected page components to ensure that users without the necessary role cannot access certain pages.
 export const canAccessPath = (pathname, userRole) => {
   const routePolicy = getRoutePolicy(pathname);
 

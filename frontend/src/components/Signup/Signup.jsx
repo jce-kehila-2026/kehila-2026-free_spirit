@@ -4,15 +4,12 @@ import { useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  sendEmailVerification,
   signInWithPopup,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, db } from "@/firebase/firebase";
-
-// Keep role labels centralized so the select and Firestore value stay aligned.
-const roleOptions = ["Admin", "User", "Program Manager"];
+import { auth } from "@/firebase/firebase";
 
 // Inline Google mark used by the OAuth button without adding another asset file.
 function GoogleLogo() {
@@ -51,7 +48,6 @@ export default function Signup() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: roleOptions[1],
   });
 
   // Separates field-level validation from Firebase/Firestore process errors.
@@ -99,38 +95,9 @@ export default function Signup() {
       nextErrors.confirmPassword = "Passwords do not match";
     }
 
-    if (!formData.role) {
-      nextErrors.role = "Role is required";
-    }
-
     setErrors(nextErrors);
 
     return Object.keys(nextErrors).length === 0;
-  };
-
-  const saveAccountData = async (user, role) => {
-    const accountId = user.uid;
-
-    // The account document ID matches Firebase Auth UID for direct lookups.
-    const accountRef = doc(db, "accounts", accountId);
-
-    try {
-      // Firestore account schema required by the application.
-      await setDoc(accountRef, {
-        account_id: accountId,
-        email: user.email || "",
-        role,
-        created_at: serverTimestamp(),
-        last_login: serverTimestamp(),
-      });
-    } catch (error) {
-      console.error("Failed to save account data:", error);
-
-      // Auth may already be created here, so surface a precise recovery message.
-      throw new Error(
-        "Your account was created, but saving your account details failed. Please contact support.",
-      );
-    }
   };
 
   const handleSubmit = async (event) => {
@@ -151,7 +118,11 @@ export default function Signup() {
         formData.password,
       );
 
-      await saveAccountData(userCredential.user, formData.role);
+      try {
+        await sendEmailVerification(auth.currentUser || userCredential.user);
+      } catch (verificationError) {
+        console.error("Failed to send verification email:", verificationError);
+      }
 
       router.push("/manage-programs");
     } catch (error) {
@@ -169,9 +140,7 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
-      // Google signup also creates an account document using the selected role.
-      const userCredential = await signInWithPopup(auth, provider);
-      await saveAccountData(userCredential.user, formData.role);
+      await signInWithPopup(auth, provider);
       router.push("/manage-programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
@@ -252,28 +221,6 @@ export default function Signup() {
             <p className="mt-1.5 text-[13px] text-red-600">
               {errors.confirmPassword}
             </p>
-          )}
-        </div>
-
-        <div className="mb-[18px]">
-          <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="role">
-            Role
-          </label>
-          <select
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-          >
-            {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-          {errors.role && (
-            <p className="mt-1.5 text-[13px] text-red-600">{errors.role}</p>
           )}
         </div>
 

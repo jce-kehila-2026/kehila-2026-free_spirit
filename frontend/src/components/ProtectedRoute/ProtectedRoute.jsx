@@ -1,7 +1,7 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { canAccessPath } from "@/config/accessControl";
@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }) {
   const pathname = usePathname();
 
   // Prevents protected content from flashing before auth and role checks finish.
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [authorizedPath, setAuthorizedPath] = useState(null);
 
   useEffect(() => {
     let shouldIgnore = false;
@@ -27,27 +27,51 @@ export default function ProtectedRoute({ children }) {
       }
 
       try {
+        const currentAuthUser = auth.currentUser || user;
+        await currentAuthUser.reload();
+        const refreshedUser = auth.currentUser || currentAuthUser;
+
+        if (!refreshedUser.emailVerified) {
+          router.replace("/?emailNotVerified=1");
+          return;
+        }
+
         const accountRef = doc(db, "accounts", user.uid);
         const accountSnapshot = await getDoc(accountRef);
-        const userRole = accountSnapshot.exists()
-          ? accountSnapshot.data().role
-          : "User";
+        let userRole = "User";
+
+        if (accountSnapshot.exists()) {
+          userRole = accountSnapshot.data().role;
+        } else {
+          await setDoc(accountRef, {
+            account_id: user.uid,
+            email: refreshedUser.email || "",
+            role: userRole,
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp(),
+          });
+
+          if (!shouldIgnore && pathname !== "/home") {
+            router.replace("/home");
+            return;
+          }
+        }
 
         if (shouldIgnore) {
           return;
         }
 
         if (!canAccessPath(pathname, userRole)) {
-          router.replace("/?accessDenied=1");
+          router.replace("/home?accessDenied=1");
           return;
         }
 
-        setIsCheckingAuth(false);
+        setAuthorizedPath(pathname);
       } catch (error) {
         console.error("Failed to verify route permissions:", error);
 
         if (!shouldIgnore) {
-          router.replace("/?accessDenied=1");
+          router.replace("/home?accessDenied=1");
         }
       }
     });
@@ -58,7 +82,7 @@ export default function ProtectedRoute({ children }) {
     };
   }, [pathname, router]);
 
-  if (isCheckingAuth) {
+  if (authorizedPath !== pathname) {
     // Keep a neutral loading state while auth is still being resolved.
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">

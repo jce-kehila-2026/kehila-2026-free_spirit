@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { getVisibleLinks, navigationLinks } from "@/config/accessControl";
 import { auth, db } from "@/firebase/firebase";
+
+const emailVerificationToast =
+  "יש לאמת את כתובת האימייל שלך כדי לגשת לדפי האתר.";
 
 export default function Navbar() {
   const router = useRouter();
@@ -16,6 +19,11 @@ export default function Navbar() {
   const [currentUser, setCurrentUser] = useState(null);
   const [accountProfile, setAccountProfile] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [verificationToast, setVerificationToast] = useState("");
+  const [verificationBannerMessage, setVerificationBannerMessage] = useState("");
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [verificationCooldownSeconds, setVerificationCooldownSeconds] =
+    useState(0);
 
   // Tracks logout UI state and displays a recoverable error if sign out fails.
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -76,6 +84,32 @@ export default function Navbar() {
     };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!verificationToast) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setVerificationToast("");
+    }, 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [verificationToast]);
+
+  useEffect(() => {
+    if (verificationCooldownSeconds <= 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setVerificationCooldownSeconds((currentSeconds) =>
+        Math.max(currentSeconds - 1, 0),
+      );
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [verificationCooldownSeconds]);
+
   const handleLogout = async () => {
     setLogoutError("");
     setIsMobileMenuOpen(false);
@@ -96,6 +130,9 @@ export default function Navbar() {
   const isActivePath = (href) => pathname === href;
   const userRole = accountProfile?.role || "";
   const profileEmail = accountProfile?.email || currentUser?.email || "Signed in";
+  const isEmailUnverified = Boolean(
+    currentUser?.email && currentUser.emailVerified === false,
+  );
   const visibleLinks = getVisibleLinks(navigationLinks, currentUser, userRole);
 
   const getLinkClassName = (href) =>
@@ -105,13 +142,47 @@ export default function Navbar() {
         : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
     }`;
 
+  const handleRestrictedLinkClick = (event, link) => {
+    if (isEmailUnverified && link.visibility === "authenticated") {
+      event.preventDefault();
+      setIsMobileMenuOpen(false);
+      setVerificationToast(emailVerificationToast);
+      setVerificationBannerMessage("");
+      return;
+    }
+
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleResendVerification = async () => {
+    setVerificationBannerMessage("");
+    setVerificationToast("");
+
+    if (!currentUser || verificationCooldownSeconds > 0) {
+      return;
+    }
+
+    try {
+      setIsSendingVerification(true);
+      setVerificationCooldownSeconds(60);
+      await sendEmailVerification(currentUser);
+      setVerificationBannerMessage("Verification email sent. Please check your inbox.");
+    } catch (error) {
+      setVerificationBannerMessage(
+        error.message || "Failed to send verification email. Please try again.",
+      );
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
   const renderNavLinks = () =>
     visibleLinks.map((link) => (
       <Link
         className={getLinkClassName(link.href)}
         href={link.href}
         key={link.href}
-        onClick={() => setIsMobileMenuOpen(false)}
+        onClick={(event) => handleRestrictedLinkClick(event, link)}
       >
         {link.label}
       </Link>
@@ -119,11 +190,50 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      {isEmailUnverified && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p>
+                Your email address is not verified. You cannot navigate or access
+                app features until you verify your email.
+              </p>
+              {verificationBannerMessage && (
+                <p className="mt-1 text-xs text-amber-800">
+                  {verificationBannerMessage}
+                </p>
+              )}
+            </div>
+            <button
+              className="w-fit rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isSendingVerification || verificationCooldownSeconds > 0}
+            >
+              {isSendingVerification
+                ? "Sending..."
+                : verificationCooldownSeconds > 0
+                  ? `שלח שוב (${verificationCooldownSeconds}s)`
+                  : "שלח שוב"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {verificationToast && (
+        <div
+          className="fixed left-1/2 top-24 z-[70] w-[min(92vw,460px)] -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-center text-sm font-bold text-amber-900 shadow-lg"
+          role="alert"
+        >
+          {verificationToast}
+        </div>
+      )}
+
       <nav className="mx-auto flex w-full max-w-6xl flex-col px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <Link
             className="text-lg font-bold text-slate-950"
-            href={currentUser ? "/manage-programs" : "/"}
+            href={currentUser ? "/home" : "/"}
           >
             Free Spirit Experience
           </Link>
