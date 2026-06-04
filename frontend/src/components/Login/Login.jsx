@@ -6,12 +6,13 @@ import {
   browserSessionPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import styles from "./Login.module.css";
 
@@ -46,6 +47,9 @@ function GoogleLogo() {
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wasAccessDenied = searchParams.get("accessDenied") === "1";
+  const wasEmailNotVerified = searchParams.get("emailNotVerified") === "1";
 
   // Holds the current email and password values.
   const [credentials, setCredentials] = useState({
@@ -58,6 +62,7 @@ export default function Login() {
 
   // Holds Firebase authentication error messages.
   const [authError, setAuthError] = useState("");
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
 
   // Holds the loading state while Firebase processes the login request.
   const [isLoading, setIsLoading] = useState(false);
@@ -67,12 +72,13 @@ export default function Login() {
 
   // Holds the user's preferred session persistence option.
   const [rememberMe, setRememberMe] = useState(false);
+  const [showAccessDenied, setShowAccessDenied] = useState(wasAccessDenied);
 
   useEffect(() => {
-    // If Firebase restores an existing session, skip the login form entirely.
+    // If Firebase restores an existing session, skip login unless showing a denial.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/manage-programs");
+      if (user && !wasAccessDenied && !wasEmailNotVerified) {
+        router.replace("/home");
         return;
       }
 
@@ -80,7 +86,19 @@ export default function Login() {
     });
 
     return unsubscribe;
-  }, [router]);
+  }, [router, wasAccessDenied, wasEmailNotVerified]);
+
+  useEffect(() => {
+    if (!showAccessDenied) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowAccessDenied(false);
+    }, 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showAccessDenied]);
 
   // Converts Firebase error codes into user-friendly messages.
   const getFirebaseErrorMessage = (error) => {
@@ -92,6 +110,8 @@ export default function Login() {
         return "User not found.";
       case "auth/popup-closed-by-user":
         return "Google sign-in was closed before completion.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
       default:
         return error.message || "Login failed. Please try again.";
     }
@@ -133,6 +153,7 @@ export default function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setAuthError("");
+    setPasswordResetMessage("");
 
     if (!validateForm()) {
       return;
@@ -152,7 +173,7 @@ export default function Login() {
         credentials.email,
         credentials.password,
       );
-      router.push("/manage-programs");
+      router.push("/home");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -164,14 +185,69 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
 
+    /*
+      Added for Events & Follow-ups subsystem:
+      Required for future Google Calendar integration.
+      This allows the system to create and manage calendar events
+      for scheduled meetings and reminders.
+    */
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
+
     setAuthError("");
+    setPasswordResetMessage("");
 
     try {
       setIsLoading(true);
 
       // Google sign-in uses the same Firebase auth state as email/password login.
-      await signInWithPopup(auth, provider);
-      router.push("/manage-programs");
+      const result = await signInWithPopup(auth, provider);
+
+      /*
+        Google Calendar integration preparation:
+        Access token will later be used by the Events subsystem
+        to sync meetings with Google Calendar.
+      */
+      const credential =
+        GoogleAuthProvider.credentialFromResult(result);
+
+      const accessToken = credential?.accessToken || null;
+
+      // Temporary local storage until backend sync is implemented.
+      if (accessToken) {
+        localStorage.setItem("googleCalendarAccessToken", accessToken);
+      }
+
+      router.push("/home");
+    } catch (error) {
+      setAuthError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const email = credentials.email.trim();
+
+    setAuthError("");
+    setPasswordResetMessage("");
+
+    if (!email) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        email: "Enter your email to reset your password",
+      }));
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await sendPasswordResetEmail(auth, email);
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        email: undefined,
+      }));
+      setPasswordResetMessage("Password reset link sent. Please check your inbox.");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -191,6 +267,15 @@ export default function Login() {
 
   return (
     <main className={styles.page}>
+      {showAccessDenied && (
+        <div
+          className="fixed left-1/2 top-24 z-[60] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center text-sm font-bold text-red-700 shadow-lg"
+          role="alert"
+        >
+          אין לך הרשאה לגשת לדף זה
+        </div>
+      )}
+
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         <div className={styles.header}>
           <h1 className={styles.title}>Login</h1>
@@ -231,6 +316,15 @@ export default function Login() {
           {errors.password && <p className={styles.error}>{errors.password}</p>}
         </div>
 
+        <button
+          className="mb-5 text-sm font-bold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          type="button"
+          onClick={handlePasswordReset}
+          disabled={isLoading}
+        >
+          Forgot Password?
+        </button>
+
         {/* Remember Me checkbox */}
         <label
           className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-700"
@@ -248,6 +342,11 @@ export default function Login() {
         </label>
 
         {authError && <p className={styles.authError}>{authError}</p>}
+        {passwordResetMessage && (
+          <p className="mb-4 text-center text-sm font-semibold text-green-600">
+            {passwordResetMessage}
+          </p>
+        )}
 
         <button className={styles.button} type="submit" disabled={isLoading}>
           {isLoading ? "Signing In..." : "Sign In"}
