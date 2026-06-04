@@ -1,33 +1,5 @@
 //HERE WE DEFINE THE ACCESS CONTROL FOR THE FRONTEND. THIS INCLUDES DEFINING WHICH NAVIGATION LINKS ARE VISIBLE TO WHICH USERS, AND ALSO A FUNCTION TO CHECK IF A USER CAN ACCESS A PARTICULAR PATH BASED ON THEIR ROLE.
-export const navigationLinks = [
-  {
-    label: "Login",
-    href: "/",
-    visibility: "guest",
-  },
-  {
-    label: "Sign Up",
-    href: "/signup",
-    visibility: "guest",
-  },
-  {
-    label: "Home",
-    href: "/home",
-    visibility: "authenticated",
-  },
-  {
-    label: "Admin Users",
-    href: "/admin/users",
-    visibility: "authenticated",
-    allowedRoles: ["Admin"],
-  },
-  {
-    label: "Manage Programs",
-    href: "/manage-programs",
-    visibility: "authenticated",
-    allowedRoles: ["Admin", "Program Manager"],
-  },
-];
+export const navigationLinks = [   { href: "/home", label: "Home", visibility: "authenticated" },   { href: "/manage-programs", label: "Manage Programs", visibility: "authenticated" },   { href: "/events", label: "Events & Follow-ups", visibility: "authenticated" },   { href: "/admin/users", label: "Admin Dashboard", visibility: "authenticated", roles: ["Admin"] }, ];
 // Function to filter navigation links based on user authentication status and role
 export const getVisibleLinks = (links, currentUser, userRole) =>
   links.filter((link) => {

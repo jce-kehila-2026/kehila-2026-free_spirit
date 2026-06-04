@@ -185,14 +185,39 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
 
+    /*
+      Added for Events & Follow-ups subsystem:
+      Required for future Google Calendar integration.
+      This allows the system to create and manage calendar events
+      for scheduled meetings and reminders.
+    */
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
+
     setAuthError("");
     setPasswordResetMessage("");
 
     try {
       setIsLoading(true);
 
-      // Firestore account creation is handled by ProtectedRoute after verification.
-      await signInWithPopup(auth, provider);
+      // Google sign-in uses the same Firebase auth state as email/password login.
+      const result = await signInWithPopup(auth, provider);
+
+      /*
+        Google Calendar integration preparation:
+        Access token will later be used by the Events subsystem
+        to sync meetings with Google Calendar.
+      */
+      const credential =
+        GoogleAuthProvider.credentialFromResult(result);
+
+      const accessToken = credential?.accessToken || null;
+
+      // Temporary local storage until backend sync is implemented.
+      if (accessToken) {
+        localStorage.setItem("googleCalendarAccessToken", accessToken);
+      }
+
       router.push("/home");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
