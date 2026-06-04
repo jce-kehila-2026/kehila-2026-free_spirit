@@ -6,6 +6,7 @@ import {
   browserSessionPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -61,6 +62,7 @@ export default function Login() {
 
   // Holds Firebase authentication error messages.
   const [authError, setAuthError] = useState("");
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
 
   // Holds the loading state while Firebase processes the login request.
   const [isLoading, setIsLoading] = useState(false);
@@ -108,6 +110,8 @@ export default function Login() {
         return "User not found.";
       case "auth/popup-closed-by-user":
         return "Google sign-in was closed before completion.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
       default:
         return error.message || "Login failed. Please try again.";
     }
@@ -149,6 +153,7 @@ export default function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setAuthError("");
+    setPasswordResetMessage("");
 
     if (!validateForm()) {
       return;
@@ -181,6 +186,7 @@ export default function Login() {
     const provider = new GoogleAuthProvider();
 
     setAuthError("");
+    setPasswordResetMessage("");
 
     try {
       setIsLoading(true);
@@ -206,6 +212,35 @@ export default function Login() {
       }
 
       router.push("/manage-programs");
+    } catch (error) {
+      setAuthError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const email = credentials.email.trim();
+
+    setAuthError("");
+    setPasswordResetMessage("");
+
+    if (!email) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        email: "Enter your email to reset your password",
+      }));
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await sendPasswordResetEmail(auth, email);
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        email: undefined,
+      }));
+      setPasswordResetMessage("Password reset link sent. Please check your inbox.");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -274,6 +309,15 @@ export default function Login() {
           {errors.password && <p className={styles.error}>{errors.password}</p>}
         </div>
 
+        <button
+          className="mb-5 text-sm font-bold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          type="button"
+          onClick={handlePasswordReset}
+          disabled={isLoading}
+        >
+          Forgot Password?
+        </button>
+
         {/* Remember Me checkbox */}
         <label
           className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-700"
@@ -291,6 +335,11 @@ export default function Login() {
         </label>
 
         {authError && <p className={styles.authError}>{authError}</p>}
+        {passwordResetMessage && (
+          <p className="mb-4 text-center text-sm font-semibold text-green-600">
+            {passwordResetMessage}
+          </p>
+        )}
 
         <button className={styles.button} type="submit" disabled={isLoading}>
           {isLoading ? "Signing In..." : "Sign In"}

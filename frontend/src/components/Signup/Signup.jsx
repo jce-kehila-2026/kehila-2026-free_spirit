@@ -50,6 +50,7 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     role: roleOptions[1],
   });
 
@@ -90,6 +91,12 @@ export default function Signup() {
 
     if (!formData.password.trim()) {
       nextErrors.password = "Password is required";
+    }
+
+    if (!formData.confirmPassword.trim()) {
+      nextErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      nextErrors.confirmPassword = "Passwords do not match";
     }
 
     if (!formData.role) {
@@ -222,6 +229,29 @@ export default function Signup() {
           />
           {errors.password && (
             <p className="mt-1.5 text-[13px] text-red-600">{errors.password}</p>
+          )}
+        </div>
+
+        <div className="mb-[18px]">
+          <label
+            className="mb-2 block text-sm font-semibold text-slate-700"
+            htmlFor="confirmPassword"
+          >
+            Confirm Password
+          </label>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            placeholder="Re-enter your password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+          />
+          {errors.confirmPassword && (
+            <p className="mt-1.5 text-[13px] text-red-600">
+              {errors.confirmPassword}
+            </p>
           )}
         </div>
 
