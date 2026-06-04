@@ -10,9 +10,10 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { auth } from "@/firebase/firebase";
+import { useRouter, useSearchParams } from "next/navigation";
+import { auth, db } from "@/firebase/firebase";
 import styles from "./Login.module.css";
 
 // Inline Google mark used by the OAuth button without adding another asset file.
@@ -46,6 +47,8 @@ function GoogleLogo() {
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wasAccessDenied = searchParams.get("accessDenied") === "1";
 
   // Holds the current email and password values.
   const [credentials, setCredentials] = useState({
@@ -67,11 +70,12 @@ export default function Login() {
 
   // Holds the user's preferred session persistence option.
   const [rememberMe, setRememberMe] = useState(false);
+  const [showAccessDenied, setShowAccessDenied] = useState(wasAccessDenied);
 
   useEffect(() => {
-    // If Firebase restores an existing session, skip the login form entirely.
+    // If Firebase restores an existing session, skip login unless showing a denial.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && !wasAccessDenied) {
         router.replace("/manage-programs");
         return;
       }
@@ -80,7 +84,19 @@ export default function Login() {
     });
 
     return unsubscribe;
-  }, [router]);
+  }, [router, wasAccessDenied]);
+
+  useEffect(() => {
+    if (!showAccessDenied) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowAccessDenied(false);
+    }, 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showAccessDenied]);
 
   // Converts Firebase error codes into user-friendly messages.
   const getFirebaseErrorMessage = (error) => {
@@ -170,7 +186,25 @@ export default function Login() {
       setIsLoading(true);
 
       // Google sign-in uses the same Firebase auth state as email/password login.
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const { user } = userCredential;
+      const accountRef = doc(db, "accounts", user.uid);
+      const accountSnapshot = await getDoc(accountRef);
+
+      if (accountSnapshot.exists()) {
+        await updateDoc(accountRef, {
+          last_login: serverTimestamp(),
+        });
+      } else {
+        await setDoc(accountRef, {
+          account_id: user.uid,
+          email: user.email || "",
+          role: "User",
+          created_at: serverTimestamp(),
+          last_login: serverTimestamp(),
+        });
+      }
+
       router.push("/manage-programs");
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
@@ -191,6 +225,15 @@ export default function Login() {
 
   return (
     <main className={styles.page}>
+      {showAccessDenied && (
+        <div
+          className="fixed left-1/2 top-24 z-[60] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center text-sm font-bold text-red-700 shadow-lg"
+          role="alert"
+        >
+          אין לך הרשאה לגשת לדף זה
+        </div>
+      )}
+
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         <div className={styles.header}>
           <h1 className={styles.title}>Login</h1>
