@@ -16,6 +16,12 @@ export const navigationLinks = [
     visibility: "authenticated",
   },
   {
+    label: "Admin Users",
+    href: "/admin/users",
+    visibility: "authenticated",
+    allowedRoles: ["Admin"],
+  },
+  {
     label: "Manage Programs",
     href: "/manage-programs",
     visibility: "authenticated",
