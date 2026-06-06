@@ -1,12 +1,12 @@
 "use client";
 
-import Login from "@/components/Login/Login.jsx";
+import Welcome from "@/app/(protected)/home/page.jsx";
 
 export default function Home() {
   // Public landing route for unauthenticated users.
   return (
     <main>
-      <Login />
+      <Welcome />
     </main>
   );
 }

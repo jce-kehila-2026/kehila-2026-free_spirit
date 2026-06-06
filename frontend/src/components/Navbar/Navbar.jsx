@@ -388,23 +388,12 @@ export default function Navbar() {
 
           className="text-lg font-bold text-slate-950"
 
-          href={currentUser ? "/manage-programs" : "/"}
+          href={currentUser ? "/home" : "/"}
 >
 
           Kehila Programs
 </Link>
 
-<Link
-  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-    pathname.startsWith("/clients")
-      ? "bg-blue-50 text-blue-700"
-      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
-  }`}
-  href="/clients"
->
-  Clients
-</Link>
- 
         {/* Mobile Hamburger Button */}
 <button
 
