@@ -18,8 +18,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Navbar is mounted globally so auth links and logout are available everywhere. */}
         <Navbar />
+        <Toaster />
         {children}
-        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );
