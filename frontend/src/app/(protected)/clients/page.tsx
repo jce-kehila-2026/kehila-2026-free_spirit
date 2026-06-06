@@ -79,7 +79,7 @@ export default function ClientsPage() {
 
   // ── Search & filter state ─────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "draft" | "archived">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "interested" | "draft">("all");
 
   // ── Shared Firestore snapshot ─────────────────────────────────────────
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
@@ -111,15 +111,8 @@ export default function ClientsPage() {
 
     return allDocs.filter((client) => {
       // ── Status gate ──────────────────────────────────────────────────
-      if (statusFilter === "archived") {
-        if (client.is_archived !== true) return false;
-      } else if (statusFilter === "draft") {
-        if (client.is_archived === true) return false;
-        if (client.status !== "draft") return false;
-      } else if (statusFilter === "active") {
-        // "active" in UI = any non-archived client
-        if (client.is_archived === true) return false;
-      }
+      // "all" → no gate; otherwise match client.status exactly.
+      if (statusFilter !== "all" && client.status !== statusFilter) return false;
       // statusFilter === "all" → no status gate
 
       // ── Search gate ──────────────────────────────────────────────────
@@ -128,6 +121,7 @@ export default function ClientsPage() {
       return [
         client.first_name,
         client.last_name,
+        client.email,
         client.phone,
         client.passport_id,
         client.passport_number,
@@ -248,27 +242,27 @@ export default function ClientsPage() {
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, passport ID, or phone…"
+                placeholder="Search by name, passport ID, phone, or email…"
                 className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
 
-            {/* Status dropdown */}
+            {/* Journey-status dropdown */}
             <div className="relative sm:w-44">
               <select
                 id="select-client-status-filter"
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(
-                    e.target.value as "all" | "active" | "draft" | "archived"
+                    e.target.value as "all" | "registered" | "interested" | "draft"
                   )
                 }
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-9 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
-                <option value="all">All Clients</option>
-                <option value="active">Active</option>
+                <option value="all">All Statuses</option>
+                <option value="registered">Registered</option>
+                <option value="interested">Interested</option>
                 <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
               </select>
               {/* Chevron icon */}
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">

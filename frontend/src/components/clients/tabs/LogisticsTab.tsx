@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
 import { z } from "zod";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 import { logisticsSchema } from "@/schemas/clientSchema";
 import type { ClientDoc } from "@/components/clients/ClientList";
 
@@ -85,22 +86,7 @@ function FieldWrapper({
   );
 }
 
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      )}
-    </div>
-  );
-}
+// SectionHeading retired — AccordionSection renders its own header
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitize(obj: Record<string, any>): Record<string, any> {
@@ -127,6 +113,12 @@ function sanitize(obj: Record<string, any>): Record<string, any> {
  */
 export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) {
   const [isSaving, setIsSaving] = useState(false);
+
+  // ── Accordion state ──────────────────────────────────────────────────────────
+  const [open, setOpen] = useState({ travel: true, insurance: false, program: false });
+  function toggleSection(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const {
     register,
@@ -172,18 +164,50 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
 
   const le = errors.logistics;
 
+  // ── Auto-expand sections that contain validation errors ───────────────────────
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (errors.date_of_entry || errors.purpose_of_visit) {
+        setOpen((prev) => ({ ...prev, travel: true }));
+      }
+      if (
+        le?.insurance_agent_name ||
+        le?.insurance_agent_number ||
+        le?.insurance_period_start ||
+        le?.insurance_period_end
+      ) {
+        setOpen((prev) => ({ ...prev, insurance: true }));
+      }
+      if (le?.program_consultant || le?.program_start_date) {
+        setOpen((prev) => ({ ...prev, program: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    errors.date_of_entry,
+    errors.purpose_of_visit,
+    le?.insurance_agent_name,
+    le?.insurance_agent_number,
+    le?.insurance_period_start,
+    le?.insurance_period_end,
+    le?.program_consultant,
+    le?.program_start_date,
+  ]);
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* ── Scrollable body ── */}
-        <div className="space-y-10 p-6 sm:p-8">
+        <div className="space-y-3 p-6 sm:p-8">
 
           {/* ════ Section 1: Travel & Visit Details ════ */}
-          <section>
-            <SectionHeading
-              title="Travel &amp; Visit Details"
-              description="Entry date and declared purpose from the client's visa or travel form."
-            />
+          <AccordionSection
+            title="Travel & Visit Details"
+            description="Entry date and declared purpose from the client's visa or travel form."
+            isOpen={open.travel}
+            onToggle={() => toggleSection("travel")}
+            hasError={!!(errors.date_of_entry || errors.purpose_of_visit)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Date of Entry */}
               <FieldWrapper
@@ -221,16 +245,16 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 2: Insurance ════ */}
-          <section>
-            <SectionHeading
-              title="Insurance Details"
-              description="Agent contact information and coverage period."
-            />
+          <AccordionSection
+            title="Insurance Details"
+            description="Agent contact information and coverage period."
+            isOpen={open.insurance}
+            onToggle={() => toggleSection("insurance")}
+            hasError={!!(le?.insurance_agent_name || le?.insurance_agent_number || le?.insurance_period_start || le?.insurance_period_end)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Agent Name */}
               <FieldWrapper
@@ -310,16 +334,16 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
                 />
               </FieldWrapper>
             </div>
-          </section>
-
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 3: Program ════ */}
-          <section>
-            <SectionHeading
-              title="Program Details"
-              description="Assigned consultant and program start date."
-            />
+          <AccordionSection
+            title="Program Details"
+            description="Assigned consultant and program start date."
+            isOpen={open.program}
+            onToggle={() => toggleSection("program")}
+            hasError={!!(le?.program_consultant || le?.program_start_date)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Program Consultant */}
               <FieldWrapper
@@ -360,7 +384,7 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
                 />
               </FieldWrapper>
             </div>
-          </section>
+          </AccordionSection>
         </div>
 
         {/* ── Sticky footer (edit mode only) ── */}

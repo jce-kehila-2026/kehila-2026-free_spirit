@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
 import type { ClientFormInput, Contact } from "@/schemas/clientSchema";
 import { CONTACT_RELATIONSHIP } from "@/schemas/clientSchema";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,10 +86,8 @@ const EMPTY_CONTACT = {
  * Step 4 — Contacts
  *
  * Uses `useFieldArray` to manage a dynamic list of contact cards.
- * Each card maps its fields via `contacts.${index}.field_name`.
- *
- * At least one contact is required for registered clients
- * (enforced by superRefine in the schema).
+ * Wrapped in a single accordion that is open by default.
+ * Auto-expands if any contact field has a validation error.
  */
 export default function ContactsStep() {
   const {
@@ -101,18 +101,42 @@ export default function ContactsStep() {
     name: "contacts",
   });
 
+  const [isOpen, setIsOpen] = useState(true);
+
   // Top-level array error (e.g. "at least one contact required")
   const arrayError = errors.contacts?.message || errors.contacts?.root?.message;
 
+  // Auto-expand if there are any contact errors
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    if (errors.contacts) {
+      timeout = setTimeout(() => setIsOpen(true), 0);
+    }
+    return () => clearTimeout(timeout);
+  }, [errors.contacts]);
+
+  const hasError = !!errors.contacts;
+
   return (
-    <div>
-      {/* ── Section heading ── */}
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <AccordionSection
+      title="Emergency Contacts"
+      description="Add at least one emergency or reference contact."
+      isOpen={isOpen}
+      onToggle={() => setIsOpen((prev) => !prev)}
+      hasError={hasError}
+    >
+      {/* Add contact button — lives inside header area via a sibling pattern */}
+      <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Contacts</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Add at least one emergency or reference contact.
-          </p>
+          {/* Array-level error */}
+          {arrayError && (
+            <p
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700"
+            >
+              {arrayError}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -128,17 +152,7 @@ export default function ContactsStep() {
         </button>
       </div>
 
-      {/* ── Array-level error ── */}
-      {arrayError && (
-        <p
-          role="alert"
-          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700"
-        >
-          {arrayError}
-        </p>
-      )}
-
-      {/* ── Contact cards ── */}
+      {/* Empty state */}
       {fields.length === 0 && (
         <div className="rounded-lg border-2 border-dashed border-slate-200 px-6 py-10 text-center">
           <p className="text-sm text-slate-400">
@@ -149,6 +163,7 @@ export default function ContactsStep() {
         </div>
       )}
 
+      {/* Contact cards */}
       <div className="space-y-5">
         {fields.map((field, index) => {
           const contactErrors = errors.contacts as
@@ -208,9 +223,7 @@ export default function ContactsStep() {
                     {...register(`contacts.${index}.relationship`)}
                     defaultValue={field.relationship}
                   >
-                    <option value="">
-                      Select relationship…
-                    </option>
+                    <option value="">Select relationship…</option>
                     {CONTACT_RELATIONSHIP.map((r) => (
                       <option key={r} value={r}>
                         {humanize(r)}
@@ -275,6 +288,6 @@ export default function ContactsStep() {
           );
         })}
       </div>
-    </div>
+    </AccordionSection>
   );
 }

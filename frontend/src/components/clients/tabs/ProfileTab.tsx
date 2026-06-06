@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
+import { AccordionSection } from "@/components/ui/AccordionSection";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -112,25 +113,6 @@ function FieldWrapper({
   );
 }
 
-// ─── Section heading ──────────────────────────────────────────────────────────
-
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      )}
-    </div>
-  );
-}
-
 // ─── Sanitize helper (strips undefined before Firestore write) ────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,6 +198,37 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
     name: "dependents",
   });
 
+  const [open, setOpen] = useState({ basic: true, demographics: false, dependents: false });
+  function toggleSection(key: keyof typeof open) {
+    setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (errors.first_name || errors.last_name || errors.email || errors.phone || errors.status) {
+        setOpen((prev) => ({ ...prev, basic: true }));
+      }
+      if (
+        errors.passport_id || errors.passport_number || errors.passport_country ||
+        errors.citizenship || errors.dob || errors.gender || errors.education_status ||
+        errors.referrer || errors.address || errors.home_address || errors.cohabitants ||
+        errors.diagnosis || errors.personal_notes
+      ) {
+        setOpen((prev) => ({ ...prev, demographics: true }));
+      }
+      if (errors.dependents) {
+        setOpen((prev) => ({ ...prev, dependents: true }));
+      }
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [
+    errors.first_name, errors.last_name, errors.email, errors.phone, errors.status,
+    errors.passport_id, errors.passport_number, errors.passport_country,
+    errors.citizenship, errors.dob, errors.gender, errors.education_status,
+    errors.referrer, errors.address, errors.home_address, errors.cohabitants,
+    errors.diagnosis, errors.personal_notes, errors.dependents,
+  ]);
+
   // ── Save handler ──────────────────────────────────────────────────────────
 
   async function onSubmit(data: BasicInfoFormData) {
@@ -262,14 +275,16 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* ── Scrollable body ── */}
-        <div className="space-y-10 p-6 sm:p-8">
+        <div className="space-y-3 p-6 sm:p-8">
 
           {/* ════ Section 1: Basic Information ════ */}
-          <section>
-            <SectionHeading
-              title="Basic Information"
-              description="Core contact details required for all client records."
-            />
+          <AccordionSection
+            title="Basic Information"
+            description="Core contact details required for all client records."
+            isOpen={open.basic}
+            onToggle={() => toggleSection('basic')}
+            hasError={!!(errors.first_name || errors.last_name || errors.email || errors.phone)}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* First Name */}
               <FieldWrapper
@@ -347,17 +362,21 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          {/* Divider */}
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 2: Demographics ════ */}
-          <section>
-            <SectionHeading
-              title="Demographics"
-              description="Identification, address, and background details."
-            />
+          <AccordionSection
+            title="Demographics"
+            description="Identification, address, and background details."
+            isOpen={open.demographics}
+            onToggle={() => toggleSection('demographics')}
+            hasError={!!(
+              errors.passport_id || errors.passport_number || errors.passport_country ||
+              errors.citizenship || errors.dob || errors.gender || errors.education_status ||
+              errors.referrer || errors.address || errors.home_address || errors.cohabitants ||
+              errors.diagnosis || errors.personal_notes
+            )}
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               {/* Passport / ID */}
               <FieldWrapper
@@ -584,36 +603,29 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 </FieldWrapper>
               </div>
             </div>
-          </section>
-
-          {/* Divider */}
-          <hr className="border-slate-100" />
+          </AccordionSection>
 
           {/* ════ Section 3: Dependents ════ */}
-          <section>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">Dependents</h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Immediate family members or other dependents of the client.
-                </p>
-              </div>
-              {/* Add button — edit mode only */}
-              {isEditable && (
+          <AccordionSection
+            title="Dependents"
+            description="Immediate family members or other dependents of the client."
+            isOpen={open.dependents}
+            onToggle={() => toggleSection('dependents')}
+            hasError={!!errors.dependents}
+          >
+            {/* Add button — edit mode only */}
+            {isEditable && (
+              <div className="mb-5">
                 <button
                   type="button"
                   id="btn-dependents-add"
                   onClick={() => appendDependent(EMPTY_DEPENDENT)}
-                  className={[
-                    "shrink-0 rounded-lg bg-indigo-600 px-4 py-2",
-                    "text-sm font-semibold text-white shadow-sm",
-                    "transition-colors hover:bg-indigo-700",
-                  ].join(" ")}
+                  className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
                 >
                   + Add Dependent
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Empty state */}
             {dependentFields.length === 0 && (
@@ -715,7 +727,7 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
                 );
               })}
             </div>
-          </section>
+          </AccordionSection>
         </div>
 
         {/* ── Sticky footer with Save + Archive buttons (edit mode only) ── */}
