@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+
 export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();

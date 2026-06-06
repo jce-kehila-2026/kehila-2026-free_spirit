@@ -13,6 +13,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { getVisibleLinks, navigationLinks } from "@/config/accessControl";
+import { useNavigation } from "@/components/NavigationProvider/NavigationContext"; // Make sure this path matches where you saved it
 
 import { auth, db } from "@/firebase/firebase";
 
@@ -25,6 +26,9 @@ export default function Navbar() {
   const router = useRouter();
 
   const pathname = usePathname();
+
+  // Consume dynamic navigation links and loading states from our global Firestore context
+  const { links, isLoadingLinks } = useNavigation();
 
   // Tracks the current Firebase session so the navbar can show auth-aware links.
 
@@ -222,7 +226,10 @@ export default function Navbar() {
 
   );
 
-  const visibleLinks = getVisibleLinks(navigationLinks, currentUser, userRole);
+  //const visibleLinks = getVisibleLinks(navigationLinks, currentUser, userRole);
+  // Fallback to the local hardcoded config list if Firestore is loading or returns empty to guarantee UI availability
+  const currentNavigationSource = (isLoadingLinks || !links || links.length === 0) ? navigationLinks : links;
+  const visibleLinks = getVisibleLinks(currentNavigationSource, currentUser, userRole);
 
   const getLinkClassName = (href) =>
 
