@@ -2,6 +2,7 @@
 
 import { collection, getDocs, doc, updateDoc , deleteDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { db } from "@/firebase/firebase";
 
 const roleOptions = ["User", "Program Manager", "Admin"];
@@ -131,6 +132,7 @@ export default function AdminUsersPage() {
       )}
 
       <section className="mx-auto w-full max-w-6xl">
+        <Link href="/admin">&larr; Back to Dashboard</Link>
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-950">
             Admin User Management

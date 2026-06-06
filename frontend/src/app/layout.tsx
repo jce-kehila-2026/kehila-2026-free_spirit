@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import Navbar from "@/components/Navbar/Navbar";
 import "./globals.css";
+import { NavigationProvider } from "@/components/NavigationProvider/NavigationContext";
 
 export const metadata: Metadata = {
   title: "Kehila Programs",
@@ -16,10 +17,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        {/* Navbar is mounted globally so auth links and logout are available everywhere. */}
-        <Navbar />
-        <Toaster />
-        {children}
+        {/* Wrap the global components inside the dynamic navigation context */}
+        <NavigationProvider>
+          {/* Navbar is mounted globally so auth links and logout are available everywhere. */}
+          <Navbar />
+          <Toaster />
+          {children}
+        </NavigationProvider>
       </body>
     </html>
   );

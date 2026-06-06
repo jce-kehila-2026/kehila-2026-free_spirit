@@ -10,7 +10,7 @@ export const navigationLinks = [
   { href: "/manage-programs", label: "Manage Programs", visibility: "authenticated" },  
   { href: "/clients", label: "Clients", visibility: "authenticated" ,allowedRoles: ["Admin"] }, 
   { href: "/events", label: "Events & Follow-ups", visibility: "authenticated" , allowedRoles: ["Admin"]},   
-  { href: "/admin/users", label: "Admin Dashboard", visibility: "authenticated", allowedRoles: ["Admin"] },
+  { href: "/admin", label: "Admin Dashboard", visibility: "authenticated", allowedRoles: ["Admin"] },
   
 ];
 // Function to filter navigation links based on user authentication status and role
