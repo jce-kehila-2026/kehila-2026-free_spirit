@@ -416,14 +416,14 @@ export default function ClientList({
               <button
                 type="button"
                 onClick={() => { onSortChange?.({ key, direction: "asc" }); setOpenFilter(null); }}
-                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "asc" ? "text-indigo-600 font-medium" : "text-slate-700"].join(" ")}
+                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "asc" ? "text-indigo-600" : "text-gray-700"].join(" ")}
               >
                 <IconSortAsc /> Sort A to Z
               </button>
               <button
                 type="button"
                 onClick={() => { onSortChange?.({ key, direction: "desc" }); setOpenFilter(null); }}
-                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "desc" ? "text-indigo-600 font-medium" : "text-slate-700"].join(" ")}
+                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "desc" ? "text-indigo-600" : "text-gray-700"].join(" ")}
               >
                 <IconSortDesc /> Sort Z to A
               </button>
@@ -456,23 +456,48 @@ export default function ClientList({
 
               {uniqueValues.length > 0 && (
                 <>
-                  <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/50 p-2">
-                    {uniqueValues.map((val) => (
-                      <label key={val} className="flex cursor-pointer items-start gap-2">
+                  <div className="max-h-40 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/50 p-2">
+                    {/* Select All */}
+                    <div className="mb-2 border-b border-slate-200 pb-2">
+                      <label className="flex cursor-pointer items-start gap-2">
                         <input
                           type="checkbox"
-                          checked={filterState.values.includes(val)}
+                          checked={filterState.values.length === uniqueValues.length && uniqueValues.length > 0}
                           onChange={(e) => {
-                            const newValues = e.target.checked
-                              ? [...filterState.values, val]
-                              : filterState.values.filter((v) => v !== val);
-                            onColumnFilterChange?.(key, { values: newValues });
+                            if (e.target.checked) {
+                              onColumnFilterChange?.(key, { values: uniqueValues });
+                            } else {
+                              onColumnFilterChange?.(key, { values: [] });
+                            }
                           }}
                           className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <span className="leading-tight text-sm text-slate-700">{formatCheckboxLabel(val)}</span>
+                        <span className="leading-tight text-sm font-normal text-gray-700">
+                          (Select All)
+                        </span>
                       </label>
-                    ))}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {uniqueValues.map((val) => (
+                        <label key={val} className="flex cursor-pointer items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={filterState.values.includes(val)}
+                            onChange={(e) => {
+                              const newValues = e.target.checked
+                                ? [...filterState.values, val]
+                                : filterState.values.filter((v) => v !== val);
+                              onColumnFilterChange?.(key, { values: newValues });
+                            }}
+                            className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span 
+                            className="leading-tight text-sm font-normal text-gray-700">{formatCheckboxLabel(val)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="mt-3">
                     <button
