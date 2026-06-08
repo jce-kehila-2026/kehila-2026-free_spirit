@@ -54,6 +54,7 @@
 }
 
 .field {
+  position: relative;
   margin-bottom: 18px;
 }
 
@@ -168,4 +169,40 @@ textarea.input {
   background: #f8fafc;
   border-color: #94a3b8;
   transform: translateY(-1px);
+}
+
+/* Autocomplete suggestions dropdown */
+.suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+  max-height: 220px;
+  overflow: auto;
+  z-index: 40;
+}
+
+.suggestionItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: #0f172a;
+}
+
+.suggestionItem:hover {
+  background: #f1f5f9;
+}
+
+.suggestionLoading {
+  padding: 10px 12px;
+  color: #64748b;
+  font-size: 13px;
 }

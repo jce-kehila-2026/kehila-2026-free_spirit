@@ -8,6 +8,7 @@ export const navigationLinks = [
   // Authenticated-only links (visible ONLY when logged in)   
   { href: "/home", label: "Home", visibility: "authenticated" },   
   { href: "/manage-programs", label: "Manage Programs", visibility: "authenticated" },  
+  { href: "/programs", label: "Programs", visibility: "authenticated" },
   { href: "/clients", label: "Clients", visibility: "authenticated" ,allowedRoles: ["Admin"] }, 
   { href: "/events", label: "Events & Follow-ups", visibility: "authenticated" , allowedRoles: ["Admin"]},   
   { href: "/admin", label: "Admin Dashboard", visibility: "authenticated", allowedRoles: ["Admin"] },
