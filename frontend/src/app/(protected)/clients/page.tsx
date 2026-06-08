@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import ClientList, { type ClientDoc } from "@/components/clients/ClientList";
-import ClientMetrics from "@/components/clients/ClientMetrics";
 import WizardController from "@/components/clients/RegistrationWizard/WizardController";
 import ClientProfileDashboard from "@/components/clients/ClientProfileDashboard";
 
@@ -96,9 +95,6 @@ function exportToCSV(rows: ClientDoc[]): void {
 export default function ClientsPage() {
   const [view, setView] = useState<View>("list");
   const [editingClient, setEditingClient] = useState<ClientDoc | null>(null);
-
-  // ── Analytics panel toggle ────────────────────────────────────────────
-  const [showMetrics, setShowMetrics] = useState(false);
 
   // ── Search & filter state ─────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
@@ -224,13 +220,6 @@ export default function ClientsPage() {
           </div>
         )}
 
-        {/* ── Analytics panel ── */}
-        {view === "list" && showMetrics && (
-          <div id="client-metrics-panel" className="mb-6">
-            <ClientMetrics clients={allDocs} onOpenClient={handleEdit} />
-          </div>
-        )}
-
         {/* NOTE: The archived mode banner is rendered inside <ClientList> — not here — to avoid duplication. */}
 
         {/* ── Global control bar (search + status filter + utility actions) ── */}
@@ -291,29 +280,6 @@ export default function ClientsPage() {
                 {filteredClients.length} result{filteredClients.length !== 1 ? "s" : ""}
               </span>
             )}
-
-            {/* Spacer pushes the analytics toggle to the right */}
-            <div className="sm:ml-auto">
-              {/* Analytics toggle — subtle icon+text */}
-              <button
-                type="button"
-                id="btn-toggle-analytics"
-                onClick={() => setShowMetrics((prev) => !prev)}
-                aria-expanded={showMetrics}
-                aria-controls="client-metrics-panel"
-                className={[
-                  "inline-flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none",
-                  showMetrics
-                    ? "text-indigo-600 hover:text-indigo-800"
-                    : "text-slate-400 hover:text-slate-600",
-                ].join(" ")}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                  <path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2ZM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6ZM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10Z" />
-                </svg>
-                {showMetrics ? "Hide Analytics" : "Analytics"}
-              </button>
-            </div>
           </div>
         )}
 
