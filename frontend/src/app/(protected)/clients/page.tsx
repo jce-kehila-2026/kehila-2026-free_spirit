@@ -101,6 +101,39 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "registered" | "interested" | "draft"
   >("all");
+  /** Per-column text filters and checkbox values (applied on top of global search + status). */
+  const [columnFilters, setColumnFilters] = useState<Record<string, { text: string; values: string[] }>>({
+    name: { text: "", values: [] },
+    email: { text: "", values: [] },
+    phone: { text: "", values: [] },
+    status: { text: "", values: [] },
+  });
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+  function handleColumnFilterChange(col: string, update: Partial<{ text: string; values: string[] }>) {
+    setColumnFilters((prev) => ({
+      ...prev,
+      [col]: { ...prev[col], ...update },
+    }));
+  }
+
+  function handleClearAllFilters() {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setColumnFilters({
+      name: { text: "", values: [] },
+      email: { text: "", values: [] },
+      phone: { text: "", values: [] },
+      status: { text: "", values: [] },
+    });
+    setSortConfig(null);
+  }
+
+  const hasActiveFilters =
+    searchQuery !== "" ||
+    statusFilter !== "all" ||
+    sortConfig !== null ||
+    Object.values(columnFilters).some((cf) => cf.text !== "" || cf.values.length > 0);
 
   // ── Shared Firestore snapshot ─────────────────────────────────────────
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
@@ -126,20 +159,39 @@ export default function ClientsPage() {
     return unsubscribe;
   }, []);
 
-  // ── Filtered clients (search + status) ───────────────────────────────
+  // ── Total active count (used for the consolidated record count text) ──────────
+  const totalActiveCount = useMemo(
+    () => allDocs.filter((c) => c.is_archived !== true).length,
+    [allDocs],
+  );
+
+  // ── Filtered clients (global search + status + column filters + sorting) ───────────────
   const filteredClients = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return allDocs.filter((client) => {
-      // ── Status gate ──────────────────────────────────────────────────
-      // "all" → no gate; otherwise match client.status exactly.
-      if (statusFilter !== "all" && client.status !== statusFilter)
-        return false;
-      // statusFilter === "all" → no status gate
+    const result = allDocs.filter((client) => {
+      // ── Status gate ─────────────────────────────────────────────────────
+      if (statusFilter !== "all" && client.status !== statusFilter) return false;
 
-      // ── Search gate ──────────────────────────────────────────────────
+      // ── Column filters ─────────────────────────────────────────────────────
+      const nameVal = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
+      if (columnFilters.name.text && !nameVal.toLowerCase().includes(columnFilters.name.text.toLowerCase())) return false;
+      if (columnFilters.name.values.length > 0 && !columnFilters.name.values.includes(nameVal)) return false;
+
+      const emailVal = client.email || "";
+      if (columnFilters.email.text && !emailVal.toLowerCase().includes(columnFilters.email.text.toLowerCase())) return false;
+      if (columnFilters.email.values.length > 0 && !columnFilters.email.values.includes(emailVal)) return false;
+
+      const phoneVal = client.phone || "";
+      if (columnFilters.phone.text && !phoneVal.toLowerCase().includes(columnFilters.phone.text.toLowerCase())) return false;
+      if (columnFilters.phone.values.length > 0 && !columnFilters.phone.values.includes(phoneVal)) return false;
+
+      const statusVal = client.status || "";
+      if (columnFilters.status.text && !statusVal.toLowerCase().includes(columnFilters.status.text.toLowerCase())) return false;
+      if (columnFilters.status.values.length > 0 && !columnFilters.status.values.includes(statusVal)) return false;
+
+      // ── Global search gate ───────────────────────────────────────────────
       if (!q) return true;
-
       return [
         client.first_name,
         client.last_name,
@@ -149,7 +201,33 @@ export default function ClientsPage() {
         client.passport_number,
       ].some((field) => field?.toLowerCase().includes(q));
     });
-  }, [allDocs, searchQuery, statusFilter]);
+
+    if (sortConfig) {
+      result.sort((a, b) => {
+        let valA = "";
+        let valB = "";
+        if (sortConfig.key === "name") {
+          valA = `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim().toLowerCase();
+          valB = `${b.first_name ?? ""} ${b.last_name ?? ""}`.trim().toLowerCase();
+        } else if (sortConfig.key === "email") {
+          valA = (a.email || "").toLowerCase();
+          valB = (b.email || "").toLowerCase();
+        } else if (sortConfig.key === "phone") {
+          valA = (a.phone || "").toLowerCase();
+          valB = (b.phone || "").toLowerCase();
+        } else if (sortConfig.key === "status") {
+          valA = (a.status || "").toLowerCase();
+          valB = (b.status || "").toLowerCase();
+        }
+
+        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [allDocs, searchQuery, statusFilter, columnFilters, sortConfig]);
 
   const [showArchived, setShowArchived] = useState(false);
 
@@ -273,26 +351,27 @@ export default function ClientsPage() {
                 <IconChevronDown className="h-4 w-4" />
               </span>
             </div>
-
-            {/* Result count chip — only shown when a filter is active */}
-            {(searchQuery.trim() || statusFilter !== "all") && (
-              <span className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm">
-                {filteredClients.length} result{filteredClients.length !== 1 ? "s" : ""}
-              </span>
-            )}
           </div>
         )}
 
         {/* ── View toggle ── */}
         {view === "list" ? (
-          <ClientList
-            onEdit={handleEdit}
-            externalDocs={filteredClients}
-            externalLoading={isLoading}
-            showArchived={showArchived}
-            onToggleArchived={() => setShowArchived((prev) => !prev)}
-            onExport={() => exportToCSV(filteredClients)}
-          />
+            <ClientList
+              onEdit={handleEdit}
+              externalDocs={filteredClients}
+              baseDocs={showArchived ? allDocs.filter(c => c.is_archived === true) : allDocs.filter(c => c.is_archived !== true)}
+              externalLoading={isLoading}
+              showArchived={showArchived}
+              onToggleArchived={() => setShowArchived((prev) => !prev)}
+              onExport={() => exportToCSV(filteredClients)}
+              columnFilters={columnFilters}
+              onColumnFilterChange={handleColumnFilterChange}
+              sortConfig={sortConfig}
+              onSortChange={setSortConfig}
+              totalActiveCount={totalActiveCount}
+              onClearAllFilters={handleClearAllFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
         ) : view === "dashboard" && editingClient ? (
           <ClientProfileDashboard
             client={editingClient}

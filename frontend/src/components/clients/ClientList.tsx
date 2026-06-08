@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   collection,
   onSnapshot,
@@ -40,6 +40,14 @@ interface ClientListProps {
   onToggleArchived: () => void;
   /** Called when the user clicks the Export CSV button in the table header. */
   onExport?: () => void;
+  columnFilters?: Record<string, { text: string; values: string[] }>;
+  onColumnFilterChange?: (col: string, update: Partial<{ text: string; values: string[] }>) => void;
+  baseDocs?: ClientDoc[];
+  sortConfig?: { key: string; direction: "asc" | "desc" } | null;
+  onSortChange?: (config: { key: string; direction: "asc" | "desc" } | null) => void;
+  totalActiveCount?: number;
+  onClearAllFilters?: () => void;
+  hasActiveFilters?: boolean;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -100,13 +108,13 @@ function IconRestore() {
 
 // ─── Funnel filter icon (decorative, Excel-style) ──────────────────────────────────
 
-function IconFunnel() {
+function IconFunnel({ active }: { active?: boolean }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 20 20"
       fill="currentColor"
-      className="h-3 w-3 text-slate-400"
+      className={["h-3 w-3 transition-colors", active ? "text-indigo-600" : "text-slate-400"].join(" ")}
       aria-hidden="true"
     >
       <path
@@ -131,6 +139,36 @@ function IconPencil() {
     >
       <path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" />
     </svg>
+  );
+}
+
+// ─── Sort icons ───────────────────────────────────────────────────────────
+
+function IconSortAsc() {
+  return (
+    <div className="flex w-5 items-center gap-0.5">
+      <div className="flex flex-col text-[9px] font-extrabold leading-[9px]">
+        <span className="text-indigo-600">A</span>
+        <span className="text-slate-800">Z</span>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-slate-400">
+        <path fillRule="evenodd" d="M10 3a.75.75 0 0 1 .75.75v10.638l3.96-4.158a.75.75 0 1 1 1.08 1.04l-5.25 5.5a.75.75 0 0 1-1.08 0l-5.25-5.5a.75.75 0 1 1 1.08-1.04l3.96 4.158V3.75A.75.75 0 0 1 10 3Z" clipRule="evenodd" />
+      </svg>
+    </div>
+  );
+}
+
+function IconSortDesc() {
+  return (
+    <div className="flex w-5 items-center gap-0.5">
+      <div className="flex flex-col text-[9px] font-extrabold leading-[9px]">
+        <span className="text-slate-800">Z</span>
+        <span className="text-indigo-600">A</span>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-slate-400">
+        <path fillRule="evenodd" d="M10 3a.75.75 0 0 1 .75.75v10.638l3.96-4.158a.75.75 0 1 1 1.08 1.04l-5.25 5.5a.75.75 0 0 1-1.08 0l-5.25-5.5a.75.75 0 1 1 1.08-1.04l3.96 4.158V3.75A.75.75 0 0 1 10 3Z" clipRule="evenodd" />
+      </svg>
+    </div>
   );
 }
 
@@ -217,7 +255,23 @@ function RestoreModal({ client, onCancel, onConfirm, isRestoring }: RestoreModal
  *
  * Columns: Name, Email, Phone, Status, Actions.
  */
-export default function ClientList({ onEdit, externalDocs, externalLoading, onDocsChange, showArchived, onToggleArchived, onExport }: ClientListProps) {
+export default function ClientList({
+  onEdit,
+  externalDocs,
+  externalLoading,
+  onDocsChange,
+  showArchived,
+  onToggleArchived,
+  onExport,
+  columnFilters,
+  onColumnFilterChange,
+  baseDocs,
+  sortConfig,
+  onSortChange,
+  totalActiveCount,
+  onClearAllFilters,
+  hasActiveFilters,
+}: ClientListProps) {
   // ── All raw docs from Firestore (unfiltered) ───────────────────────────
   const [internalDocs, setInternalDocs] = useState<ClientDoc[]>([]);
   const [internalLoading, setInternalLoading] = useState(true);
@@ -231,6 +285,22 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
   // ── Restore modal state ────────────────────────────────────────────────
   const [restoreTarget, setRestoreTarget] = useState<ClientDoc | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  // ── Column filter popover state ────────────────────────────────────────
+  const [openFilter, setOpenFilter] = useState<"name" | "email" | "phone" | "status" | null>(null);
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (theadRef.current && !theadRef.current.contains(e.target as Node)) {
+        setOpenFilter(null);
+      }
+    }
+    if (openFilter) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openFilter]);
 
   // ── Firestore subscription (only runs when no external docs provided) ──
   useEffect(() => {
@@ -298,15 +368,151 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
     );
   }
 
+  // ── Count logic ────────────────────────────────────────────────────────
+  const countText =
+    totalActiveCount !== undefined && clients.length < totalActiveCount && !showArchived
+      ? `Showing ${clients.length} of ${totalActiveCount} records`
+      : `${clients.length} ${showArchived ? "archived" : "active"} record${clients.length !== 1 ? "s" : ""}`;
+
+  // ── Column Header Helper ───────────────────────────────────────────────
+  function renderColumnHeader(key: "name" | "email" | "phone" | "status", label: string, hideOnMobile = false) {
+    const isFilterOpen = openFilter === key;
+    const filterState = columnFilters?.[key] || { text: "", values: [] };
+    const iconActive = !!filterState.text || sortConfig?.key === key;
+
+    // Extract unique values for checklist (from un-column-filtered baseDocs)
+    const uniqueValues = Array.from(new Set(
+      (baseDocs || []).map((c) => {
+        if (key === "name") return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
+        return (c[key as keyof ClientDoc] as string) || "";
+      }).filter(Boolean)
+    )).sort();
+
+    function formatCheckboxLabel(val: string) {
+      if (key !== "status") return val;
+      if (val === "in_progress" || val === "draft") return "Draft";
+      return val.charAt(0).toUpperCase() + val.slice(1);
+    }
+
+    return (
+      <th className={["px-5 py-3 font-semibold text-slate-600 relative", hideOnMobile ? "hidden sm:table-cell" : ""].join(" ")}>
+        <div className="flex items-center gap-1.5">
+          {label}
+          <button
+            type="button"
+            onClick={() => setOpenFilter(isFilterOpen ? null : key)}
+            className={["rounded p-1 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-200", iconActive ? "bg-indigo-50" : ""].join(" ")}
+            aria-label={`Filter and sort ${label}`}
+          >
+            <IconFunnel active={iconActive} />
+          </button>
+        </div>
+
+        {isFilterOpen && (
+          <div className="absolute left-5 top-full z-50 mt-1 w-64 rounded-xl border border-slate-200 bg-white shadow-xl">
+            {/* Sort options */}
+            <div className="border-b border-slate-100 p-1.5">
+              <button
+                type="button"
+                onClick={() => { onSortChange?.({ key, direction: "asc" }); setOpenFilter(null); }}
+                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "asc" ? "text-indigo-600 font-medium" : "text-slate-700"].join(" ")}
+              >
+                <IconSortAsc /> Sort A to Z
+              </button>
+              <button
+                type="button"
+                onClick={() => { onSortChange?.({ key, direction: "desc" }); setOpenFilter(null); }}
+                className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-50", sortConfig?.key === key && sortConfig.direction === "desc" ? "text-indigo-600 font-medium" : "text-slate-700"].join(" ")}
+              >
+                <IconSortDesc /> Sort Z to A
+              </button>
+            </div>
+
+            {/* Filter options */}
+            <div className="p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Filter</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onColumnFilterChange?.(key, { text: "", values: [] });
+                    setOpenFilter(null);
+                  }}
+                  className="text-xs font-medium text-indigo-600 focus:outline-none hover:text-indigo-800"
+                >
+                  Clear All
+                </button>
+              </div>
+
+              <input
+                type="text"
+                autoFocus
+                value={filterState.text}
+                onChange={(e) => onColumnFilterChange?.(key, { text: e.target.value })}
+                placeholder={`Search ${label.toLowerCase()}…`}
+                className="mb-3 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+
+              {uniqueValues.length > 0 && (
+                <>
+                  <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/50 p-2">
+                    {uniqueValues.map((val) => (
+                      <label key={val} className="flex cursor-pointer items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={filterState.values.includes(val)}
+                          onChange={(e) => {
+                            const newValues = e.target.checked
+                              ? [...filterState.values, val]
+                              : filterState.values.filter((v) => v !== val);
+                            onColumnFilterChange?.(key, { values: newValues });
+                          }}
+                          className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="leading-tight text-sm text-slate-700">{formatCheckboxLabel(val)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFilter(null)}
+                      className="w-full rounded-md bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      Apply Filter
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </th>
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <>
       {/* ── Count + archive toggle ── */}
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-medium text-slate-400">
-          {clients.length} {showArchived ? "archived" : "active"} record{clients.length !== 1 ? "s" : ""}
-        </span>
-        <span className="text-slate-300 text-xs" aria-hidden="true">·</span>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-400">
+            {countText}
+          </span>
+          {hasActiveFilters && onClearAllFilters && (
+            <>
+              <span className="text-slate-300 text-xs" aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={onClearAllFilters}
+                className="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-800 focus:outline-none"
+              >
+                Clear all filters
+              </button>
+            </>
+          )}
+        </div>
         <button
           type="button"
           id="btn-view-archived-records-alt"
@@ -336,79 +542,62 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
         </div>
       )}
 
-      {/* ── Empty state ── */}
-      {clients.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-slate-200 px-6 py-16 text-center">
-          <p className="text-base font-semibold text-slate-500">
-            {showArchived ? "No archived clients" : "No clients yet"}
-          </p>
-          <p className="mt-1 text-sm text-slate-400">
-            {showArchived
-              ? "Clients you archive will appear here."
-              : "Click \"+ Add New Client\" above to create the first record."}
-          </p>
-        </div>
-      ) : (
-        /* ── Table ── */
-        <div
-          className={[
-            "overflow-hidden rounded-xl border shadow-sm",
-            showArchived
-              ? "border-amber-200 bg-amber-50/30"
-              : "border-slate-200 bg-white",
-          ].join(" ")}
-        >
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr
-                className={[
-                  "border-b",
-                  showArchived
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-slate-100 bg-slate-50",
-                ].join(" ")}
-              >
-                <th className="px-5 py-3 font-semibold text-slate-600">
-                  <span className="inline-flex items-center gap-1.5">
-                    Name <IconFunnel />
-                  </span>
-                </th>
-                <th className="px-5 py-3 font-semibold text-slate-600">
-                  <span className="inline-flex items-center gap-1.5">
-                    Email <IconFunnel />
-                  </span>
-                </th>
-                <th className="hidden px-5 py-3 font-semibold text-slate-600 sm:table-cell">
-                  <span className="inline-flex items-center gap-1.5">
-                    Phone <IconFunnel />
-                  </span>
-                </th>
-                <th className="px-5 py-3 font-semibold text-slate-600">
-                  <span className="inline-flex items-center gap-1.5">
-                    Status <IconFunnel />
-                  </span>
-                </th>
-                {/* Last column: export icon (active view) or empty (archive view) */}
-                <th className="w-10 py-3 pr-4 text-right">
-                  {!showArchived && onExport && (
-                    <button
-                      type="button"
-                      title="Export to CSV"
-                      aria-label="Export filtered clients to CSV"
-                      onClick={onExport}
-                      className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
-                        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
-                      </svg>
-                    </button>
-                  )}
-                </th>
+      {/* ── Table ── */}
+      <div
+        className={[
+          "rounded-xl border shadow-sm",
+          showArchived
+            ? "border-amber-200 bg-amber-50/30"
+            : "border-slate-200 bg-white",
+        ].join(" ")}
+      >
+        <table className="w-full text-left text-sm">
+          <thead ref={theadRef}>
+            <tr
+              className={[
+                "border-b",
+                showArchived
+                  ? "border-amber-200 bg-amber-50"
+                  : "border-slate-100 bg-slate-50",
+              ].join(" ")}
+            >
+              {renderColumnHeader("name", "Name")}
+              {renderColumnHeader("email", "Email")}
+              {renderColumnHeader("phone", "Phone", true)}
+              {renderColumnHeader("status", "Status")}
+              {/* Last column: export icon (active view) or empty (archive view) */}
+              <th className="w-10 py-3 pr-4 text-right">
+                {!showArchived && onExport && (
+                  <button
+                    type="button"
+                    title="Export to CSV"
+                    aria-label="Export filtered clients to CSV"
+                    onClick={onExport}
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                      <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+                      <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+                    </svg>
+                  </button>
+                )}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {clients.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-24 text-center">
+                  <p className="text-base font-semibold text-slate-500">
+                    {showArchived ? "No archived clients found" : "No clients found"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Try adjusting your column filters or search query.
+                  </p>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {clients.map((client) => (
+            ) : (
+              clients.map((client) => (
                 <tr
                   key={client.id}
                   className={[
@@ -453,11 +642,11 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
                     )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* ── Restore confirmation modal ── */}
       {restoreTarget && (
