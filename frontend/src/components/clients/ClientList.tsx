@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { toast } from "sonner";
+import { Eye } from "lucide-react";
 import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schemas/clientSchema";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -617,16 +618,29 @@ export default function ClientList({
                   </td>
                   <td className="w-10 py-3.5 pr-4 text-right">
                     {showArchived ? (
-                      /* Restore button */
-                      <button
-                        type="button"
-                        id={`btn-restore-client-${client.id}`}
-                        onClick={() => setRestoreTarget(client)}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
-                      >
-                        <IconRestore />
-                        Restore
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* View Profile button */}
+                        <button
+                          type="button"
+                          title="View Profile"
+                          id={`btn-view-archived-client-${client.id}`}
+                          onClick={() => onEdit(client)}
+                          aria-label={`View ${client.first_name} ${client.last_name}`}
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        {/* Restore button */}
+                        <button
+                          type="button"
+                          id={`btn-restore-client-${client.id}`}
+                          onClick={() => setRestoreTarget(client)}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        >
+                          <IconRestore />
+                          Restore
+                        </button>
+                      </div>
                     ) : (
                       /* Edit button — pencil icon only */
                       <button
