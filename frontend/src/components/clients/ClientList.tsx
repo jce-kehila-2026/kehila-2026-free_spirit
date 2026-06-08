@@ -35,6 +35,11 @@ interface ClientListProps {
   externalLoading?: boolean;
   /** Called whenever the internal subscription updates — lets the parent mirror the data. */
   onDocsChange?: (docs: ClientDoc[]) => void;
+  /** Controlled from the page-level action bar. */
+  showArchived: boolean;
+  onToggleArchived: () => void;
+  /** Called when the user clicks the Export CSV button in the table header. */
+  onExport?: () => void;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -93,9 +98,29 @@ function IconRestore() {
   );
 }
 
-// ─── Archive icon (for the view-toggle label) ─────────────────────────────────
+// ─── Funnel filter icon (decorative, Excel-style) ──────────────────────────────────
 
-function IconArchive() {
+function IconFunnel() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-3 w-3 text-slate-400"
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 9 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L3.659 6.22A2.25 2.25 0 0 1 3 4.629V2.34a.75.75 0 0 1 .628-.74Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+// ─── Pencil (edit) icon ──────────────────────────────────────────────────────────
+
+function IconPencil() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -104,12 +129,7 @@ function IconArchive() {
       className="h-3.5 w-3.5"
       aria-hidden="true"
     >
-      <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
-      <path
-        fillRule="evenodd"
-        d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zm5.5 2.5a.5.5 0 01.5-.5h4a.5.5 0 010 1H8a.5.5 0 01-.5-.5z"
-        clipRule="evenodd"
-      />
+      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" />
     </svg>
   );
 }
@@ -197,7 +217,7 @@ function RestoreModal({ client, onCancel, onConfirm, isRestoring }: RestoreModal
  *
  * Columns: Name, Email, Phone, Status, Actions.
  */
-export default function ClientList({ onEdit, externalDocs, externalLoading, onDocsChange }: ClientListProps) {
+export default function ClientList({ onEdit, externalDocs, externalLoading, onDocsChange, showArchived, onToggleArchived, onExport }: ClientListProps) {
   // ── All raw docs from Firestore (unfiltered) ───────────────────────────
   const [internalDocs, setInternalDocs] = useState<ClientDoc[]>([]);
   const [internalLoading, setInternalLoading] = useState(true);
@@ -206,8 +226,7 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
   const allDocs = externalDocs ?? internalDocs;
   const isLoading = externalLoading ?? internalLoading;
 
-  // ── View mode ──────────────────────────────────────────────────────────
-  const [showArchived, setShowArchived] = useState(false);
+  // ── View mode (controlled by parent) ───────────────────────────────────
 
   // ── Restore modal state ────────────────────────────────────────────────
   const [restoreTarget, setRestoreTarget] = useState<ClientDoc | null>(null);
@@ -282,53 +301,34 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── View toggle ── */}
-      <div className="mb-4 flex items-center justify-between gap-4">
-        {/* Toggle button group */}
-        <div
-          role="group"
-          aria-label="Client view mode"
-          className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
-        >
-          <button
-            type="button"
-            id="btn-view-active-clients"
-            onClick={() => setShowArchived(false)}
-            className={[
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400",
-              !showArchived
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50",
-            ].join(" ")}
-          >
-            Active Clients
-          </button>
-          <button
-            type="button"
-            id="btn-view-archived-records"
-            onClick={() => setShowArchived(true)}
-            className={[
-              "flex items-center gap-1.5 border-l border-slate-200 px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-400",
-              showArchived
-                ? "bg-amber-500 text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50",
-            ].join(" ")}
-          >
-            <IconArchive />
-            Archived Records
-          </button>
-        </div>
-
-        {/* Contextual count badge */}
+      {/* ── Count + archive toggle ── */}
+      <div className="mb-3 flex items-center gap-2">
         <span className="text-xs font-medium text-slate-400">
           {clients.length} {showArchived ? "archived" : "active"} record{clients.length !== 1 ? "s" : ""}
         </span>
+        <span className="text-slate-300 text-xs" aria-hidden="true">·</span>
+        <button
+          type="button"
+          id="btn-view-archived-records-alt"
+          onClick={onToggleArchived}
+          className={[
+            "text-xs font-medium transition-colors focus:outline-none",
+            showArchived
+              ? "text-amber-500 hover:text-amber-700"
+              : "text-slate-400 hover:text-slate-600",
+          ].join(" ")}
+        >
+          {showArchived ? "← Active Clients" : "View Archive"}
+        </button>
       </div>
 
       {/* ── Archived mode banner ── */}
       {showArchived && (
         <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <IconArchive />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true">
+            <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
+            <path fillRule="evenodd" d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zm5.5 2.5a.5.5 0 01.5-.5h4a.5.5 0 010 1H8a.5.5 0 01-.5-.5z" clipRule="evenodd" />
+          </svg>
           <p className="text-sm font-medium text-amber-800">
             You are viewing <span className="font-bold">archived records</span>. These clients
             have been removed from the active list but their data is safely preserved.
@@ -368,14 +368,42 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
                     : "border-slate-100 bg-slate-50",
                 ].join(" ")}
               >
-                <th className="px-5 py-3 font-semibold text-slate-600">Name</th>
-                <th className="px-5 py-3 font-semibold text-slate-600">Email</th>
-                <th className="hidden px-5 py-3 font-semibold text-slate-600 sm:table-cell">
-                  Phone
+                <th className="px-5 py-3 font-semibold text-slate-600">
+                  <span className="inline-flex items-center gap-1.5">
+                    Name <IconFunnel />
+                  </span>
                 </th>
-                <th className="px-5 py-3 font-semibold text-slate-600">Status</th>
-                <th className="px-5 py-3 text-right font-semibold text-slate-600">
-                  Actions
+                <th className="px-5 py-3 font-semibold text-slate-600">
+                  <span className="inline-flex items-center gap-1.5">
+                    Email <IconFunnel />
+                  </span>
+                </th>
+                <th className="hidden px-5 py-3 font-semibold text-slate-600 sm:table-cell">
+                  <span className="inline-flex items-center gap-1.5">
+                    Phone <IconFunnel />
+                  </span>
+                </th>
+                <th className="px-5 py-3 font-semibold text-slate-600">
+                  <span className="inline-flex items-center gap-1.5">
+                    Status <IconFunnel />
+                  </span>
+                </th>
+                {/* Last column: export icon (active view) or empty (archive view) */}
+                <th className="w-10 py-3 pr-4 text-right">
+                  {!showArchived && onExport && (
+                    <button
+                      type="button"
+                      title="Export to CSV"
+                      aria-label="Export filtered clients to CSV"
+                      onClick={onExport}
+                      className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+                        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+                      </svg>
+                    </button>
+                  )}
                 </th>
               </tr>
             </thead>
@@ -398,7 +426,7 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
                   <td className="px-5 py-3.5">
                     <StatusBadge status={client.status} />
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="w-10 py-3.5 pr-4 text-right">
                     {showArchived ? (
                       /* Restore button */
                       <button
@@ -411,14 +439,16 @@ export default function ClientList({ onEdit, externalDocs, externalLoading, onDo
                         Restore
                       </button>
                     ) : (
-                      /* Edit button */
+                      /* Edit button — pencil icon only */
                       <button
                         type="button"
+                        title="Edit"
                         id={`btn-edit-client-${client.id}`}
                         onClick={() => onEdit(client)}
-                        className="rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
+                        aria-label={`Edit ${client.first_name} ${client.last_name}`}
+                        className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                       >
-                        Edit
+                        <IconPencil />
                       </button>
                     )}
                   </td>

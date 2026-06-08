@@ -2,19 +2,40 @@
 
 import { useState, useMemo } from "react";
 import { useEffect } from "react";
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import ClientList, {
-  type ClientDoc,
-} from "@/components/clients/ClientList";
+import ClientList, { type ClientDoc } from "@/components/clients/ClientList";
 import ClientMetrics from "@/components/clients/ClientMetrics";
 import WizardController from "@/components/clients/RegistrationWizard/WizardController";
 import ClientProfileDashboard from "@/components/clients/ClientProfileDashboard";
+
+// ─── Inline icon helpers ─────────────────────────────────────────────────────────────
+
+
+
+function IconPlus({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+    </svg>
+  );
+}
+
+function IconArrowLeft({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true">
+      <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function IconChevronDown({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true">
+      <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+    </svg>
+  );
+}
 
 type View = "list" | "form" | "dashboard";
 
@@ -47,8 +68,10 @@ function exportToCSV(rows: ClientDoc[]): void {
         escaped(c.phone),
         escaped(c.status),
         // Force Excel to treat the passport as a literal text string using ="value"
-        c.passport_id ? `="${String(c.passport_id).replace(/"/g, '""')}"` : '""',
-      ].join(",")
+        c.passport_id
+          ? `="${String(c.passport_id).replace(/"/g, '""')}"`
+          : '""',
+      ].join(","),
     ),
   ];
 
@@ -79,7 +102,9 @@ export default function ClientsPage() {
 
   // ── Search & filter state ─────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "interested" | "draft">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "registered" | "interested" | "draft"
+  >("all");
 
   // ── Shared Firestore snapshot ─────────────────────────────────────────
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
@@ -100,7 +125,7 @@ export default function ClientsPage() {
       (error) => {
         console.error("[ClientsPage] onSnapshot error:", error);
         setIsLoading(false);
-      }
+      },
     );
     return unsubscribe;
   }, []);
@@ -112,7 +137,8 @@ export default function ClientsPage() {
     return allDocs.filter((client) => {
       // ── Status gate ──────────────────────────────────────────────────
       // "all" → no gate; otherwise match client.status exactly.
-      if (statusFilter !== "all" && client.status !== statusFilter) return false;
+      if (statusFilter !== "all" && client.status !== statusFilter)
+        return false;
       // statusFilter === "all" → no status gate
 
       // ── Search gate ──────────────────────────────────────────────────
@@ -129,7 +155,9 @@ export default function ClientsPage() {
     });
   }, [allDocs, searchQuery, statusFilter]);
 
-  // ── Actions ────────────────────────────────────────────────────────────
+  const [showArchived, setShowArchived] = useState(false);
+
+  // ── Actions ────────────────────────────────────────────────────────────────
 
   function handleAddNew() {
     setEditingClient(null);
@@ -149,77 +177,65 @@ export default function ClientsPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className={["mx-auto", view === "dashboard" ? "max-w-5xl" : "max-w-4xl"].join(" ")}>
+      <div
+        className={[
+          "mx-auto",
+          view === "dashboard" ? "max-w-5xl" : "max-w-5xl",
+        ].join(" ")}
+      >
         {/* ── Header bar (hidden when dashboard is showing) ── */}
         {view !== "dashboard" && (
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+            {/* Left: Page title */}
             <h1 className="text-2xl font-bold text-slate-800">
-              {view === "list" ? "Client Management" : editingClient ? "Edit Client" : "New Client"}
+              {view === "list"
+                ? "Client Management"
+                : editingClient
+                  ? "Edit Client"
+                  : "New Client"}
             </h1>
 
-            <div className="flex items-center gap-3">
-              {/* Analytics toggle — only visible on list view */}
-              {view === "list" && (
-                <button
-                  type="button"
-                  id="btn-toggle-analytics"
-                  onClick={() => setShowMetrics((prev) => !prev)}
-                  className={[
-                    "inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200",
-                    showMetrics
-                      ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-                  ].join(" ")}
-                  aria-expanded={showMetrics}
-                  aria-controls="client-metrics-panel"
-                >
-                  {/* Chart icon */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2ZM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6ZM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10Z" />
-                  </svg>
-                  {showMetrics ? "Hide Analytics" : "Show Analytics"}
-                </button>
-              )}
-
+            {/* Right: Action buttons */}
+            <div className="flex items-center gap-2">
               {view === "list" ? (
+                /* Add New — primary, standalone */
                 <button
                   type="button"
                   id="btn-add-new-client"
                   onClick={handleAddNew}
-                  className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1"
                 >
-                  + Add New Client
+                  <IconPlus className="h-4 w-4" />
+                  Add New Client
                 </button>
               ) : (
+                /* Back button — shown on form view */
                 <button
                   type="button"
                   id="btn-back-to-list"
                   onClick={handleBackToList}
-                  className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
                 >
-                  ← Back to List
+                  <IconArrowLeft className="h-4 w-4" />
+                  Back to List
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Action Required panel ── */}
+        {/* ── Analytics panel ── */}
         {view === "list" && showMetrics && (
-          <div id="client-metrics-panel">
+          <div id="client-metrics-panel" className="mb-6">
             <ClientMetrics clients={allDocs} onOpenClient={handleEdit} />
           </div>
         )}
 
-        {/* ── Search & Filter bar ── */}
+        {/* NOTE: The archived mode banner is rendered inside <ClientList> — not here — to avoid duplication. */}
+
+        {/* ── Global control bar (search + status filter + utility actions) ── */}
         {view === "list" && (
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search input */}
             <div className="relative flex-1">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
@@ -248,13 +264,13 @@ export default function ClientsPage() {
             </div>
 
             {/* Journey-status dropdown */}
-            <div className="relative sm:w-44">
+            <div className="relative sm:w-48">
               <select
                 id="select-client-status-filter"
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(
-                    e.target.value as "all" | "registered" | "interested" | "draft"
+                    e.target.value as "all" | "registered" | "interested" | "draft",
                   )
                 }
                 className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2.5 pl-4 pr-9 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
@@ -264,21 +280,8 @@ export default function ClientsPage() {
                 <option value="interested">Interested</option>
                 <option value="draft">Draft</option>
               </select>
-              {/* Chevron icon */}
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-4 w-4"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <IconChevronDown className="h-4 w-4" />
               </span>
             </div>
 
@@ -289,28 +292,28 @@ export default function ClientsPage() {
               </span>
             )}
 
-            {/* Export to CSV button */}
-            <button
-              type="button"
-              id="btn-export-csv"
-              onClick={() => exportToCSV(filteredClients)}
-              disabled={filteredClients.length === 0}
-              aria-label="Export filtered clients to CSV"
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {/* Download arrow icon */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-4 w-4 text-slate-500"
-                aria-hidden="true"
+            {/* Spacer pushes the analytics toggle to the right */}
+            <div className="sm:ml-auto">
+              {/* Analytics toggle — subtle icon+text */}
+              <button
+                type="button"
+                id="btn-toggle-analytics"
+                onClick={() => setShowMetrics((prev) => !prev)}
+                aria-expanded={showMetrics}
+                aria-controls="client-metrics-panel"
+                className={[
+                  "inline-flex items-center gap-1 text-xs font-medium transition-colors focus:outline-none",
+                  showMetrics
+                    ? "text-indigo-600 hover:text-indigo-800"
+                    : "text-slate-400 hover:text-slate-600",
+                ].join(" ")}
               >
-                <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
-                <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
-              </svg>
-              Export CSV
-            </button>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2ZM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6ZM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10Z" />
+                </svg>
+                {showMetrics ? "Hide Analytics" : "Analytics"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -320,6 +323,9 @@ export default function ClientsPage() {
             onEdit={handleEdit}
             externalDocs={filteredClients}
             externalLoading={isLoading}
+            showArchived={showArchived}
+            onToggleArchived={() => setShowArchived((prev) => !prev)}
+            onExport={() => exportToCSV(filteredClients)}
           />
         ) : view === "dashboard" && editingClient ? (
           <ClientProfileDashboard
