@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+import { toast } from "sonner";
 import type { ClientDoc } from "@/components/clients/ClientList";
-import ClientProgressBanner from "@/components/clients/ClientProgressBanner";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
@@ -86,9 +88,52 @@ export default function ClientProfileDashboard({
 }: ClientProfileDashboardProps) {
   const [activeTab, setActiveTab]   = useState<TabId>("profile");
   const [isEditable, setIsEditable] = useState(false);
+  
+  // Manage local archive state so we can immediately drop the lock upon restore
+  const [localIsArchived, setLocalIsArchived] = useState(client.is_archived === true);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const isArchived = localIsArchived;
+
+  async function handleRestore() {
+    setIsRestoring(true);
+    try {
+      const docRef = doc(db, "clients", client.id);
+      await updateDoc(docRef, {
+        is_archived: false,
+        updated_at: serverTimestamp(),
+      });
+      toast.success(`${client.first_name} ${client.last_name} has been restored to active clients.`);
+      setLocalIsArchived(false);
+    } catch (err) {
+      console.error("[ClientProfileDashboard] Restore failed:", err);
+      toast.error("Failed to restore client. Please check your connection and try again.");
+    } finally {
+      setIsRestoring(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
+      {/* ── Archive Banner ── */}
+      {isArchived && (
+        <div className="mb-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-medium text-amber-800">
+              ⚠️ This client is archived. You are viewing this profile in Read-Only mode.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={isRestoring}
+            className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isRestoring ? "Restoring..." : "Restore Client"}
+          </button>
+        </div>
+      )}
+
       {/* ── Back button, title, and Edit/View toggle ── */}
       <div className="mb-6 flex flex-col items-start">
         <button
@@ -113,17 +158,20 @@ export default function ClientProfileDashboard({
           <button
             type="button"
             id="btn-toggle-edit-mode"
+            disabled={isArchived}
             onClick={() => setIsEditable((prev) => !prev)}
-            aria-pressed={isEditable}
+            aria-pressed={isEditable && !isArchived}
             className={[
               "inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
               "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
-              isEditable
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
-                : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
+              isArchived
+                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
+                : isEditable
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
+                  : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
             ].join(" ")}
           >
-            {isEditable ? (
+            {isEditable && !isArchived ? (
               <>
                 <IconLock />
                 Lock Editing
@@ -136,11 +184,6 @@ export default function ClientProfileDashboard({
             )}
           </button>
         </div>
-      </div>
-
-      {/* ── Progress Banner ── */}
-      <div className="mb-6">
-        <ClientProgressBanner client={client} />
       </div>
 
       {/* ── Tab bar ── */}
@@ -176,20 +219,22 @@ export default function ClientProfileDashboard({
       </nav>
 
       {/* ── Tab panels ── */}
-      <div
-        role="tabpanel"
-        id={`tabpanel-${activeTab}`}
-        aria-labelledby={`tab-${activeTab}`}
-      >
-        {activeTab === "profile"       && <ProfileTab      client={client} isEditable={isEditable} onBack={onBack} />}
-        {activeTab === "medical"       && <MedicalTab       client={client} isEditable={isEditable} />}
-        {activeTab === "contacts"      && <ContactsTab      client={client} isEditable={isEditable} />}
-        {activeTab === "logistics"     && <LogisticsTab     client={client} isEditable={isEditable} />}
-        {activeTab === "questionnaire" && <QuestionnaireTab client={client} isEditable={isEditable} />}
-        {activeTab === "legal"         && <LegalConsentsTab client={client} isEditable={isEditable} />}
-        {activeTab === "documents"     && <DocumentsTab     client={client} />}
-        {activeTab === "financial"     && <FinancialAidTab  client={client} isEditable={isEditable} />}
-      </div>
+      <fieldset disabled={isArchived} className="min-w-0">
+        <div
+          role="tabpanel"
+          id={`tabpanel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+        >
+          {activeTab === "profile"       && <ProfileTab      client={client} isEditable={isArchived ? false : isEditable} onBack={onBack} />}
+          {activeTab === "medical"       && <MedicalTab       client={client} isEditable={isArchived ? false : isEditable} />}
+          {activeTab === "contacts"      && <ContactsTab      client={client} isEditable={isArchived ? false : isEditable} />}
+          {activeTab === "logistics"     && <LogisticsTab     client={client} isEditable={isArchived ? false : isEditable} />}
+          {activeTab === "questionnaire" && <QuestionnaireTab client={client} isEditable={isArchived ? false : isEditable} />}
+          {activeTab === "legal"         && <LegalConsentsTab client={client} isEditable={isArchived ? false : isEditable} />}
+          {activeTab === "documents"     && <DocumentsTab     client={client} />}
+          {activeTab === "financial"     && <FinancialAidTab  client={client} isEditable={isArchived ? false : isEditable} />}
+        </div>
+      </fieldset>
     </div>
   );
 }
