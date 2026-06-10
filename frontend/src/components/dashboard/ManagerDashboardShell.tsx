@@ -31,6 +31,21 @@ interface Prospect extends z.infer<typeof prospectSchema> {
   id: string;
 }
 
+const dashboardEventSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  status: z.literal("scheduled"),
+  clientName: z.string().trim().max(200).optional().or(z.literal("")),
+  is_archived: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+
+interface DashboardEvent extends z.infer<typeof dashboardEventSchema> {
+  id: string;
+  scheduledAt: Date;
+}
+
 function formatDate(timestamp?: Timestamp) {
   if (!timestamp) {
     return "Not available";
@@ -39,6 +54,19 @@ function formatDate(timestamp?: Timestamp) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
   }).format(timestamp.toDate());
+}
+
+function parseEventDateTime(date: string, time: string) {
+  const scheduledAt = new Date(`${date}T${time}`);
+
+  return Number.isNaN(scheduledAt.getTime()) ? null : scheduledAt;
+}
+
+function formatMeetingDateTime(scheduledAt: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(scheduledAt);
 }
 
 function ProspectsLoadingState() {
@@ -118,14 +146,116 @@ function PlaceholderSummaryCard({
   );
 }
 
+interface UpcomingMeetingsCardProps {
+  meetings: DashboardEvent[];
+  isLoading: boolean;
+  errorMessage: string;
+}
+
+/**
+ * Renders the dashboard-safe meeting projection without exposing notes,
+ * reminder settings, calendar identifiers, or other event metadata.
+ */
+function UpcomingMeetingsCard({
+  meetings,
+  isLoading,
+  errorMessage,
+}: UpcomingMeetingsCardProps) {
+  const nextMeetings = meetings.slice(0, 3);
+
+  return (
+    <section
+      className="flex min-h-56 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      aria-labelledby="upcoming-meetings-title"
+    >
+      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+        <p className="text-sm font-semibold text-violet-700">
+          Upcoming meetings
+        </p>
+        <h2
+          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
+          id="upcoming-meetings-title"
+        >
+          {isLoading || errorMessage ? "..." : meetings.length}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {meetings.length === 1
+            ? "scheduled meeting is coming up"
+            : "scheduled meetings are coming up"}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3 px-5 py-6 sm:px-6" role="status">
+          {[0, 1, 2].map((item) => (
+            <div
+              className="h-12 animate-pulse rounded-lg bg-slate-100"
+              key={item}
+            />
+          ))}
+          <span className="sr-only">Loading upcoming meetings...</span>
+        </div>
+      ) : errorMessage ? (
+        <div className="px-5 py-8 sm:px-6">
+          <p className="text-sm font-semibold text-red-700" role="alert">
+            {errorMessage}
+          </p>
+        </div>
+      ) : meetings.length === 0 ? (
+        <div className="px-5 py-8 sm:px-6">
+          <p className="text-sm font-semibold text-slate-700">
+            No upcoming meetings
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Scheduled meetings will appear here automatically.
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100 px-5 sm:px-6">
+          {nextMeetings.map((meeting) => (
+            <li className="py-3.5" key={meeting.id}>
+              <p className="truncate font-semibold text-slate-900" dir="auto">
+                {meeting.title}
+              </p>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                {formatMeetingDateTime(meeting.scheduledAt)}
+              </p>
+              {meeting.clientName && (
+                <p className="mt-1 truncate text-xs text-slate-500" dir="auto">
+                  Participant: {meeting.clientName}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+        <Link
+          className="inline-flex items-center text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          href="/events"
+        >
+          Open events
+          <span className="ml-2" aria-hidden="true">
+            -&gt;
+          </span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 /**
  * Manager dashboard view for the onboarding team.
- * Subscribes only to interested client records and exposes display fields.
+ * Subscribes to interested prospects and upcoming scheduled meetings.
  */
 export default function ManagerDashboardShell() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [meetings, setMeetings] = useState<DashboardEvent[]>([]);
+  const [isLoadingMeetings, setIsLoadingMeetings] = useState(true);
+  const [meetingsErrorMessage, setMeetingsErrorMessage] = useState("");
   const newestProspects = prospects.slice(0, 3);
 
   useEffect(() => {
@@ -169,6 +299,66 @@ export default function ManagerDashboardShell() {
           "We could not load interested prospects. Please refresh and try again.",
         );
         setIsLoading(false);
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    // Subscribe to the existing collection without compound query predicates,
+    // then apply the legacy string date/time contract defensively in memory.
+    return onSnapshot(
+      collection(db, "events"),
+      (snapshot) => {
+        const now = new Date();
+        const nextMeetings = snapshot.docs
+          .map((eventDocument) => {
+            const parsedEvent = dashboardEventSchema.safeParse(
+              eventDocument.data(),
+            );
+
+            if (!parsedEvent.success) {
+              return null;
+            }
+
+            const scheduledAt = parseEventDateTime(
+              parsedEvent.data.date,
+              parsedEvent.data.time,
+            );
+
+            if (
+              !scheduledAt ||
+              scheduledAt <= now ||
+              parsedEvent.data.is_archived === true ||
+              parsedEvent.data.archived === true
+            ) {
+              return null;
+            }
+
+            return {
+              id: eventDocument.id,
+              ...parsedEvent.data,
+              scheduledAt,
+            };
+          })
+          .filter(
+            (meeting): meeting is DashboardEvent => meeting !== null,
+          )
+          .sort(
+            (firstMeeting, secondMeeting) =>
+              firstMeeting.scheduledAt.getTime() -
+              secondMeeting.scheduledAt.getTime(),
+          );
+
+        setMeetings(nextMeetings);
+        setMeetingsErrorMessage("");
+        setIsLoadingMeetings(false);
+      },
+      () => {
+        setMeetings([]);
+        setMeetingsErrorMessage(
+          "We could not load upcoming meetings. Please refresh and try again.",
+        );
+        setIsLoadingMeetings(false);
       },
     );
   }, []);
@@ -283,15 +473,12 @@ export default function ManagerDashboardShell() {
             )}
           </section>
 
-          {/* These cards are intentionally presentation-only until integrations are supplied. */}
-          <PlaceholderSummaryCard
-            accentClassName="bg-violet-500"
-            description="Keep the next staff and participant conversations in view."
-            emptyState="Meeting data is not connected yet."
-            href="/events"
-            linkLabel="Open events"
-            title="Upcoming Meetings"
+          <UpcomingMeetingsCard
+            errorMessage={meetingsErrorMessage}
+            isLoading={isLoadingMeetings}
+            meetings={meetings}
           />
+          {/* These cards remain presentation-only until integrations are supplied. */}
           <PlaceholderSummaryCard
             accentClassName="bg-emerald-500"
             description="Monitor programs currently moving through onboarding."
