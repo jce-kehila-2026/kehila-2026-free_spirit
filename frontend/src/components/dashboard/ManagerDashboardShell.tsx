@@ -146,6 +146,33 @@ function ProspectsLoadingState() {
   );
 }
 
+interface DashboardCardCtaProps {
+  href: string;
+  label: string;
+}
+
+/**
+ * Keeps dashboard navigation actions visually and positionally consistent.
+ */
+function DashboardCardCta({ href, label }: DashboardCardCtaProps) {
+  return (
+    <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+      <Link
+        className="group inline-flex items-center rounded-sm text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+        href={href}
+      >
+        {label}
+        <span
+          className="ml-2 transition-transform group-hover:translate-x-0.5"
+          aria-hidden="true"
+        >
+          →
+        </span>
+      </Link>
+    </div>
+  );
+}
+
 interface PlaceholderSummaryCardProps {
   title: string;
   description: string;
@@ -172,35 +199,34 @@ function PlaceholderSummaryCard({
   return (
     <section
       className={[
-        "flex min-h-56 flex-col rounded-xl border bg-white p-5 shadow-sm sm:p-6",
+        "flex min-h-56 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md",
         emphasized
           ? "border-blue-200 ring-1 ring-blue-100"
           : "border-slate-200",
       ].join(" ")}
     >
-      <div
-        className={`mb-5 h-1.5 w-12 rounded-full ${accentClassName}`}
-        aria-hidden="true"
-      />
-      <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className={`mt-2 h-1.5 w-12 rounded-full ${accentClassName}`}
+            aria-hidden="true"
+          />
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+            Integration pending
+          </span>
+        </div>
+        <h2 className="mt-5 text-lg font-bold text-slate-900">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
 
-      <div className="mt-auto pt-6">
-        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
-          {emptyState}
-        </p>
-        {href && linkLabel && (
-          <Link
-            className="mt-4 inline-flex items-center text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
-            href={href}
-          >
-            {linkLabel}
-            <span className="ml-2" aria-hidden="true">
-              -&gt;
-            </span>
-          </Link>
-        )}
+        <div className="mt-auto pt-6">
+          <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+            {emptyState}
+          </p>
+        </div>
       </div>
+      {href && linkLabel && (
+        <DashboardCardCta href={href} label={linkLabel} />
+      )}
     </section>
   );
 }
@@ -224,19 +250,21 @@ function UpcomingMeetingsCard({
 
   return (
     <section
-      className="flex min-h-56 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      className="flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
       aria-labelledby="upcoming-meetings-title"
     >
       <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
-        <p className="text-sm font-semibold text-violet-700">
-          Upcoming meetings
-        </p>
         <h2
-          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
+          className="text-sm font-semibold text-violet-700"
           id="upcoming-meetings-title"
         >
-          {isLoading || errorMessage ? "..." : meetings.length}
+          Upcoming meetings
         </h2>
+        <p
+          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
+        >
+          {isLoading || errorMessage ? "..." : meetings.length}
+        </p>
         <p className="mt-1 text-sm text-slate-500">
           {meetings.length === 1
             ? "scheduled meeting is coming up"
@@ -289,17 +317,7 @@ function UpcomingMeetingsCard({
         </ul>
       )}
 
-      <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
-        <Link
-          className="inline-flex items-center text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
-          href="/events"
-        >
-          Open events
-          <span className="ml-2" aria-hidden="true">
-            -&gt;
-          </span>
-        </Link>
-      </div>
+      <DashboardCardCta href="/events" label="Open events" />
     </section>
   );
 }
@@ -321,7 +339,7 @@ function ClientOverviewCard({
 }: ClientOverviewCardProps) {
   return (
     <section
-      className="flex min-h-56 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      className="flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
       aria-labelledby="client-overview-title"
     >
       <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
@@ -368,30 +386,30 @@ function ClientOverviewCard({
         </div>
       ) : (
         <div className="px-5 py-5 sm:px-6">
-          <dl className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-lg bg-red-50 px-2 py-3">
-              <dd className="text-xl font-bold text-red-700">
-                {overview.incompleteProfileCount}
-              </dd>
-              <dt className="mt-1 text-xs font-medium text-red-700">
+          <dl className="grid gap-2 text-center sm:grid-cols-3">
+            <div className="flex min-h-24 flex-col rounded-xl bg-red-50 px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-red-700">
                 Incomplete profiles
               </dt>
-            </div>
-            <div className="rounded-lg bg-amber-50 px-2 py-3">
-              <dd className="text-xl font-bold text-amber-700">
-                {overview.missingActiveDocumentsCount}
+              <dd className="mt-auto pt-2 text-xl font-bold text-red-700">
+                {overview.incompleteProfileCount}
               </dd>
-              <dt className="mt-1 text-xs font-medium text-amber-700">
+            </div>
+            <div className="flex min-h-24 flex-col rounded-xl bg-amber-50 px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-amber-700">
                 No active documents
               </dt>
-            </div>
-            <div className="rounded-lg bg-blue-50 px-2 py-3">
-              <dd className="text-xl font-bold text-blue-700">
-                {overview.medicalAttentionCount}
+              <dd className="mt-auto pt-2 text-xl font-bold text-amber-700">
+                {overview.missingActiveDocumentsCount}
               </dd>
-              <dt className="mt-1 text-xs font-medium text-blue-700">
+            </div>
+            <div className="flex min-h-24 flex-col rounded-xl bg-blue-50 px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-blue-700">
                 Health review
               </dt>
+              <dd className="mt-auto pt-2 text-xl font-bold text-blue-700">
+                {overview.medicalAttentionCount}
+              </dd>
             </div>
           </dl>
 
@@ -424,17 +442,7 @@ function ClientOverviewCard({
         </div>
       )}
 
-      <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
-        <Link
-          className="inline-flex items-center text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
-          href="/clients"
-        >
-          Review clients
-          <span className="ml-2" aria-hidden="true">
-            -&gt;
-          </span>
-        </Link>
-      </div>
+      <DashboardCardCta href="/clients" label="Review clients" />
     </section>
   );
 }
@@ -656,10 +664,13 @@ export default function ManagerDashboardShell() {
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">
+            Onboarding control center
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
             Manager Onboarding Dashboard
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
             See what needs attention across your onboarding workflow.
           </p>
         </header>
@@ -674,20 +685,22 @@ export default function ManagerDashboardShell() {
           />
 
           <section
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:col-span-2"
+            className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2"
             aria-labelledby="prospects-summary-title"
           >
             <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
-              <p className="text-sm font-semibold text-amber-700">
+              <h2
+                className="text-sm font-semibold text-amber-700"
+                id="prospects-summary-title"
+              >
                 Interested prospects
-              </p>
+              </h2>
               <div>
-                <h2
+                <p
                   className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
-                  id="prospects-summary-title"
                 >
                   {isLoading || errorMessage ? "..." : prospects.length}
-                </h2>
+                </p>
                 <p className="mt-1 text-sm text-slate-500">
                   {prospects.length === 1
                     ? "contact is waiting for follow-up"
@@ -714,7 +727,7 @@ export default function ManagerDashboardShell() {
                 </p>
               </div>
             ) : (
-              <div>
+              <div className="flex-1">
                 <div className="px-5 pt-5 sm:px-6">
                   <h3 className="text-sm font-bold text-slate-900">
                     Newest prospects
@@ -748,18 +761,10 @@ export default function ManagerDashboardShell() {
                     </li>
                   ))}
                 </ul>
-
-                <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
-                  {/* Replace this interim destination when a prospects-only route exists. */}
-                  <Link
-                    className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
-                    href="/clients"
-                  >
-                    Review prospects
-                  </Link>
-                </div>
               </div>
             )}
+            {/* Replace this interim destination when a prospects-only route exists. */}
+            <DashboardCardCta href="/clients" label="Review prospects" />
           </section>
 
           <UpcomingMeetingsCard
