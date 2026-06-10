@@ -12,7 +12,12 @@ import {
 import { z } from "zod";
 
 import { db } from "@/firebase/firebase";
-import { basicInfoSchema } from "@/schemas/clientSchema";
+import {
+  basicInfoSchema,
+  CLIENT_STATUS,
+  DOCUMENT_STATUS_OPTIONS,
+  MEDICAL_CLEARANCE_STATUS,
+} from "@/schemas/clientSchema";
 
 const prospectSchema = basicInfoSchema
   .pick({
@@ -45,6 +50,60 @@ interface DashboardEvent extends z.infer<typeof dashboardEventSchema> {
   id: string;
   scheduledAt: Date;
 }
+
+const optionalDashboardString = z.string().trim().max(500).optional().or(z.literal(""));
+
+const dashboardClientSchema = z.object({
+  first_name: z.string().trim().min(1).max(50),
+  last_name: z.string().trim().min(1).max(50),
+  status: z.enum(CLIENT_STATUS),
+  is_archived: z.boolean().optional(),
+  dob: optionalDashboardString,
+  phone: optionalDashboardString,
+  passport_id: optionalDashboardString,
+  passport_number: optionalDashboardString,
+  client_documents: z
+    .array(
+      z.object({
+        status: z.enum(DOCUMENT_STATUS_OPTIONS),
+      }).passthrough(),
+    )
+    .optional(),
+  medical_profile: z
+    .object({
+      medical_clearance_status: z
+        .enum(MEDICAL_CLEARANCE_STATUS)
+        .optional()
+        .or(z.literal("")),
+      insurance_company: optionalDashboardString,
+      medications: optionalDashboardString,
+      allergies: optionalDashboardString,
+      healthcare_providers: z.array(z.unknown()).optional(),
+    })
+    .optional(),
+});
+
+interface DashboardClientAttention {
+  id: string;
+  name: string;
+  gaps: string[];
+}
+
+interface ClientOverview {
+  registeredCount: number;
+  incompleteProfileCount: number;
+  missingActiveDocumentsCount: number;
+  medicalAttentionCount: number;
+  attentionClients: DashboardClientAttention[];
+}
+
+const emptyClientOverview: ClientOverview = {
+  registeredCount: 0,
+  incompleteProfileCount: 0,
+  missingActiveDocumentsCount: 0,
+  medicalAttentionCount: 0,
+  attentionClients: [],
+};
 
 function formatDate(timestamp?: Timestamp) {
   if (!timestamp) {
@@ -245,9 +304,144 @@ function UpcomingMeetingsCard({
   );
 }
 
+interface ClientOverviewCardProps {
+  overview: ClientOverview;
+  isLoading: boolean;
+  errorMessage: string;
+}
+
+/**
+ * Shows aggregate onboarding gaps and minimal client identifiers only.
+ * Medical, legal, document, and contact details never enter component state.
+ */
+function ClientOverviewCard({
+  overview,
+  isLoading,
+  errorMessage,
+}: ClientOverviewCardProps) {
+  return (
+    <section
+      className="flex min-h-56 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      aria-labelledby="client-overview-title"
+    >
+      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+        <h2
+          className="text-sm font-semibold text-amber-700"
+          id="client-overview-title"
+        >
+          Client Overview &amp; Missing Items
+        </h2>
+        <p
+          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
+        >
+          {isLoading || errorMessage ? "..." : overview.registeredCount}
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          active registered clients
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3 px-5 py-6 sm:px-6" role="status">
+          {[0, 1, 2].map((item) => (
+            <div
+              className="h-10 animate-pulse rounded-lg bg-slate-100"
+              key={item}
+            />
+          ))}
+          <span className="sr-only">Loading client overview...</span>
+        </div>
+      ) : errorMessage ? (
+        <div className="px-5 py-8 sm:px-6">
+          <p className="text-sm font-semibold text-red-700" role="alert">
+            {errorMessage}
+          </p>
+        </div>
+      ) : overview.registeredCount === 0 ? (
+        <div className="px-5 py-8 sm:px-6">
+          <p className="text-sm font-semibold text-slate-700">
+            No active registered clients
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Client onboarding summaries will appear here automatically.
+          </p>
+        </div>
+      ) : (
+        <div className="px-5 py-5 sm:px-6">
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-red-50 px-2 py-3">
+              <dd className="text-xl font-bold text-red-700">
+                {overview.incompleteProfileCount}
+              </dd>
+              <dt className="mt-1 text-xs font-medium text-red-700">
+                Incomplete profiles
+              </dt>
+            </div>
+            <div className="rounded-lg bg-amber-50 px-2 py-3">
+              <dd className="text-xl font-bold text-amber-700">
+                {overview.missingActiveDocumentsCount}
+              </dd>
+              <dt className="mt-1 text-xs font-medium text-amber-700">
+                No active documents
+              </dt>
+            </div>
+            <div className="rounded-lg bg-blue-50 px-2 py-3">
+              <dd className="text-xl font-bold text-blue-700">
+                {overview.medicalAttentionCount}
+              </dd>
+              <dt className="mt-1 text-xs font-medium text-blue-700">
+                Health review
+              </dt>
+            </div>
+          </dl>
+
+          {overview.attentionClients.length === 0 ? (
+            <p className="mt-5 text-sm font-medium text-emerald-700">
+              No onboarding gaps require attention.
+            </p>
+          ) : (
+            <div className="mt-5">
+              <h3 className="text-sm font-bold text-slate-900">
+                Needs attention
+              </h3>
+              <ul className="mt-2 divide-y divide-slate-100">
+                {overview.attentionClients.map((client) => (
+                  <li className="py-2.5" key={client.id}>
+                    <p
+                      className="truncate text-sm font-semibold text-slate-800"
+                      dir="auto"
+                    >
+                      {client.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {client.gaps.join(", ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+        <Link
+          className="inline-flex items-center text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          href="/clients"
+        >
+          Review clients
+          <span className="ml-2" aria-hidden="true">
+            -&gt;
+          </span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 /**
  * Manager dashboard view for the onboarding team.
- * Subscribes to interested prospects and upcoming scheduled meetings.
+ * Subscribes to prospects, meetings, and aggregate client onboarding signals.
  */
 export default function ManagerDashboardShell() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -256,6 +450,11 @@ export default function ManagerDashboardShell() {
   const [meetings, setMeetings] = useState<DashboardEvent[]>([]);
   const [isLoadingMeetings, setIsLoadingMeetings] = useState(true);
   const [meetingsErrorMessage, setMeetingsErrorMessage] = useState("");
+  const [clientOverview, setClientOverview] =
+    useState<ClientOverview>(emptyClientOverview);
+  const [isLoadingClientOverview, setIsLoadingClientOverview] = useState(true);
+  const [clientOverviewErrorMessage, setClientOverviewErrorMessage] =
+    useState("");
   const newestProspects = prospects.slice(0, 3);
 
   useEffect(() => {
@@ -299,6 +498,96 @@ export default function ManagerDashboardShell() {
           "We could not load interested prospects. Please refresh and try again.",
         );
         setIsLoading(false);
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    return onSnapshot(
+      collection(db, "clients"),
+      (snapshot) => {
+        let registeredCount = 0;
+        let incompleteProfileCount = 0;
+        let missingActiveDocumentsCount = 0;
+        let medicalAttentionCount = 0;
+        const attentionClients: DashboardClientAttention[] = [];
+
+        snapshot.docs.forEach((clientDocument) => {
+          const parsedClient = dashboardClientSchema.safeParse(
+            clientDocument.data(),
+          );
+
+          if (
+            !parsedClient.success ||
+            parsedClient.data.is_archived === true ||
+            parsedClient.data.status !== "registered"
+          ) {
+            return;
+          }
+
+          registeredCount += 1;
+
+          const client = parsedClient.data;
+          const gaps: string[] = [];
+          const hasIncompleteProfile =
+            !client.dob ||
+            !client.phone ||
+            (!client.passport_id && !client.passport_number);
+          const hasActiveDocument = client.client_documents?.some(
+            (document) => document.status === "active",
+          );
+          const needsMedicalAttention =
+            client.medical_profile?.medical_clearance_status !== "approved" ||
+            !client.medical_profile?.insurance_company ||
+            !client.medical_profile?.medications ||
+            !client.medical_profile?.allergies ||
+            !client.medical_profile?.healthcare_providers?.length;
+
+          if (hasIncompleteProfile) {
+            incompleteProfileCount += 1;
+            gaps.push("Incomplete profile");
+          }
+
+          if (!hasActiveDocument) {
+            missingActiveDocumentsCount += 1;
+            gaps.push("No active documents");
+          }
+
+          if (needsMedicalAttention) {
+            medicalAttentionCount += 1;
+            gaps.push("Health review");
+          }
+
+          if (gaps.length > 0) {
+            attentionClients.push({
+              id: clientDocument.id,
+              name: `${client.first_name} ${client.last_name}`,
+              gaps,
+            });
+          }
+        });
+
+        setClientOverview({
+          registeredCount,
+          incompleteProfileCount,
+          missingActiveDocumentsCount,
+          medicalAttentionCount,
+          attentionClients: attentionClients
+            .sort(
+              (firstClient, secondClient) =>
+                secondClient.gaps.length - firstClient.gaps.length,
+            )
+            .slice(0, 3),
+        });
+        setClientOverviewErrorMessage("");
+        setIsLoadingClientOverview(false);
+      },
+      () => {
+        setClientOverview(emptyClientOverview);
+        setClientOverviewErrorMessage(
+          "We could not load the client overview. Please refresh and try again.",
+        );
+        setIsLoadingClientOverview(false);
       },
     );
   }, []);
@@ -487,13 +776,10 @@ export default function ManagerDashboardShell() {
             linkLabel="Manage programs"
             title="Active Programs"
           />
-          <PlaceholderSummaryCard
-            accentClassName="bg-amber-500"
-            description="Review client progress and identify missing onboarding items."
-            emptyState="Missing-item summaries are not connected yet."
-            href="/clients"
-            linkLabel="Review clients"
-            title="Client Overview & Missing Items"
+          <ClientOverviewCard
+            errorMessage={clientOverviewErrorMessage}
+            isLoading={isLoadingClientOverview}
+            overview={clientOverview}
           />
         </div>
       </div>
