@@ -16,22 +16,24 @@ export const navigationLinks = [
 ];
 // Function to filter navigation links based on user authentication status and role
 export const getVisibleLinks = (links, currentUser, userRole) =>
-  links.filter((link) => {
-    if (link.visibility === "guest") {
-      return !currentUser;
-    }
+  links
+    .filter((link) => link.href !== "/manage-programs") // שורה זו מסננת את הכפתור מסרגל הכלים לחלוטין (מכל מקור)
+    .filter((link) => {
+      if (link.visibility === "guest") {
+        return !currentUser;
+      }
 
-    if (link.visibility === "authenticated" && !currentUser) {
-      return false;
-    }
+      if (link.visibility === "authenticated" && !currentUser) {
+        return false;
+      }
 
-    // Authenticated links without allowedRoles are visible to every signed-in user.
-    if (!link.allowedRoles || link.allowedRoles.length === 0) {
-      return Boolean(currentUser);
-    }
+      // Authenticated links without allowedRoles are visible to every signed-in user.
+      if (!link.allowedRoles || link.allowedRoles.length === 0) {
+        return Boolean(currentUser);
+      }
 
-    return link.allowedRoles.includes(userRole);
-  });
+      return link.allowedRoles.includes(userRole);
+    });
 // Function to check if a user can access a specific path based on their role and the defined navigation links
 const getRoutePolicy = (pathname) =>
   navigationLinks.find(

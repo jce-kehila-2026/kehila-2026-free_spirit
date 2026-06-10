@@ -4,7 +4,7 @@ import { collection, getDocs, doc, setDoc, Timestamp } from "firebase/firestore"
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import styles from "./ManagePrograms.module.css";
 
-export default function ManagePrograms() {
+export default function ManagePrograms({ onSuccess }) {
   const DEFAULT_BATCH = 1;
 
   // UI State
@@ -27,6 +27,14 @@ export default function ManagePrograms() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Auto-hide success message after 2 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => { setSuccess(false); }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   // GeoDB config read from env (paste your RapidAPI key into .env.local)
   const GEODB_API_KEY = process.env.NEXT_PUBLIC_GEODB_API_KEY;
@@ -282,6 +290,10 @@ export default function ManagePrograms() {
 
       setSuccess(true);
 
+      if (onSuccess) {
+        setTimeout(() => onSuccess(), 2000);
+      }
+
       
 
       // Optional: Reset form fields here if desired
@@ -295,7 +307,7 @@ export default function ManagePrograms() {
   };
 
   return (
-    <div className={styles.page}>
+    <>
       <div className={styles.form}>
         <div className={styles.header}>
           <h1 className={styles.title}>Manage Programs</h1>
@@ -303,7 +315,6 @@ export default function ManagePrograms() {
         </div>
 
         {error && <p className={styles.authError}>{error}</p>}
-        {success && <p className={styles.authError} style={{ color: '#16a34a' }}>Program successfully created!</p>}
 
         <form onSubmit={handleSubmit} noValidate>
           
@@ -479,6 +490,14 @@ export default function ManagePrograms() {
           </button>
         </form>
       </div>
-    </div>
+
+      {/* Success Popup Modal */}
+      {success && (
+        <div className={styles.successPopup}>
+          <span className={styles.successIcon}>✅</span>
+          Program successfully created!
+        </div>
+      )}
+    </>
   );
 }
