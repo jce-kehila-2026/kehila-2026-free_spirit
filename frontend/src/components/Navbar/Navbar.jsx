@@ -226,10 +226,12 @@ export default function Navbar() {
 
   );
 
-  // If Firestore dynamic navigation is available, merge it with the local static config
-  // so we still show new tabs that have not yet been added to the database.
+  // Merge Firestore-managed navigation links with the local static fallback.
+  // Dynamic links stay first, while local-only links such as Personal Area remain
+  // available until matching Firestore navigation documents are created.
   const mergeNavigationLinks = (baseLinks, dynamicLinks) => {
     const dynamicByHref = new Map(dynamicLinks.map((link) => [link.href, link]));
+
     return [
       ...dynamicLinks,
       ...baseLinks.filter((link) => !dynamicByHref.has(link.href)),
@@ -240,8 +242,13 @@ export default function Navbar() {
     isLoadingLinks || !links || links.length === 0
       ? navigationLinks
       : mergeNavigationLinks(navigationLinks, links);
-  const visibleLinks = getVisibleLinks(currentNavigationSource, currentUser, userRole);
 
+  const visibleLinks = getVisibleLinks(
+    currentNavigationSource,
+    currentUser,
+    userRole,
+  );
+  
   const getLinkClassName = (href) =>
 
     `rounded-md px-3 py-2 text-sm font-semibold transition ${
@@ -547,4 +554,3 @@ export default function Navbar() {
   );
 
 }
- 

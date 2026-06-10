@@ -8,11 +8,26 @@ export const navigationLinks = [
   { href: "/home", label: "Home", visibility: "guest" },
 
   // Authenticated-only links are visible after login.
-  { href: "/manage-programs", label: "Manage Programs", visibility: "authenticated" },
+  {
+    href: "/dashboard",
+    label: "Personal Area",
+    visibility: "authenticated",
+    allowedRoles: ["Admin", "Program Manager", "User", "Client"],
+  },
+  {
+    href: "/manage-programs",
+    label: "Manage Programs",
+    visibility: "authenticated",
+  },
   { href: "/programs", label: "Programs", visibility: "authenticated" },
 
   // Internal staff links should not be shown to regular client/user accounts.
-  { href: "/clients", label: "Clients", visibility: "authenticated", allowedRoles: ["Admin"] },
+  {
+    href: "/clients",
+    label: "Clients",
+    visibility: "authenticated",
+    allowedRoles: ["Admin"],
+  },
   {
     href: "/events",
     label: "Events & Follow-ups",
@@ -26,3 +41,42 @@ export const navigationLinks = [
     allowedRoles: ["Admin"],
   },
 ];
+
+// Function to filter navigation links based on user authentication status and role.
+export const getVisibleLinks = (links, currentUser, userRole) =>
+  links.filter((link) => {
+    if (link.visibility === "guest") {
+      return !currentUser;
+    }
+
+    if (link.visibility === "authenticated" && !currentUser) {
+      return false;
+    }
+
+    // Authenticated links without allowedRoles are visible to every signed-in user.
+    if (!link.allowedRoles || link.allowedRoles.length === 0) {
+      return Boolean(currentUser);
+    }
+
+    return link.allowedRoles.includes(userRole);
+  });
+
+// Find the route policy that applies to the provided authenticated pathname.
+const getRoutePolicy = (pathname) =>
+  navigationLinks.find(
+    (link) =>
+      link.visibility === "authenticated" &&
+      (pathname === link.href || pathname.startsWith(`${link.href}/`)),
+  );
+
+// This function can be used by route guards or protected page components to
+// prevent users without the required role from accessing restricted pages.
+export const canAccessPath = (pathname, userRole) => {
+  const routePolicy = getRoutePolicy(pathname);
+
+  if (!routePolicy?.allowedRoles || routePolicy.allowedRoles.length === 0) {
+    return true;
+  }
+
+  return routePolicy.allowedRoles.includes(userRole);
+};
