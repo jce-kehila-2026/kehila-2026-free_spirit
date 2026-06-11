@@ -15,6 +15,7 @@ import { db } from "@/firebase/firebase";
 import { toast } from "sonner";
 import { Eye } from "lucide-react";
 import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schemas/clientSchema";
+import { QuickCopy } from "@/components/ui/QuickCopy";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -632,11 +633,22 @@ export default function ClientList({
                   ].join(" ")}
                 >
                   <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-800">
-                    {client.first_name} {client.last_name}
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{client.first_name} {client.last_name}</span>
+                      <QuickCopy text={`${client.first_name} ${client.last_name}`} label="Name" />
+                    </div>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600">{client.email}</td>
+                  <td className="px-5 py-3.5 text-slate-600">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{client.email}</span>
+                      {client.email && <QuickCopy text={client.email} label="Email" />}
+                    </div>
+                  </td>
                   <td className="hidden px-5 py-3.5 text-slate-600 sm:table-cell">
-                    {client.phone}
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{client.phone}</span>
+                      {client.phone && <QuickCopy text={client.phone} label="Phone Number" />}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5">
                     <StatusBadge status={client.status} />

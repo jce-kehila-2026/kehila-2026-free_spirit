@@ -148,10 +148,8 @@ const EMPTY_DEPENDENT: Dependent = {
  * Owns its own react-hook-form instance (pre-filled from the client prop)
  * and writes directly to Firestore on "Save Changes".
  */
-export default function ProfileTab({ client, isEditable, onBack }: ProfileTabProps) {
+export default function ProfileTab({ client, isEditable}: ProfileTabProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
 
   const {
     register,
@@ -234,7 +232,7 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
   async function onSubmit(data: BasicInfoFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         ...sanitize(data as Record<string, unknown>),
         updated_at: serverTimestamp(),
@@ -245,27 +243,6 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
       toast.error("Failed to save. Please check your connection and try again.");
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  // ── Archive handler ───────────────────────────────────────────────────────
-
-  async function handleArchive() {
-    setIsArchiving(true);
-    try {
-      const docRef = doc(db, "clients", client.id);
-      await updateDoc(docRef, {
-        is_archived: true,
-        updated_at: serverTimestamp(),
-      });
-      toast.success(`${client.first_name} ${client.last_name} has been archived.`);
-      setIsArchiveModalOpen(false);
-      onBack();
-    } catch (err) {
-      console.error("[ProfileTab] Archive failed:", err);
-      toast.error("Failed to archive client. Please check your connection and try again.");
-    } finally {
-      setIsArchiving(false);
     }
   }
 
@@ -730,7 +707,7 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
           </AccordionSection>
         </div>
 
-        {/* ── Sticky footer with Save + Archive buttons (edit mode only) ── */}
+        {/* ── Sticky footer with Save button (edit mode only) ── */}
         {isEditable && (
           <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
             {isDirty ? (
@@ -740,97 +717,23 @@ export default function ProfileTab({ client, isEditable, onBack }: ProfileTabPro
             ) : (
               <p className="text-xs text-slate-400">All changes are saved.</p>
             )}
-            <div className="flex items-center gap-3">
-              {/* Archive button */}
-              <button
-                type="button"
-                id="btn-profile-archive"
-                onClick={() => setIsArchiveModalOpen(true)}
-                className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-1"
-              >
-                Archive Client
-              </button>
-              {/* Save button */}
-              <button
-                type="submit"
-                id="btn-profile-save"
-                disabled={isSaving || !isDirty}
-                className={[
-                  "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
-                  isSaving || !isDirty
-                    ? "bg-indigo-300 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700",
-                ].join(" ")}
-              >
-                {isSaving ? "Saving…" : "Save Changes"}
-              </button>
-            </div>
+            {/* Save button */}
+            <button
+              type="submit"
+              id="btn-profile-save"
+              disabled={isSaving || !isDirty}
+              className={[
+                "rounded-lg px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors",
+                isSaving || !isDirty
+                  ? "bg-indigo-300 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700",
+              ].join(" ")}
+            >
+              {isSaving ? "Saving…" : "Save Changes"}
+            </button>
           </div>
         )}
       </div>
-
-      {/* ── Archive Confirmation Modal ── */}
-      {isArchiveModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="archive-modal-title"
-        >
-          <div className="mx-4 w-full max-w-md rounded-xl bg-white p-8 shadow-2xl">
-            {/* Icon */}
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-6 w-6 text-rose-600"
-                aria-hidden="true"
-              >
-                <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
-                <path
-                  fillRule="evenodd"
-                  d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zm5.5 2.5a.5.5 0 01.5-.5h4a.5.5 0 010 1H8a.5.5 0 01-.5-.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            {/* Title */}
-            <h2
-              id="archive-modal-title"
-              className="mb-2 text-lg font-bold text-slate-800"
-            >
-              Archive this client?
-            </h2>
-            {/* Description */}
-            <p className="mb-6 text-sm leading-relaxed text-slate-500">
-              They will be removed from the main list but safely kept in the
-              database archive.
-            </p>
-            {/* Actions */}
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                id="btn-archive-cancel"
-                onClick={() => setIsArchiveModalOpen(false)}
-                disabled={isArchiving}
-                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                id="btn-archive-confirm"
-                onClick={handleArchive}
-                disabled={isArchiving}
-                className="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isArchiving ? "Archiving…" : "Confirm Archive"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </form>
   );
 }
