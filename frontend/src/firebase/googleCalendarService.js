@@ -75,8 +75,8 @@ function requestAccessTokenInteractive() {
         }
       };
 
-      // Request an access token. This may open a popup for user consent if needed.
-      tokenClient.requestAccessToken({ prompt: "consent" });
+      // Request an access token. This may open a popup for user consent and account chooser if needed.
+      tokenClient.requestAccessToken({ prompt: "consent select_account" });
     } catch (err) {
       reject(err);
     }
