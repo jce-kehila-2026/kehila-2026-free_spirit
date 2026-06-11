@@ -151,6 +151,47 @@ function buildEventPayload(event) {
     };
   }
 
+  // Add Google Calendar reminder overrides derived from our event reminder settings.
+  try {
+    const PRESET_MINUTES = {
+      half_hour_before: 30,
+      two_hours_before: 120,
+      one_day_before: 1440,
+      three_days_before: 4320,
+      one_week_before: 10080,
+      event_time: 0,
+    };
+
+    let minutesBefore = null;
+
+    if (event.reminderMode === "custom") {
+      if (event.customReminderDate && event.customReminderTime) {
+        const scheduledFor = new Date(`${event.customReminderDate}T${event.customReminderTime}`);
+        if (!Number.isNaN(scheduledFor.getTime())) {
+          minutesBefore = Math.round((start.getTime() - scheduledFor.getTime()) / 60000);
+        }
+      }
+    } else {
+      // preset
+      minutesBefore = PRESET_MINUTES[event.reminderOption];
+    }
+
+    if (Number.isFinite(minutesBefore) && minutesBefore >= 0) {
+      payload.reminders = {
+        useDefault: false,
+        overrides: [
+          {
+            method: "popup",
+            minutes: minutesBefore,
+          },
+        ],
+      };
+    }
+  } catch (err) {
+    // If reminder conversion fails, do not break event creation/update — skip Google reminders.
+    // Intentionally swallow errors here to avoid affecting the primary flow.
+  }
+
   return payload;
 }
 
