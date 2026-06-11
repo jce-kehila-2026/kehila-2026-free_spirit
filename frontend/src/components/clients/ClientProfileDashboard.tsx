@@ -145,125 +145,88 @@ export default function ClientProfileDashboard({
         </div>
       )}
 
-      {/* ── SPLIT SCREEN LAYOUT WRAPPER ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-        {/* ── LEFT COLUMN: Action Panel (col-span-1) ── */}
-        <div className="col-span-1 md:sticky md:top-4 h-fit flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      {/* ── MAIN CONTENT ── */}
+      <div className="space-y-6">
 
-            {/* ── Action Button Stack ── */}
-            <div className="flex flex-col gap-2.5">
-              <button
-                type="button"
-                disabled={isArchived}
-                onClick={() => toast.info("Meeting scheduler coming soon!")}
-                className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-semibold shadow-sm"
-              >
-                Create Meeting
-              </button>
-              <button
-                type="button"
-                disabled={isArchived}
-                onClick={() => toast.info("Reminder feature coming soon!")}
-                className="w-full py-2 px-4 border border-slate-200 bg-white hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-lg transition-colors text-sm font-medium"
-              >
-                Add Reminder
-              </button>
-              <button
-                type="button"
-                disabled={isArchived}
-                onClick={() => toast.info("Email client feature coming soon!")}
-                className="w-full py-2 px-4 border border-slate-200 bg-white hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-lg transition-colors text-sm font-medium"
-              >
-                Send Email
-              </button>
+        {/* Back button — bare on the page background, above the Hero Card */}
+        <button
+          type="button"
+          id="btn-back-to-clients"
+          onClick={onBack}
+          className="inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+        >
+          ← Back to Clients
+        </button>
+
+        {/* ── Hero Card ── */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* Hero body: avatar · info stack · action — bottom border separates from content below */}
+          <div className="flex items-center gap-5 px-6 py-5 border-b border-slate-100">
+            {/* Avatar */}
+            <div className="h-16 w-16 shrink-0 rounded-full bg-indigo-100 ring-4 ring-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-600 shadow-sm select-none">
+              {initials}
             </div>
 
+            {/* Info stack */}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold text-slate-900 leading-tight truncate">
+                {client.first_name} {client.last_name}
+              </h1>
+
+              {/* Contact summary row */}
+              <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-500">
+                {client.email && (
+                  <div className="flex items-center gap-1">
+                    {client.email}
+                    <QuickCopy text={client.email} label="Email" />
+                  </div>
+                )}
+                {client.phone && (
+                  <div className="flex items-center gap-1">
+                    {client.phone}
+                    <QuickCopy text={client.phone} label="Phone Number" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action — pushed to far right, vertically centred */}
+            <div className="ml-auto shrink-0">
+              <button
+                type="button"
+                id="btn-toggle-edit-mode"
+                disabled={isArchived}
+                onClick={() => setIsEditable((prev) => !prev)}
+                aria-pressed={isEditable && !isArchived}
+                className={[
+                  "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                  "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                  isArchived
+                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
+                    : isEditable
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
+                      : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
+                ].join(" ")}
+              >
+                {isEditable && !isArchived ? (
+                  <>
+                    <IconLock />
+                    Lock Editing
+                  </>
+                ) : (
+                  <>
+                    <IconPencil />
+                    Edit Profile
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: Main Content & Tabs (col-span-3) ── */}
-        <div className="col-span-1 md:col-span-3 space-y-6">
-
-          {/* Back button — bare on the page background, above the Hero Card */}
-          <button
-            type="button"
-            id="btn-back-to-clients"
-            onClick={onBack}
-            className="inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
-          >
-            ← Back to Clients
-          </button>
-
-          {/* ── Hero Card ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Hero body: avatar · info stack · action — bottom border separates from content below */}
-            <div className="flex items-center gap-5 px-6 py-5 border-b border-slate-100">
-              {/* Avatar */}
-              <div className="h-16 w-16 shrink-0 rounded-full bg-indigo-100 ring-4 ring-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-600 shadow-sm select-none">
-                {initials}
-              </div>
-
-              {/* Info stack */}
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold text-slate-900 leading-tight truncate">
-                  {client.first_name} {client.last_name}
-                </h1>
-
-                {/* Contact summary row */}
-                <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-500">
-                  {client.email && (
-                    <div className="flex items-center gap-1">
-                      {client.email}
-                      <QuickCopy text={client.email} label="Email" />
-                    </div>
-                  )}
-                  {client.phone && (
-                    <div className="flex items-center gap-1">
-                      {client.phone}
-                      <QuickCopy text={client.phone} label="Phone Number" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action — pushed to far right, vertically centred */}
-              <div className="ml-auto shrink-0">
-                <button
-                  type="button"
-                  id="btn-toggle-edit-mode"
-                  disabled={isArchived}
-                  onClick={() => setIsEditable((prev) => !prev)}
-                  aria-pressed={isEditable && !isArchived}
-                  className={[
-                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    isArchived
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
-                      : isEditable
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
-                        : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
-                  ].join(" ")}
-                >
-                  {isEditable && !isArchived ? (
-                    <>
-                      <IconLock />
-                      Lock Editing
-                    </>
-                  ) : (
-                    <>
-                      <IconPencil />
-                      Edit Profile
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Conditionally render tabs or placeholder based on edit mode */}
-          {isEditable ? (
-            <>
+        {/* Conditionally render tabs or placeholder based on edit mode */}
+        {isEditable ? (
+          <>
               {/* Tab bar — fluid wrapping, no horizontal scroll */}
               <nav aria-label="Client profile sections">
                 <ol
@@ -352,90 +315,105 @@ export default function ClientProfileDashboard({
                   )}
                 </div>
               </fieldset>
-            </>
-          ) : (
-            /* ── Bento Box Overview Dashboard (isEditable = false) ── */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          </>
+        ) : (
+          /* ── Bento Box Overview Dashboard (isEditable = false) ── */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-              {/* ── CARD 3 (full-width, rendered first at top): Quick Glance Alerts ── */}
-              <div className="lg:col-span-3 flex items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
-                {/* Check icon */}
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-5 w-5 text-emerald-600"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-emerald-800">
-                    Quick Glance Alerts &amp; Notifications
-                  </p>
-                  <p className="text-xs text-emerald-700 mt-0.5">
-                    All core client documents are currently up to date. No
-                    pending actions required.
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                  All Clear
-                </span>
-              </div>
-
-              {/* ── CARD 1 (col-span-2): Activity Timeline & Progress Tracking ── */}
-              <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-800">
-                      Activity Timeline &amp; Progress Tracking
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Client journey milestones and recorded events
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-500 ring-1 ring-indigo-100">
-                    Integration Pending
-                  </span>
-                </div>
-
-                {/* Timeline skeleton */}
-                <ol className="relative border-l-2 border-dashed border-slate-200 ml-2 space-y-6">
-                  {[
-                    { label: "Initial intake assessment completed", date: "Placeholder date", color: "bg-indigo-300" },
-                    { label: "Medical questionnaire submitted", date: "Placeholder date", color: "bg-violet-300" },
-                    { label: "First meeting scheduled", date: "Placeholder date", color: "bg-sky-300" },
-                  ].map((item, i) => (
-                    <li key={i} className="ml-5">
-                      <span className={`absolute -left-[9px] flex h-4 w-4 items-center justify-center rounded-full ${item.color} ring-2 ring-white`} />
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <div className="h-3 w-56 rounded-full bg-slate-100 mb-1.5" />
-                          <p className="text-xs text-slate-400 italic">
-                            {item.label}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs text-slate-300 mt-0.5">
-                          {item.date}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-
-                <p className="mt-6 text-center text-xs text-slate-300 italic">
-                  Timeline Component Integration Pending
+            {/* ── Alert banner (full-width) ── */}
+            <div className="lg:col-span-3 flex items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
+              {/* Check icon */}
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-5 w-5 text-emerald-600"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-800">
+                  Quick Glance Alerts &amp; Notifications
+                </p>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  All core client documents are currently up to date. No
+                  pending actions required.
                 </p>
               </div>
+              <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                All Clear
+              </span>
+            </div>
 
-              {/* ── CARD 2 (col-span-1): Recent Meetings & Logs ── */}
-              <div className="lg:col-span-1 rounded-xl border border-slate-200 bg-white shadow-sm p-6 flex flex-col">
+            {/* ── Timeline card (col-span-2) ── */}
+            <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800">
+                    Activity Timeline &amp; Progress Tracking
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Client journey milestones and recorded events
+                  </p>
+                </div>
+              </div>
+
+              {/* Empty state */}
+              <div className="flex flex-col items-center justify-center py-10">
+                <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900 mb-1">No activity recorded yet</p>
+                <p className="text-xs text-slate-500 text-center px-4">Timeline updates will appear automatically as actions are taken.</p>
+              </div>
+            </div>
+
+            {/* ── Right rail (col-span-1): Actions + Meetings stacked ── */}
+            <div className="lg:col-span-1 flex flex-col gap-6">
+
+              {/* Action Buttons card */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+                <h3 className="text-base font-semibold text-slate-800 mb-4">Quick Actions</h3>
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isArchived}
+                    onClick={() => toast.info("Meeting scheduler coming soon!")}
+                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-semibold shadow-sm"
+                  >
+                    Create Meeting
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isArchived}
+                    onClick={() => toast.info("Reminder feature coming soon!")}
+                    className="w-full py-2 px-4 border border-slate-200 bg-white hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Add Reminder
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isArchived}
+                    onClick={() => toast.info("Email client feature coming soon!")}
+                    className="w-full py-2 px-4 border border-slate-200 bg-white hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Send Email
+                  </button>
+                </div>
+              </div>
+
+              {/* Recent Meetings & Logs card */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 flex flex-col flex-1">
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <h3 className="text-base font-semibold text-slate-800">
@@ -445,41 +423,27 @@ export default function ClientProfileDashboard({
                       Interaction history
                     </p>
                   </div>
-                  <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-500 ring-1 ring-violet-100">
-                    Integration Pending
-                  </span>
                 </div>
 
-                {/* Meeting list skeleton */}
-                <ul className="flex flex-col gap-3 flex-1">
-                  {[
-                    { icon: "🗓️", title: "Initial Consultation", meta: "Pending date • 60 min" },
-                    { icon: "📋", title: "Case Review Session", meta: "Pending date • 45 min" },
-                    { icon: "📞", title: "Follow-up Call", meta: "Pending date • 20 min" },
-                  ].map((m, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5"
-                    >
-                      <span className="text-lg leading-none">{m.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="h-2.5 w-32 rounded-full bg-slate-200 mb-1" />
-                        <p className="text-xs text-slate-400 truncate">
-                          {m.meta}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                <p className="mt-5 text-center text-xs text-slate-300 italic">
-                  Meeting Summary Dashboard (Integration Pending)
-                </p>
+                {/* Empty state */}
+                <div className="flex flex-col items-center justify-center flex-1 py-8">
+                  <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 mb-1">No meetings logged</p>
+                  <p className="text-xs text-slate-500 text-center px-4">Click &lsquo;Create Meeting&rsquo; above to schedule or log an interaction.</p>
+                </div>
               </div>
 
-            </div>
-          )}
-        </div>
+            </div>{/* end right rail */}
+
+          </div>
+        )}
       </div>
     </div>
   );
