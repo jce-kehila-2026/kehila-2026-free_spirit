@@ -7,6 +7,7 @@ import { createNotifications } from "@/firebase/notificationsService";
 import { buildReminderSchedule } from "@/firebase/reminderScheduleService";
 import { updateEvent } from "@/firebase/eventsService";
 import { deleteNotificationsByEventId } from "@/firebase/notificationsService";
+import { createGoogleCalendarEvent } from "@/firebase/googleCalendarService";
 
 
 export default function ScheduleMeetingForm({
@@ -32,6 +33,8 @@ export default function ScheduleMeetingForm({
 
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [syncToGoogle, setSyncToGoogle] = useState(false);
+  const [syncWarning, setSyncWarning] = useState("");
 
   const inputClass =
     "w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100";
@@ -168,6 +171,37 @@ export default function ScheduleMeetingForm({
       );
   
       await createNotifications(reminders);
+      // Optional Google Calendar sync (non-blocking for meeting creation)
+      if (syncToGoogle) {
+        try {
+          // provide local id for extendedProperties in Google event
+          eventPayload.id = eventId;
+
+          const googleEvent = await createGoogleCalendarEvent(eventPayload);
+
+          // update Firestore event with Google sync metadata
+          await updateEvent(eventId, {
+            googleCalendarEventId: googleEvent?.id || null,
+            googleCalendarLink: googleEvent?.htmlLink || googleEvent?.hangoutLink || null,
+            calendarSyncStatus: "synced",
+            calendarSyncLabel: "Synced to Google Calendar",
+          });
+        } catch (err) {
+          // Do not block meeting creation — mark sync as failed and show a warning
+          try {
+            await updateEvent(eventId, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Failed to sync to Google Calendar",
+            });
+          } catch {
+            // Ignore Firestore sync status update failure
+          }
+
+          setSyncWarning(
+            err?.message || "Failed to sync meeting to Google Calendar.",
+          );
+        }
+      }
   
       if (onMeetingCreated) {
         onMeetingCreated();
@@ -212,6 +246,12 @@ export default function ScheduleMeetingForm({
         {formError && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             {formError}
+          </div>
+        )}
+
+        {syncWarning && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            {syncWarning}
           </div>
         )}
 
@@ -365,6 +405,19 @@ export default function ScheduleMeetingForm({
             </div>
           </div>
         )}
+
+        <div>
+          <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+            <input
+              type="checkbox"
+              name="syncToGoogle"
+              checked={syncToGoogle}
+              onChange={(e) => setSyncToGoogle(e.target.checked)}
+              className="h-4 w-4 rounded"
+            />
+            <span>Sync to Google Calendar</span>
+          </label>
+        </div>
 
        <button
           type="submit"
