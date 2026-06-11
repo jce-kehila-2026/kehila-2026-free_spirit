@@ -7,7 +7,9 @@ import {
   completeEvent,
   deleteEvent,
   getEvents,
+  updateEvent,
 } from "@/firebase/eventsService";
+import { deleteGoogleCalendarEvent } from "@/firebase/googleCalendarService";
 import {
   deleteNotificationsByEventId,
   updateNotificationsByEventId,
@@ -73,13 +75,39 @@ export default function EventList({
     }
   }
 
-  async function handleCancel(eventId) {
+  async function handleCancel(event) {
     try {
-      setActionLoadingId(eventId);
-  
-      await cancelEvent(eventId);
-  
-      await updateNotificationsByEventId(eventId, {
+      setActionLoadingId(event.id);
+
+      // If synced to Google Calendar, attempt to remove it (non-blocking)
+      if (event.googleCalendarEventId) {
+        try {
+          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
+
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "removed",
+              calendarSyncLabel: "Removed from Google Calendar after cancellation",
+            });
+          } catch (e) {
+            console.warn("Failed to update calendar sync metadata after Google delete", e);
+          }
+        } catch (googleErr) {
+          console.error("Failed to remove Google Calendar event", googleErr);
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Failed to remove from Google Calendar",
+            });
+          } catch (e) {
+            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          }
+        }
+      }
+
+      await cancelEvent(event.id);
+
+      await updateNotificationsByEventId(event.id, {
         status: "cancelled",
         statusLabel: "Meeting cancelled",
       });
@@ -87,7 +115,7 @@ export default function EventList({
       if (onDataChanged) {
         onDataChanged();
       }
-  
+
       await loadEvents();
     } catch (error) {
       console.error(error);
@@ -97,25 +125,57 @@ export default function EventList({
     }
   }
 
-  async function handleDelete(eventId) {
+  async function handleDelete(event) {
     const shouldDelete = window.confirm(
       "Are you sure you want to delete this meeting?",
     );
-  
+
     if (!shouldDelete) {
       return;
     }
-  
+
     try {
-      setActionLoadingId(eventId);
-  
-      await deleteNotificationsByEventId(eventId);
-      await deleteEvent(eventId);
+      setActionLoadingId(event.id);
+
+      // If synced to Google Calendar, attempt to remove it (non-blocking)
+      if (event.googleCalendarEventId) {
+        try {
+          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
+
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "removed",
+              calendarSyncLabel: "Removed from Google Calendar after deletion",
+            });
+          } catch (e) {
+            console.warn("Failed to update calendar sync metadata after Google delete", e);
+          }
+        } catch (googleErr) {
+          console.error("Failed to remove Google Calendar event", googleErr);
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Failed to remove from Google Calendar",
+            });
+          } catch (e) {
+            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          }
+        }
+      }
+
+      // Preserve notification history by marking them deleted
+      await updateNotificationsByEventId(event.id, {
+        status: "deleted",
+        statusLabel: "Meeting deleted",
+      });
+
+      // Soft-delete the event document (deleteEvent now performs soft-delete)
+      await deleteEvent(event.id);
 
       if (onDataChanged) {
         onDataChanged();
       }
-  
+
       await loadEvents();
     } catch (error) {
       console.error(error);
@@ -197,8 +257,8 @@ export default function EventList({
            isActionLoading={actionLoadingId === event.id}
            onEdit={setEventToEdit}
            onComplete={handleComplete}
-           onCancel={handleCancel}
-           onDelete={handleDelete}
+           onCancel={() => handleCancel(event)}
+           onDelete={() => handleDelete(event)}
          />
           ))}
         </div>

@@ -1,7 +1,6 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDocs,
   orderBy,
@@ -71,8 +70,13 @@ import {
   
   export async function deleteEvent(eventId) {
     const eventRef = doc(db, EVENTS_COLLECTION, eventId);
-  
-    await deleteDoc(eventRef);
+
+    // Soft-delete: preserve history in Firestore
+    await updateDoc(eventRef, {
+      status: "deleted",
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   export async function updateEvent(eventId, updatedData) {
