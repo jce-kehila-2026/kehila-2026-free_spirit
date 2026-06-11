@@ -13,6 +13,7 @@ import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
 import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
 import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
+import { QuickCopy } from "@/components/ui/QuickCopy";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -146,57 +147,12 @@ export default function ClientProfileDashboard({
 
       {/* ── SPLIT SCREEN LAYOUT WRAPPER ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
-        {/* ── LEFT COLUMN: Sticky Profile Sidebar (col-span-1) ── */}
+        {/* ── LEFT COLUMN: Action Panel (col-span-1) ── */}
         <div className="col-span-1 md:sticky md:top-4 h-fit flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-
-            {/* ── Avatar & Basic Info ── */}
-            <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100">
-              <div className="h-20 w-20 rounded-full bg-indigo-100 ring-4 ring-indigo-50 flex items-center justify-center text-2xl font-bold text-indigo-700 mb-3 shadow-sm">
-                {initials}
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">
-                {client.first_name} {client.last_name}
-              </h2>
-              <span
-                className={`mt-2 px-3 py-1 text-xs font-semibold rounded-full ${isArchived ? "bg-slate-100 text-slate-500" : "bg-emerald-100 text-emerald-700"}`}
-              >
-                {isArchived ? "Archived" : "Active"}
-              </span>
-            </div>
-
-            {/* ── Contact Details (icon rows) ── */}
-            <div className="py-5 space-y-3 border-b border-slate-100">
-              {/* Email row */}
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-50 border border-slate-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-slate-400" aria-hidden="true">
-                    <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
-                    <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
-                  </svg>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Email</p>
-                  <p className="text-sm text-slate-800 truncate">{client.email || "N/A"}</p>
-                </div>
-              </div>
-
-              {/* Phone row */}
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-50 border border-slate-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-slate-400" aria-hidden="true">
-                    <path fillRule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.223.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Phone</p>
-                  <p className="text-sm text-slate-800">{client.phone || "N/A"}</p>
-                </div>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
 
             {/* ── Action Button Stack ── */}
-            <div className="pt-5 flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5">
               <button
                 type="button"
                 disabled={isArchived}
@@ -228,68 +184,96 @@ export default function ClientProfileDashboard({
 
         {/* ── RIGHT COLUMN: Main Content & Tabs (col-span-3) ── */}
         <div className="col-span-1 md:col-span-3 space-y-6">
-          {/* Back button, title, and Edit/View toggle */}
-          <div className="flex flex-col items-start bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <button
-              type="button"
-              id="btn-back-to-clients"
-              onClick={onBack}
-              className="mb-4 inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
-            >
-              ← Back to Clients
-            </button>
 
-            {/* Title row */}
-            <div className="flex w-full items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold text-slate-800">
-                Client Profile
-              </h1>
+          {/* Back button — bare on the page background, above the Hero Card */}
+          <button
+            type="button"
+            id="btn-back-to-clients"
+            onClick={onBack}
+            className="inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+          >
+            ← Back to Clients
+          </button>
 
-              {/* View / Edit mode toggle button */}
-              <button
-                type="button"
-                id="btn-toggle-edit-mode"
-                disabled={isArchived}
-                onClick={() => setIsEditable((prev) => !prev)}
-                aria-pressed={isEditable && !isArchived}
-                className={[
-                  "inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                  "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                  isArchived
-                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
-                    : isEditable
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
-                      : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
-                ].join(" ")}
-              >
-                {isEditable && !isArchived ? (
-                  <>
-                    <IconLock />
-                    Lock Editing
-                  </>
-                ) : (
-                  <>
-                    <IconPencil />
-                    Edit Profile
-                  </>
-                )}
-              </button>
+          {/* ── Hero Card ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* Hero body: avatar · info stack · action — bottom border separates from content below */}
+            <div className="flex items-center gap-5 px-6 py-5 border-b border-slate-100">
+              {/* Avatar */}
+              <div className="h-16 w-16 shrink-0 rounded-full bg-indigo-100 ring-4 ring-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-600 shadow-sm select-none">
+                {initials}
+              </div>
+
+              {/* Info stack */}
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl font-bold text-slate-900 leading-tight truncate">
+                  {client.first_name} {client.last_name}
+                </h1>
+
+                {/* Contact summary row */}
+                <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-500">
+                  {client.email && (
+                    <div className="flex items-center gap-1">
+                      {client.email}
+                      <QuickCopy text={client.email} label="Email" />
+                    </div>
+                  )}
+                  {client.phone && (
+                    <div className="flex items-center gap-1">
+                      {client.phone}
+                      <QuickCopy text={client.phone} label="Phone Number" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action — pushed to far right, vertically centred */}
+              <div className="ml-auto shrink-0">
+                <button
+                  type="button"
+                  id="btn-toggle-edit-mode"
+                  disabled={isArchived}
+                  onClick={() => setIsEditable((prev) => !prev)}
+                  aria-pressed={isEditable && !isArchived}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    isArchived
+                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
+                      : isEditable
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
+                        : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
+                  ].join(" ")}
+                >
+                  {isEditable && !isArchived ? (
+                    <>
+                      <IconLock />
+                      Lock Editing
+                    </>
+                  ) : (
+                    <>
+                      <IconPencil />
+                      Edit Profile
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Conditionally render tabs or placeholder based on edit mode */}
           {isEditable ? (
             <>
-              {/* Tab bar */}
-              <nav aria-label="Client profile sections" className="overflow-x-auto">
+              {/* Tab bar — fluid wrapping, no horizontal scroll */}
+              <nav aria-label="Client profile sections">
                 <ol
                   role="tablist"
-                  className="flex min-w-max gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1"
+                  className="flex flex-wrap gap-2 w-full border-b border-slate-200 pb-2"
                 >
                   {TABS.map((tab) => {
                     const isActive = tab.id === activeTab;
                     return (
-                      <li key={tab.id} role="presentation" className="flex-1">
+                      <li key={tab.id} role="presentation">
                         <button
                           role="tab"
                           id={`tab-${tab.id}`}
@@ -298,9 +282,9 @@ export default function ClientProfileDashboard({
                           type="button"
                           onClick={() => setActiveTab(tab.id)}
                           className={[
-                            "w-full whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors",
+                            "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
                             isActive
-                              ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200"
+                              ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
                               : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
                           ].join(" ")}
                         >
