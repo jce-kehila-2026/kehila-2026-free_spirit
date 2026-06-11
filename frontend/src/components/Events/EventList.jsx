@@ -6,7 +6,7 @@ import {
   cancelEvent,
   completeEvent,
   deleteEvent,
-  getEvents,
+  getEventsWithinDays,
   updateEvent,
 } from "@/firebase/eventsService";
 import { deleteGoogleCalendarEvent } from "@/firebase/googleCalendarService";
@@ -31,7 +31,7 @@ export default function EventList({
   async function loadEvents() {
     try {
       setLoading(true);
-      const eventsFromDb = await getEvents();
+      const eventsFromDb = await getEventsWithinDays(2);
       setEvents(eventsFromDb);
     } catch (error) {
       console.error(error);
