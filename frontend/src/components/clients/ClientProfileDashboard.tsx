@@ -101,7 +101,7 @@ export default function ClientProfileDashboard({
   async function handleRestore() {
     setIsRestoring(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         is_archived: false,
         updated_at: serverTimestamp(),
@@ -117,6 +117,34 @@ export default function ClientProfileDashboard({
       );
     } finally {
       setIsRestoring(false);
+    }
+  }
+
+  // ── Archive state & handler ────────────────────────────────────────────
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  async function handleArchive() {
+    setIsArchiving(true);
+    try {
+      const docRef = doc(db!, "clients", client.id);
+      await updateDoc(docRef, {
+        is_archived: true,
+        updated_at: serverTimestamp(),
+      });
+      toast.success(
+        `${client.first_name} ${client.last_name} has been archived.`,
+      );
+      setLocalIsArchived(true);
+      setShowArchiveModal(false);
+      setIsEditable(false);
+    } catch (err) {
+      console.error("[ClientProfileDashboard] Archive failed:", err);
+      toast.error(
+        "Failed to archive client. Please check your connection and try again.",
+      );
+    } finally {
+      setIsArchiving(false);
     }
   }
 
@@ -444,7 +472,89 @@ export default function ClientProfileDashboard({
 
           </div>
         )}
+
+        {/* ── Advanced Settings ── */}
+        <div className="mt-8 pt-6 border-t border-slate-200">
+          <h2 className="text-lg font-semibold text-slate-900">Advanced Settings</h2>
+          <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-6 mt-4 shadow-sm">
+            {/* Left: description */}
+            <div>
+              <p className="text-sm font-medium text-slate-900">Archive Client Record</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Remove this client from the active list. Their data will be safely stored and can be restored at any time.
+              </p>
+            </div>
+            {/* Right: action */}
+            <button
+              type="button"
+              disabled={isArchived}
+              onClick={() => setShowArchiveModal(true)}
+              className="ml-6 shrink-0 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isArchived ? "Already Archived" : "Archive Client"}
+            </button>
+          </div>
+        </div>
+
       </div>
+
+      {/* ── Archive confirmation modal ── */}
+      {showArchiveModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="archive-modal-title"
+        >
+          <div className="mx-4 w-full max-w-md rounded-xl bg-white p-8 shadow-2xl">
+            {/* Icon */}
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-6 w-6 text-red-600"
+                aria-hidden="true"
+              >
+                <path d="M2 3a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1H2z" />
+                <path fillRule="evenodd" d="M2 7.5h16l-.811 7.71a2 2 0 01-1.99 1.79H4.802a2 2 0 01-1.99-1.79L2 7.5zm5.5 2.5a.5.5 0 01.5-.5h4a.5.5 0 010 1H8a.5.5 0 01-.5-.5z" clipRule="evenodd" />
+              </svg>
+            </div>
+            {/* Title */}
+            <h2
+              id="archive-modal-title"
+              className="mb-2 text-lg font-bold text-slate-800"
+            >
+              Archive {client.first_name} {client.last_name}?
+            </h2>
+            {/* Description */}
+            <p className="mb-6 text-sm leading-relaxed text-slate-500">
+              This will remove them from the active clients list. Their data will be safely stored and can be restored at any time.
+            </p>
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                id="btn-archive-cancel"
+                onClick={() => setShowArchiveModal(false)}
+                disabled={isArchiving}
+                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="btn-archive-confirm"
+                onClick={handleArchive}
+                disabled={isArchiving}
+                className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isArchiving ? "Archiving…" : "Confirm Archive"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
