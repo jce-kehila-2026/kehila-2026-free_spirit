@@ -6,6 +6,7 @@ import Script from "next/script";
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import EventList from "@/components/Events/EventList";
 import EventNotifications from "@/components/Events/EventNotifications";
+import EventCalendar from "@/components/Events/EventCalendar";
 
 export default function EventsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -51,6 +52,7 @@ export default function EventsPage() {
         </section>
 
         <EventNotifications refreshKey={refreshKey} />
+        <EventCalendar refreshKey={refreshKey} />
       </div>
     </main>
   );

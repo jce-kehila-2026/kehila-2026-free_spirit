@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@hookform/resolvers": "^3.10.0",
     "firebase": "^12.13.0",
     "lucide-react": "^1.17.0",
