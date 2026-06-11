@@ -19,7 +19,7 @@ import { auth, db } from "@/firebase/firebase";
 
 const emailVerificationToast =
 
-  "יש לאמת את כתובת האימייל שלך כדי לגשת לדפי האתר.";
+  "You must verify your email address before accessing site pages.";
 
 export default function Navbar() {
 
@@ -226,9 +226,20 @@ export default function Navbar() {
 
   );
 
-  //const visibleLinks = getVisibleLinks(navigationLinks, currentUser, userRole);
-  // Fallback to the local hardcoded config list if Firestore is loading or returns empty to guarantee UI availability
-  const currentNavigationSource = (isLoadingLinks || !links || links.length === 0) ? navigationLinks : links;
+  // If Firestore dynamic navigation is available, merge it with the local static config
+  // so we still show new tabs that have not yet been added to the database.
+  const mergeNavigationLinks = (baseLinks, dynamicLinks) => {
+    const dynamicByHref = new Map(dynamicLinks.map((link) => [link.href, link]));
+    return [
+      ...dynamicLinks,
+      ...baseLinks.filter((link) => !dynamicByHref.has(link.href)),
+    ];
+  };
+
+  const currentNavigationSource =
+    isLoadingLinks || !links || links.length === 0
+      ? navigationLinks
+      : mergeNavigationLinks(navigationLinks, links);
   const visibleLinks = getVisibleLinks(currentNavigationSource, currentUser, userRole);
 
   const getLinkClassName = (href) =>
@@ -363,9 +374,9 @@ export default function Navbar() {
 
                 : verificationCooldownSeconds > 0
 
-                  ? `שלח שוב (${verificationCooldownSeconds}s)`
+                  ? `Resend (${verificationCooldownSeconds}s)`
 
-                  : "שלח שוב"}
+                  : "Resend"}
 </button>
 </div>
 </div>
