@@ -7,7 +7,7 @@ import { createNotifications } from "@/firebase/notificationsService";
 import { buildReminderSchedule } from "@/firebase/reminderScheduleService";
 import { updateEvent } from "@/firebase/eventsService";
 import { deleteNotificationsByEventId } from "@/firebase/notificationsService";
-import { createGoogleCalendarEvent } from "@/firebase/googleCalendarService";
+import { createGoogleCalendarEvent, updateGoogleCalendarEvent } from "@/firebase/googleCalendarService";
 
 
 export default function ScheduleMeetingForm({
@@ -33,7 +33,8 @@ export default function ScheduleMeetingForm({
 
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [syncToGoogle, setSyncToGoogle] = useState(false);
+  const isAlreadySyncedToGoogle = Boolean(initialData?.googleCalendarEventId);
+  const [syncToGoogle, setSyncToGoogle] = useState(isAlreadySyncedToGoogle);
   const [syncWarning, setSyncWarning] = useState("");
 
   const inputClass =
@@ -145,20 +146,62 @@ export default function ScheduleMeetingForm({
   
       if (isEditMode && initialData?.id) {
         await updateEvent(initialData.id, eventPayload);
-  
+
+        // If this meeting was previously synced, update the Google Calendar event automatically.
+        // If it was not synced but the user checked the sync checkbox, create a new Google event.
+        try {
+          // ensure local id is present for extendedProperties
+          eventPayload.id = initialData.id;
+
+          if (initialData?.googleCalendarEventId) {
+            const updatedGoogleEvent = await updateGoogleCalendarEvent(initialData.googleCalendarEventId, eventPayload);
+
+            // persist Google metadata on success
+            await updateEvent(initialData.id, {
+              googleCalendarEventId: updatedGoogleEvent?.id || initialData.googleCalendarEventId,
+              googleCalendarLink: updatedGoogleEvent?.htmlLink || updatedGoogleEvent?.hangoutLink || null,
+              calendarSyncStatus: "synced",
+              calendarSyncLabel: "Synced to Google Calendar",
+            });
+          } else if (syncToGoogle) {
+            const createdGoogleEvent = await createGoogleCalendarEvent(eventPayload);
+
+            await updateEvent(initialData.id, {
+              googleCalendarEventId: createdGoogleEvent?.id || null,
+              googleCalendarLink: createdGoogleEvent?.htmlLink || createdGoogleEvent?.hangoutLink || null,
+              calendarSyncStatus: "synced",
+              calendarSyncLabel: "Synced to Google Calendar",
+            });
+          }
+        } catch (err) {
+          // Do not block meeting update — mark sync as failed and show a warning
+          try {
+            await updateEvent(initialData.id, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Failed to sync to Google Calendar",
+            });
+          } catch {
+            // Ignore Firestore sync status update failure
+          }
+
+          setSyncWarning(
+            err?.message || "Failed to sync meeting to Google Calendar.",
+          );
+        }
+
         await deleteNotificationsByEventId(initialData.id);
-  
+
         const reminders = buildReminderSchedule(
           eventPayload,
           initialData.id,
         );
-  
+
         await createNotifications(reminders);
-  
+
         if (onEditCompleted) {
           onEditCompleted();
         }
-  
+
         alert("Meeting updated successfully!");
         return;
       }
@@ -407,16 +450,29 @@ export default function ScheduleMeetingForm({
         )}
 
         <div>
-          <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
-            <input
-              type="checkbox"
-              name="syncToGoogle"
-              checked={syncToGoogle}
-              onChange={(e) => setSyncToGoogle(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span>Sync to Google Calendar</span>
-          </label>
+          {isEditMode && isAlreadySyncedToGoogle ? (
+            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+              <input
+                type="checkbox"
+                name="syncToGoogle"
+                checked={true}
+                disabled
+                className="h-4 w-4 rounded"
+              />
+              <span>Already synced to Google Calendar — edits will update the Google event</span>
+            </label>
+          ) : (
+            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+              <input
+                type="checkbox"
+                name="syncToGoogle"
+                checked={syncToGoogle}
+                onChange={(e) => setSyncToGoogle(e.target.checked)}
+                className="h-4 w-4 rounded"
+              />
+              <span>Sync to Google Calendar</span>
+            </label>
+          )}
         </div>
 
        <button
