@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
+import { db, isFirebaseInitialized } from "@/firebase/firebase";
 
 // Create the global Context object for navigation settings
 const NavigationContext = createContext(null);
@@ -16,6 +16,13 @@ export function NavigationProvider({ children }) {
     /* Internal comments in code are always in English */
     // Set up a real-time web-socket snapshot listener on the 'navigation_links' collection cluster
     // This allows permissions changes in the Admin panel to reflect instantly on all active clients' Navbars without an F5 refresh
+    if (!isFirebaseInitialized || !db) {
+      setLinks([]);
+      setLinksError("Firebase is not initialized (missing API key).");
+      setIsLoadingLinks(false);
+      return () => {};
+    }
+
     const unsubscribe = onSnapshot(
       collection(db, "navigation_links"),
       (querySnapshot) => {

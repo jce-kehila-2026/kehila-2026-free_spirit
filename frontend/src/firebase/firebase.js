@@ -1,9 +1,9 @@
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
- 
+
 // Firebase client configuration is read from public Next.js environment values.
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,22 +14,28 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENTID
 };
- 
 
-//TEMP
+// Helpful debug logs (only on client)
+if (typeof window !== "undefined") {
+  console.log("Firebase API key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+  console.log("Firebase project:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+}
 
-console.log("Firebase API key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-console.log("Firebase project:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+// Initialize Firebase only on the client and only when an API key is provided.
+let app = null;
+let isInitialized = false;
+if (typeof window !== "undefined" && firebaseConfig.apiKey) {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+  isInitialized = true;
+} else if (typeof window !== "undefined") {
+  console.warn("Firebase not initialized: missing NEXT_PUBLIC_FIREBASE_API_KEY or running on server.");
+}
 
-
-// Shared Firebase app instance used by Auth and Firestore across the frontend.
-const app = initializeApp(firebaseConfig);
- 
-// Firebase Authentication service for login, signup, session checks, and logout.
-export const auth = getAuth(app);
-
-// Firestore database service for application data such as accounts and programs.
-export const db = getFirestore(app);
-
-// Firebase Storage service for uploading and managing files.
-export const storage = getStorage(app);
+export const isFirebaseInitialized = isInitialized;
+export const auth = isInitialized ? getAuth(app) : null;
+export const db = isInitialized ? getFirestore(app) : null;
+export const storage = isInitialized ? getStorage(app) : null;

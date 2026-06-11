@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import EventList from "@/components/Events/EventList";
 import EventNotifications from "@/components/Events/EventNotifications";
+import EventCalendar from "@/components/Events/EventCalendar";
 
 export default function EventsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -15,6 +17,10 @@ export default function EventsPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe,_transparent_35%),linear-gradient(135deg,_#f8fafc,_#eef2ff)] px-6 py-8">
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+      />
       <div className="mx-auto max-w-7xl">
         <section className="mb-8 overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-9 text-white shadow-xl">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
@@ -46,6 +52,7 @@ export default function EventsPage() {
         </section>
 
         <EventNotifications refreshKey={refreshKey} />
+        <EventCalendar refreshKey={refreshKey} />
       </div>
     </main>
   );

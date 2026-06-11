@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getNotifications } from "@/firebase/notificationsService";
+import { getUpcomingNotificationsWithinDays } from "@/firebase/notificationsService";
 
 export default function EventNotifications({
   refreshKey = 0,
@@ -12,7 +12,7 @@ export default function EventNotifications({
   async function loadNotifications() {
     try {
       setLoading(true);
-      const notificationsFromDb = await getNotifications();
+      const notificationsFromDb = await getUpcomingNotificationsWithinDays(2);
       setNotifications(notificationsFromDb);
     } catch (error) {
       console.error(error);
