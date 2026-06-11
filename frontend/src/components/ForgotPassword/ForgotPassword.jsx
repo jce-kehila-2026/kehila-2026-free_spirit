@@ -52,9 +52,14 @@ export default function ForgotPassword() {
     try {
       setIsSubmitting(true);
 
-      // The Firebase Console action URL must point at /reset-password so the
-      // email action carries mode and oobCode directly to the in-app handler.
-      await sendPasswordResetEmail(auth, normalizedEmail);
+      // Build the continue URL from the active environment without hardcoding
+      // a development or production hostname.
+      const resetUrl = `${window.location.origin}/reset-password`;
+
+      await sendPasswordResetEmail(auth, normalizedEmail, {
+        url: resetUrl,
+        handleCodeInApp: true,
+      });
       setIsSubmitted(true);
     } catch (error) {
       // Treat an unknown account exactly like a successful request to prevent
