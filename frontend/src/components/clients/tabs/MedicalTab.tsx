@@ -368,7 +368,7 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
   async function onSubmit(data: MedicalProfile) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         medical_profile: sanitize(data as Record<string, unknown>),
         updated_at: serverTimestamp(),

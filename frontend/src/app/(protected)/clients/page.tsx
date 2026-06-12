@@ -5,8 +5,8 @@ import { exportToCSV } from "@/utils/csvExport";
 
 // TIER 1 - PRESENTATION LAYER WIDGETS
 import ClientList, { type ClientDoc } from "@/components/clients/ClientList";
-import WizardController from "@/components/clients/RegistrationWizard/WizardController";
-import ClientProfileDashboard from "@/components/clients/ClientProfileDashboard";
+import WizardController from "@/components/clients/wizard/WizardController";
+import ClientProfileDashboard from "@/components/clients/dashboard/ClientProfileDashboard";
 import ClientPageHeader from "@/components/clients/ClientPageHeader";
 import ClientFilterBar from "@/components/clients/ClientFilterBar";
 

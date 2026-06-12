@@ -68,3 +68,11 @@ export async function restoreClient(clientId: string): Promise<void> {
     updated_at: serverTimestamp(),
   });
 }
+
+export async function archiveClient(clientId: string): Promise<void> {
+  const docRef = doc(db!, "clients", clientId);
+  await updateDoc(docRef, {
+    is_archived: true,
+    updated_at: serverTimestamp(),
+  });
+}
