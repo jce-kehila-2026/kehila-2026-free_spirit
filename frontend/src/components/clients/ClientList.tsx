@@ -9,26 +9,20 @@ import FilterableHeaderCell from "./FilterableHeaderCell";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** Firestore document = form data + server-generated fields. */
 export interface ClientDoc extends ClientFormInput {
   id: string;
   created_at?: Timestamp;
   updated_at?: Timestamp;
-  /** Financial aid applications — stored as a top-level array on the document. */
   financial_aid_applications?: FinancialAidApplication[];
-  /** Uploaded document records — stored as a top-level array on the document. */
   client_documents?: ClientDocument[];
 }
 
 interface ClientListProps {
   onEdit: (client: ClientDoc) => void;
-  /** Pre-fetched docs from parent (Tier 2 Application Layer hook) */
   externalDocs?: ClientDoc[];
   externalLoading?: boolean;
-  /** Controlled from the page-level action bar. */
   showArchived: boolean;
   onToggleArchived: () => void;
-  /** Called when the user clicks the Export CSV button in the table header. */
   onExport?: () => void;
   columnFilters?: Record<string, { text: string; values: string[] }>;
   onColumnFilterChange?: (col: string, update: Partial<{ text: string; values: string[] }>) => void;
@@ -38,8 +32,9 @@ interface ClientListProps {
   totalActiveCount?: number;
   onClearAllFilters?: () => void;
   hasActiveFilters?: boolean;
-  onRestoreSelect: (client: ClientDoc) => void; // Tier 2 action callback passed from page
+  onRestoreSelect: (client: ClientDoc) => void;
 }
+
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -60,16 +55,6 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-/**
- * ClientList
- *
- * Real-time table of all clients in Firestore via onSnapshot.
- * Supports toggling between "Active Clients" and "Archived Records" views.
- * In archived view, the Edit button is replaced with a Restore button that
- * sets is_archived: false on the Firestore document.
- *
- * Columns: Name, Email, Phone, Status, Actions.
- */
 export default function ClientList({
   onEdit,
   externalDocs,
@@ -87,7 +72,6 @@ export default function ClientList({
   onRestoreSelect,
 }: ClientListProps) {
 
-  // ── Column filter popover click-outside logic ───────────────────────────
   const [openFilter, setOpenFilter] = useState<"name" | "email" | "phone" | "status" | null>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
 
@@ -103,7 +87,6 @@ export default function ClientList({
     }
   }, [openFilter]);
 
-  // ── Derived filtered list ──────────────────────────────────────────────
   const clients = showArchived
     ? (externalDocs || []).filter((c) => c.is_archived === true)
     : (externalDocs || []).filter((c) => c.is_archived !== true);
@@ -112,84 +95,107 @@ export default function ClientList({
     ? `Showing ${clients.length} of ${totalActiveCount} records`
     : `${clients.length} ${showArchived ? "archived" : "active"} record${clients.length !== 1 ? "s" : ""}`;
 
-  
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Table Action Utilities Header */}
-      <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between bg-white">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold text-slate-800">Clients</h2>
-          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+    <div className="space-y-4">
+      {/* ── Table Action Utilities Header (Sitting flat on the page background) ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-slate-800">Clients</h2>
+          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 shadow-sm">
             {countText}
           </span>
           {hasActiveFilters && onClearAllFilters && (
-            <button type="button" onClick={onClearAllFilters} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+            <button type="button" onClick={onClearAllFilters} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
               Clear Filters
             </button>
           )}
         </div>
-        <button type="button" onClick={onToggleArchived} className={["inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors", showArchived ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"].join(" ")}>
-          <IconArchive className="h-4 w-4" /> {showArchived ? "View Active" : "View Archive"}
-        </button>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={onToggleArchived} 
+            className={[
+              "inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors shadow-sm", 
+              showArchived 
+                ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" 
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            ].join(" ")}
+          >
+            <IconArchive className="h-4 w-4" /> 
+            {showArchived ? "View Active" : "View Archive"}
+          </button>
+        </div>
       </div>
 
-      {showArchived && (
-        <div className="mb-4 m-5 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <IconArchive className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm font-medium text-amber-800">You are viewing <span className="font-bold">archived records</span>.</p>
-        </div>
-      )}
+      {/* ── Table Container Card (White border closes cleanly around the list) ── */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {showArchived && (
+          <div className="m-5 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <IconArchive className="h-4 w-4 text-amber-600 shrink-0" />
+            <p className="text-sm font-medium text-amber-800">You are viewing <span className="font-bold">archived records</span>.</p>
+          </div>
+        )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead ref={theadRef}>
-            <tr className={["border-b", showArchived ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"].join(" ")}>
-              {(["name", "email", "phone", "status"] as const).map((col) => (
-                <FilterableHeaderCell
-                  key={col}
-                  columnKey={col}
-                  label={col.charAt(0).toUpperCase() + col.slice(1)}
-                  hideOnMobile={col === "phone"}
-                  openFilter={openFilter}
-                  setOpenFilter={setOpenFilter}
-                  columnFilters={columnFilters}
-                  baseDocs={baseDocs}
-                  sortConfig={sortConfig}
-                  onSortChange={onSortChange}
-                  onColumnFilterChange={onColumnFilterChange}
-                />
-              ))}
-              <th className="w-10 py-3 pr-4 text-right">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead ref={theadRef}>
+              <tr className={["border-b", showArchived ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"].join(" ")}>
+                {(["name", "email", "phone", "status"] as const).map((col) => (
+                  <FilterableHeaderCell
+                    key={col}
+                    columnKey={col}
+                    label={col.charAt(0).toUpperCase() + col.slice(1)}
+                    hideOnMobile={col === "phone"}
+                    openFilter={openFilter}
+                    setOpenFilter={setOpenFilter}
+                    columnFilters={columnFilters}
+                    baseDocs={baseDocs}
+                    sortConfig={sortConfig}
+                    onSortChange={onSortChange}
+                    onColumnFilterChange={onColumnFilterChange}
+                  />
+                ))}
+                
+                {/* ── Minimalist Export Icon button rendered in both view modes ── */}
+              <th className="w-12 py-3 pr-4 text-right vertical-middle">
                 {!showArchived && onExport && (
-                  <button type="button" title="Export to CSV" onClick={onExport} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600">
+                  <button 
+                    type="button" 
+                    title="Export to CSV" 
+                    onClick={onExport} 
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors focus:outline-none"
+                  >
                     <IconExport className="h-4 w-4" />
                   </button>
                 )}
               </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {clients.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-24 text-center">
-                  <p className="text-base font-semibold text-slate-500">{showArchived ? "No archived clients found" : "No clients found"}</p>
-                </td>
               </tr>
-            ) : (
-              clients.map((client) => (
-                <ClientRow
-                  key={client.id}
-                  client={client}
-                  showArchived={showArchived}
-                  onEdit={onEdit}
-                  onRestoreSelect={onRestoreSelect}
-                  renderStatusBadge={(status: string) => <StatusBadge status={status} />}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {clients.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-24 text-center">
+                    <p className="text-base font-semibold text-slate-500">
+                      {showArchived ? "No archived clients found" : "No clients found"}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                clients.map((client) => (
+                  <ClientRow
+                    key={client.id}
+                    client={client}
+                    showArchived={showArchived}
+                    onEdit={onEdit}
+                    onRestoreSelect={onRestoreSelect}
+                    renderStatusBadge={(status: string) => <StatusBadge status={status} />}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
