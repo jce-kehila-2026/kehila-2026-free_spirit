@@ -309,7 +309,7 @@ export default function ClientList({
     // If the parent is managing data externally, skip the internal subscription
     if (externalDocs !== undefined) return;
 
-    const q = query(collection(db, "clients"), orderBy("created_at", "desc"));
+    const q = query(collection(db!, "clients"), orderBy("created_at", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
@@ -344,7 +344,7 @@ export default function ClientList({
     if (!restoreTarget) return;
     setIsRestoring(true);
     try {
-      const docRef = doc(db, "clients", restoreTarget.id);
+      const docRef = doc(db!, "clients", restoreTarget.id);
       await updateDoc(docRef, {
         is_archived: false,
         updated_at: serverTimestamp(),
