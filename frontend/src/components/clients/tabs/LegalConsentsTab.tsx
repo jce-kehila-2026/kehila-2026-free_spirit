@@ -10,7 +10,7 @@ import { db } from "@/firebase/firebase";
 import { z } from "zod";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 import { legalConsentsSchema } from "@/schemas/clientSchema";
-import type { ClientDoc } from "@/components/clients/ClientList";
+import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
