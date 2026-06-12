@@ -234,7 +234,7 @@ export default function WizardController({
 
       if (isEditMode && initialData) {
         // ── Update existing document ──────────────────────────────────
-        const docRef = doc(db, "clients", initialData.id);
+        const docRef = doc(db!, "clients", initialData.id);
         await updateDoc(docRef, {
           ...sanitized,
           updated_at: serverTimestamp(),
@@ -245,7 +245,7 @@ export default function WizardController({
         );
       } else {
         // ── Create new document ───────────────────────────────────────
-        await addDoc(collection(db, "clients"), {
+        await addDoc(collection(db!, "clients"), {
           ...sanitized,
           created_at: serverTimestamp(),
         });

@@ -15,6 +15,7 @@ import { useClientManagementService } from "@/application/ClientManagementServic
 
 // TIER 3 - BUSINESS RULES LAYER
 import { useClientFilters } from "@/application/useClientFilters";
+import RestoreModal from "@/components/clients/RestoreModal";
 
 type View = "list" | "form" | "dashboard";
 
@@ -31,7 +32,14 @@ export default function ClientsPage() {
   const [showArchived, setShowArchived] = useState(false);
 
   // Application Layer - Live Firestore Data Stream
-  const { allDocs, isLoading } = useClientManagementService();
+  const { 
+  allDocs, 
+  isLoading,  
+  restoreTarget, 
+  setRestoreTarget, 
+  isRestoring, 
+  handleRestore 
+} = useClientManagementService();
 
   // Pass that data into the Business Rules Layer to get the filtered results
   // Business Rules Layer - Client Filtering & Sorting Policies
@@ -103,7 +111,18 @@ export default function ClientsPage() {
               totalActiveCount={totalActiveCount}
               onClearAllFilters={handleClearAllFilters}
               hasActiveFilters={hasActiveFilters}
+              onRestoreSelect={setRestoreTarget}
             />
+
+            {/* Render the modal at the page view-controller root level */}
+            {restoreTarget && (
+              <RestoreModal
+                client={restoreTarget}
+                onCancel={() => setRestoreTarget(null)}
+                onConfirm={handleRestore}
+                isRestoring={isRestoring}
+              />
+            )}
           </>
         )}
 

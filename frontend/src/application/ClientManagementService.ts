@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { restoreClient as dbRestore } from "@/application/ClientManagementService";
+import { toast } from "sonner";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { type ClientDoc } from "@/components/clients/ClientList";
 
@@ -7,6 +9,8 @@ export const useClientManagementService = () => {
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<ClientDoc | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db!, "clients"), orderBy("created_at", "desc"));
@@ -32,5 +36,35 @@ export const useClientManagementService = () => {
     return () => unsubscribe();
   }, []);
 
-  return { allDocs, isLoading, error };
+  async function handleRestore() {
+    if (!restoreTarget) return;
+    setIsRestoring(true);
+    try {
+      await dbRestore(restoreTarget.id);
+      toast.success(`${restoreTarget.first_name} ${restoreTarget.last_name} restored successfully.`);
+      setRestoreTarget(null);
+    } catch {
+      toast.error("Failed to restore client");
+    } finally {
+      setIsRestoring(false);
+    }
+  }
+
+  return { 
+    allDocs, 
+    isLoading, 
+    error, 
+    restoreTarget,
+    setRestoreTarget,
+    isRestoring,
+    handleRestore 
+  };
 };
+
+export async function restoreClient(clientId: string): Promise<void> {
+  const docRef = doc(db!, "clients", clientId);
+  await updateDoc(docRef, {
+    is_archived: false,
+    updated_at: serverTimestamp(),
+  });
+}
