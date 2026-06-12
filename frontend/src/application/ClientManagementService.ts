@@ -3,7 +3,7 @@ import { restoreClient as dbRestore } from "@/application/ClientManagementServic
 import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 
 export const useClientManagementService = () => {
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);

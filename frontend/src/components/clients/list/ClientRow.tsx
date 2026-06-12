@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { QuickCopy } from "@/components/ui/QuickCopy";
 import { IconRestore, IconPencil } from "@/components/ui/Icons";
 

@@ -1,4 +1,4 @@
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── CSV export helper ────────────────────────────────────────────────────────
 

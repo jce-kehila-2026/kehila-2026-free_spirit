@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { exportToCSV } from "@/utils/csvExport";
+import { exportToCSV } from "@/components/clients/list/csvExport";
 
 // TIER 1 - PRESENTATION LAYER WIDGETS
-import ClientList, { type ClientDoc } from "@/components/clients/ClientList";
+import ClientList, { type ClientDoc } from "@/components/clients/list/ClientList";
 import WizardController from "@/components/clients/wizard/WizardController";
 import ClientProfileDashboard from "@/components/clients/dashboard/ClientProfileDashboard";
-import ClientPageHeader from "@/components/clients/ClientPageHeader";
-import ClientFilterBar from "@/components/clients/ClientFilterBar";
+import ClientPageHeader from "@/components/clients/list/ClientPageHeader";
+import ClientFilterBar from "@/components/clients/list/ClientFilterBar";
 
 // TIER 2 - APPLICATION LAYER
 import { useClientManagementService } from "@/application/ClientManagementService"; 
 
 // TIER 3 - BUSINESS RULES LAYER
 import { useClientFilters } from "@/application/useClientFilters";
-import RestoreModal from "@/components/clients/RestoreModal";
+import RestoreModal from "@/components/clients/list/RestoreModal";
 
 type View = "list" | "form" | "dashboard";
 

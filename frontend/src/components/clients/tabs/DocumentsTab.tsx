@@ -16,7 +16,7 @@ import {
   type ClientDocument,
   type DocumentStatus,
 } from "@/schemas/clientSchema";
-import type { ClientDoc } from "@/components/clients/ClientList";
+import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

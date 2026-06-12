@@ -13,7 +13,7 @@ import {
   type Contact,
   type ContactsFormData,
 } from "@/schemas/clientSchema";
-import type { ClientDoc } from "@/components/clients/ClientList";
+import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

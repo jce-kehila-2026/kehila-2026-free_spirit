@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 
 export const useClientFilters = (allDocs: ClientDoc[]) => {
   // ── Search & filter state ─────────────────────────────────────────────

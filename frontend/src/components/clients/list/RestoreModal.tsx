@@ -1,6 +1,6 @@
 "use client";
 
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { IconRestore } from "@/components/ui/Icons";
 
 interface RestoreModalProps {

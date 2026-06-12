@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClientDoc } from "@/components/clients/ClientList";
+import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";

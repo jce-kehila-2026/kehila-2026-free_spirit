@@ -1,5 +1,5 @@
 import { IconPlus, IconArrowLeft } from "@/components/ui/Icons";
-import { type ClientDoc } from "@/components/clients/ClientList";
+import { type ClientDoc } from "@/components/clients/list/ClientList";
 
 type View = "list" | "form" | "dashboard";
 
