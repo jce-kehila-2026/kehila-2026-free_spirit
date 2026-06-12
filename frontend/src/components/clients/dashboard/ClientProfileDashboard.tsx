@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
@@ -75,6 +76,17 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
     handleRestore,
     handleArchive,
   } = useProfileDashboard(client);
+
+  const router = useRouter();
+  const handleCreateMeetingNavigation = () => {
+    // Navigates to the events path passing the client context via URL query parameters
+    const queryParams = new URLSearchParams({
+      action: "new-meeting",
+      clientId: client.id,
+      clientName: `${client.first_name} ${client.last_name}`,
+    });
+    router.push(`/events?${queryParams.toString()}`);
+  };
 
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
@@ -247,7 +259,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
             </fieldset>
           </>
         ) : (
-          <ProfileSummaryDashboard isArchived={isArchived} />
+          <ProfileSummaryDashboard isArchived={isArchived} onCreateMeeting={handleCreateMeetingNavigation} />
         )}
 
         {/* ── Advanced Settings ── */}
