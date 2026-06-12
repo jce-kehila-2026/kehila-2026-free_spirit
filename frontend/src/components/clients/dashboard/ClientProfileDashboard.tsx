@@ -64,6 +64,9 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
     setActiveTab,
     isEditable,
     setIsEditable,
+    showDetailedTabs,
+    setShowDetailedTabs,
+    effectiveEditable,
     isArchived,
     isRestoring,
     showArchiveModal,
@@ -132,41 +135,71 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </div>
             </div>
 
-            <div className="ml-auto shrink-0">
-              <button
-                type="button"
-                id="btn-toggle-edit-mode"
-                disabled={isArchived}
-                onClick={() => setIsEditable((prev) => !prev)}
-                aria-pressed={isEditable && !isArchived}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                  "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                  isArchived
-                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
-                    : isEditable
+            <div className="ml-auto shrink-0 flex items-center gap-2">
+              {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
+              {!isArchived && (
+                <button
+                  type="button"
+                  id="btn-toggle-edit-mode"
+                  onClick={() => {
+                    if (isEditable) {
+                      // Lock: collapse back to summary view
+                      setIsEditable(false);
+                      setShowDetailedTabs(false);
+                    } else {
+                      // Edit: open detailed tabs in edit mode
+                      setIsEditable(true);
+                      setShowDetailedTabs(true);
+                    }
+                  }}
+                  aria-pressed={isEditable}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    isEditable
                       ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
                       : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
-                ].join(" ")}
-              >
-                {isEditable && !isArchived ? (
-                  <>
-                    <IconLock className="h-4 w-4" />
-                    Lock Editing
-                  </>
-                ) : (
-                  <>
-                    <IconPencil className="h-4 w-4" />
-                    Edit Profile
-                  </>
-                )}
-              </button>
+                  ].join(" ")}
+                >
+                  {isEditable ? (
+                    <>
+                      <IconLock className="h-4 w-4" />
+                      Lock Editing
+                    </>
+                  ) : (
+                    <>
+                      <IconPencil className="h-4 w-4" />
+                      Edit Profile
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* ── Archived client: read-only tab access ── */}
+              {isArchived && (
+                <button
+                  type="button"
+                  id="btn-view-detailed-records"
+                  onClick={() => setShowDetailedTabs((prev) => !prev)}
+                  aria-pressed={showDetailedTabs}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    showDetailedTabs
+                      ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-400"
+                      : "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:ring-slate-400",
+                  ].join(" ")}
+                >
+                  <IconPencil className="h-4 w-4" />
+                  {showDetailedTabs ? "Back to Overview" : "View Detailed Records"}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* ── View Switcher ── */}
-        {isEditable ? (
+        {showDetailedTabs ? (
           <>
             <nav aria-label="Client profile sections">
               <ol role="tablist" className="flex flex-wrap gap-2 w-full border-b border-slate-200 pb-2">
@@ -205,7 +238,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                   return (
                     <ActiveTabContent
                       client={client}
-                      isEditable={isArchived ? false : isEditable}
+                      isEditable={effectiveEditable}
                       onBack={activeTab === "profile" ? onBack : undefined}
                     />
                   );
