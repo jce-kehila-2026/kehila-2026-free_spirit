@@ -1,0 +1,68 @@
+import {
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+
+import { getFirestoreDb } from "@/firebase/clientDbService";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const EVENTS_COLLECTION = "events";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/**
+ * A single event document as returned from Firestore.
+ * Fields mirror the shape written by ScheduleMeetingForm / eventsService.js.
+ */
+export interface ClientEvent {
+  id: string;
+  clientId: string | null;
+  clientName?: string;
+  title: string;
+  date: string;
+  time: string;
+  notes?: string;
+  status: "scheduled" | "completed" | "cancelled" | "deleted";
+  priority: "normal" | "high";
+  reminderMode?: string;
+  reminderOption?: string;
+  googleCalendarEventId?: string;
+  calendarSyncLabel?: string;
+  createdAt?: { seconds: number; nanoseconds: number } | null;
+  updatedAt?: { seconds: number; nanoseconds: number } | null;
+}
+
+// ─── Query ────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches all events that belong to the given client, ordered newest-first.
+ *
+ * This is a "side-car" to eventsService.js: it adds the missing
+ * `where("clientId", …)` filter without touching any existing service.
+ *
+ * NOTE: Firestore requires a composite index on (clientId ASC, createdAt DESC).
+ * If the collection is small the SDK will fall back to a client-side sort and
+ * log a hint; create the index in the Firebase console when needed.
+ */
+export async function getEventsByClientId(
+  clientId: string
+): Promise<ClientEvent[]> {
+  const db = getFirestoreDb();
+
+  const q = query(
+    collection(db, EVENTS_COLLECTION),
+    where("clientId", "==", clientId),
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<ClientEvent, "id">),
+  }));
+}

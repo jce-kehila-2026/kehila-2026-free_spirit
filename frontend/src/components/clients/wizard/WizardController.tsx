@@ -4,20 +4,10 @@ import { useState, useEffect } from "react";
 import { useForm, FormProvider, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/firebase/firebase";
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestoreDb } from "@/firebase/clientDbService"
 
-import {
-  basicInfoSchema,
-  clientSchema,
-  type ClientFormInput,
-} from "@/schema/clientSchema";
+import { basicInfoSchema, clientSchema, type ClientFormInput } from "@/schema/clientSchema";
 
 import BasicInfoStep from "./steps/BasicInfoStep";
 import DemographicsStep from "./steps/DemographicsStep";
@@ -234,7 +224,7 @@ export default function WizardController({
 
       if (isEditMode && initialData) {
         // ── Update existing document ──────────────────────────────────
-        const docRef = doc(db!, "clients", initialData.id);
+        const docRef = doc(getFirestoreDb(), "clients", initialData.id);
         await updateDoc(docRef, {
           ...sanitized,
           updated_at: serverTimestamp(),
@@ -245,7 +235,7 @@ export default function WizardController({
         );
       } else {
         // ── Create new document ───────────────────────────────────────
-        await addDoc(collection(db!, "clients"), {
+        await addDoc(collection(getFirestoreDb(), "clients"), {
           ...sanitized,
           created_at: serverTimestamp(),
         });
