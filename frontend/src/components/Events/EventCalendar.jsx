@@ -111,12 +111,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
             events={fcEvents}
             eventContent={renderEventContent}
             eventClick={(clickInfo) => {
-              try {
-                // Prevent any default navigation behavior
-                clickInfo.jsEvent && clickInfo.jsEvent.preventDefault();
-              } catch (e) {
-                // ignore
-              }
+              clickInfo.jsEvent?.preventDefault();
 
               const original = clickInfo.event?.extendedProps?.originalEvent;
               if (original) setSelectedEvent(original);
