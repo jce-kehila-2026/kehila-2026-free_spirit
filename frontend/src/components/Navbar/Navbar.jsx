@@ -230,10 +230,17 @@ export default function Navbar() {
   // Dynamic links stay first, while local-only links such as Personal Area remain
   // available until matching Firestore navigation documents are created.
   const mergeNavigationLinks = (baseLinks, dynamicLinks) => {
-    const dynamicByHref = new Map(dynamicLinks.map((link) => [link.href, link]));
+    const baseByHref = new Map(baseLinks.map((link) => [link.href, link]));
+    const mergedDynamicLinks = dynamicLinks.map((link) => ({
+      ...baseByHref.get(link.href),
+      ...link,
+    }));
+    const dynamicByHref = new Map(
+      mergedDynamicLinks.map((link) => [link.href, link]),
+    );
 
     return [
-      ...dynamicLinks,
+      ...mergedDynamicLinks,
       ...baseLinks.filter((link) => !dynamicByHref.has(link.href)),
     ];
   };

@@ -17,6 +17,8 @@ const managerRoles: ReadonlySet<AccountRole> = new Set([
   "Program Manager",
 ]);
 const clientRoles: ReadonlySet<AccountRole> = new Set(["User", "Client"]);
+const dashboardLoadError =
+  "We could not load your personal area. Please refresh and try again.";
 
 function isAccountRole(value: unknown): value is AccountRole {
   return (
@@ -38,16 +40,14 @@ function DashboardLoadingState() {
 
 function DashboardRoleResolver() {
   const [dashboardKind, setDashboardKind] = useState<DashboardKind | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState(() =>
+    auth && db ? "" : dashboardLoadError,
+  );
 
   useEffect(() => {
     let shouldIgnore = false;
 
     if (!auth || !db) {
-      setDashboardKind(null);
-      setErrorMessage(
-        "We could not load your personal area. Please refresh and try again.",
-      );
       return;
     }
     const activeAuth = auth;
@@ -78,9 +78,7 @@ function DashboardRoleResolver() {
         // Fail closed when the profile cannot be read or contains an unknown role.
         if (!shouldIgnore) {
           setDashboardKind(null);
-          setErrorMessage(
-            "We could not load your personal area. Please refresh and try again.",
-          );
+          setErrorMessage(dashboardLoadError);
         }
       }
     });

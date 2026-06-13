@@ -18,6 +18,8 @@ export const navigationLinks = [
     href: "/manage-programs",
     label: "Manage Programs",
     visibility: "authenticated",
+    allowedRoles: [],
+    showInNavigation: false,
   },
   { href: "/programs", label: "Programs", visibility: "authenticated" },
 
@@ -45,6 +47,10 @@ export const navigationLinks = [
 // Function to filter navigation links based on user authentication status and role.
 export const getVisibleLinks = (links, currentUser, userRole) =>
   links.filter((link) => {
+    if (link.showInNavigation === false) {
+      return false;
+    }
+
     if (link.visibility === "guest") {
       return !currentUser;
     }

@@ -51,6 +51,13 @@ interface DashboardEvent extends z.infer<typeof dashboardEventSchema> {
   scheduledAt: Date;
 }
 
+const prospectsLoadError =
+  "We could not load interested prospects. Please refresh and try again.";
+const clientOverviewLoadError =
+  "We could not load the client overview. Please refresh and try again.";
+const meetingsLoadError =
+  "We could not load upcoming meetings. Please refresh and try again.";
+
 const optionalDashboardString = z.string().trim().max(500).optional().or(z.literal(""));
 
 const dashboardClientSchema = z.object({
@@ -453,24 +460,25 @@ function ClientOverviewCard({
  */
 export default function ManagerDashboardShell() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(Boolean(db));
+  const [errorMessage, setErrorMessage] = useState(() =>
+    db ? "" : prospectsLoadError,
+  );
   const [meetings, setMeetings] = useState<DashboardEvent[]>([]);
-  const [isLoadingMeetings, setIsLoadingMeetings] = useState(true);
-  const [meetingsErrorMessage, setMeetingsErrorMessage] = useState("");
+  const [isLoadingMeetings, setIsLoadingMeetings] = useState(Boolean(db));
+  const [meetingsErrorMessage, setMeetingsErrorMessage] = useState(() =>
+    db ? "" : meetingsLoadError,
+  );
   const [clientOverview, setClientOverview] =
     useState<ClientOverview>(emptyClientOverview);
-  const [isLoadingClientOverview, setIsLoadingClientOverview] = useState(true);
+  const [isLoadingClientOverview, setIsLoadingClientOverview] =
+    useState(Boolean(db));
   const [clientOverviewErrorMessage, setClientOverviewErrorMessage] =
-    useState("");
+    useState(() => (db ? "" : clientOverviewLoadError));
   const newestProspects = prospects.slice(0, 3);
 
   useEffect(() => {
     if (!db) {
-      setErrorMessage(
-        "We could not load interested prospects. Please refresh and try again.",
-      );
-      setIsLoading(false);
       return;
     }
 
@@ -479,7 +487,7 @@ export default function ManagerDashboardShell() {
     // The status predicate limits the live query to the prospect workflow.
     const prospectsQuery = query(
       collection(activeDb, "clients"),
-      where("status", "==", "interested"), 
+      where("status", "==", "interested"),
     );
 
     return onSnapshot(
@@ -512,9 +520,7 @@ export default function ManagerDashboardShell() {
       },
       () => {
         setProspects([]);
-        setErrorMessage(
-          "We could not load interested prospects. Please refresh and try again.",
-        );
+        setErrorMessage(prospectsLoadError);
         setIsLoading(false);
       },
     );
@@ -522,10 +528,6 @@ export default function ManagerDashboardShell() {
 
   useEffect(() => {
     if (!db) {
-      setClientOverviewErrorMessage(
-        "We could not load the client overview. Please refresh and try again.",
-      );
-      setIsLoadingClientOverview(false);
       return;
     }
 
@@ -612,9 +614,7 @@ export default function ManagerDashboardShell() {
       },
       () => {
         setClientOverview(emptyClientOverview);
-        setClientOverviewErrorMessage(
-          "We could not load the client overview. Please refresh and try again.",
-        );
+        setClientOverviewErrorMessage(clientOverviewLoadError);
         setIsLoadingClientOverview(false);
       },
     );
@@ -622,10 +622,6 @@ export default function ManagerDashboardShell() {
 
   useEffect(() => {
     if (!db) {
-      setMeetingsErrorMessage(
-        "We could not load upcoming meetings. Please refresh and try again.",
-      );
-      setIsLoadingMeetings(false);
       return;
     }
 
@@ -682,9 +678,7 @@ export default function ManagerDashboardShell() {
       },
       () => {
         setMeetings([]);
-        setMeetingsErrorMessage(
-          "We could not load upcoming meetings. Please refresh and try again.",
-        );
+        setMeetingsErrorMessage(meetingsLoadError);
         setIsLoadingMeetings(false);
       },
     );
