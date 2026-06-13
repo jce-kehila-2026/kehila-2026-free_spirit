@@ -104,7 +104,7 @@ export default function MedicalProfileStep() {
 
   const mp = errors.medical_profile;
 
-  const [open, setOpen] = useState({ insurance: true, health: false });
+  const [open, setOpen] = useState({ insurance: false, health: false });
 
   function toggle(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));

@@ -100,7 +100,7 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Accordion state ──────────────────────────────────────────────────────────
-  const [open, setOpen] = useState({ identity: true, program: false, goals: false });
+  const [open, setOpen] = useState({ identity: false, program: false, goals: false });
   function toggleSection(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
@@ -135,7 +135,7 @@ export default function QuestionnaireTab({ client, isEditable }: QuestionnaireTa
   async function onSubmit(data: QuestionnaireTabFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         ...sanitize(data as Record<string, unknown>),
         updated_at: serverTimestamp(),

@@ -186,7 +186,7 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
 
   // ── Accordion open/close state (section 1 open, rest closed) ─────────────────
   const [open, setOpen] = useState({
-    insurance:      true,
+    insurance:      false,
     vitals:         false,
     providers:      false,
     screening:      false,

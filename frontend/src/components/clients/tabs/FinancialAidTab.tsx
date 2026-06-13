@@ -529,7 +529,7 @@ export default function FinancialAidTab({ client, isEditable }: FinancialAidTabP
   async function onSubmit(data: FinancialAidTabFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         financial_aid_applications: data.financial_aid_applications.map(
           (app) => sanitizeItem(app as Record<string, unknown>)

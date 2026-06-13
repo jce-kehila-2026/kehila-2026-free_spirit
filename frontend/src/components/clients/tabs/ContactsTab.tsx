@@ -162,7 +162,7 @@ export default function ContactsTab({ client, isEditable }: ContactsTabProps) {
   async function onSubmit(data: ContactsFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         // contacts is a top-level array field in the Firestore schema.
         contacts: data.contacts.map((c) => sanitizeItem(c as Record<string, unknown>)),

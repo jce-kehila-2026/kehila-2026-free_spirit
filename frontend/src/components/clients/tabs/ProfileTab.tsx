@@ -196,7 +196,7 @@ export default function ProfileTab({ client, isEditable}: ProfileTabProps) {
     name: "dependents",
   });
 
-  const [open, setOpen] = useState({ basic: true, demographics: false, dependents: false });
+  const [open, setOpen] = useState({ basic: false, demographics: false, dependents: false });
   function toggleSection(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }

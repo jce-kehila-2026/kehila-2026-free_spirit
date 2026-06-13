@@ -106,7 +106,7 @@ export default function DemographicsStep() {
     formState: { errors },
   } = useFormContext<ClientFormInput>();
 
-  const [open, setOpen] = useState({ identification: true, notes: false });
+  const [open, setOpen] = useState({ identification: false, notes: false });
 
   function toggle(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));

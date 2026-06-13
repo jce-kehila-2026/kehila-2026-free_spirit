@@ -115,7 +115,7 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Accordion state ──────────────────────────────────────────────────────────
-  const [open, setOpen] = useState({ travel: true, insurance: false, program: false });
+  const [open, setOpen] = useState({ travel: false, insurance: false, program: false });
   function toggleSection(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
@@ -146,7 +146,7 @@ export default function LogisticsTab({ client, isEditable }: LogisticsTabProps) 
   async function onSubmit(data: LogisticsTabFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         ...sanitize(data as Record<string, unknown>),
         updated_at: serverTimestamp(),

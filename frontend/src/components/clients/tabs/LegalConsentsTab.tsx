@@ -116,7 +116,7 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Accordion state ──────────────────────────────────────────────────────────
-  const [open, setOpen] = useState({ release: true, waiver: false });
+  const [open, setOpen] = useState({ release: false, waiver: false });
   function toggleSection(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
@@ -165,7 +165,7 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
   async function onSubmit(data: LegalConsentsTabFormData) {
     setIsSaving(true);
     try {
-      const docRef = doc(db, "clients", client.id);
+      const docRef = doc(db!, "clients", client.id);
       await updateDoc(docRef, {
         ...sanitize(data as Record<string, unknown>),
         updated_at: serverTimestamp(),

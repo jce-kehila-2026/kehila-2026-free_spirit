@@ -279,7 +279,7 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
       // 1. Upload to Firebase Storage
       const timestamp = Date.now();
       const storageRef = ref(
-        storage,
+        storage!,
         `clients/${client.id}/documents/${timestamp}_${file.name}`
       );
       const uploadTask = uploadBytesResumable(storageRef, file);
@@ -320,7 +320,7 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
 
       // 3. Append to Firestore
       const updatedDocs = [...docs, newDoc];
-      const firestoreRef = doc(db, "clients", client.id);
+      const firestoreRef = doc(db!, "clients", client.id);
       await updateDoc(firestoreRef, {
         client_documents: updatedDocs,
         updated_at: serverTimestamp(),
@@ -345,7 +345,7 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
   const handleDelete = useCallback(async (index: number) => {
     const updated = docs.filter((_, i) => i !== index);
     try {
-      const firestoreRef = doc(db, "clients", client.id);
+      const firestoreRef = doc(db!, "clients", client.id);
       await updateDoc(firestoreRef, {
         client_documents: updated,
         updated_at: serverTimestamp(),

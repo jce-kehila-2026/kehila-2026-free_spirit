@@ -11,7 +11,7 @@ import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
 import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
 import { QuickCopy } from "@/components/ui/QuickCopy";
-import { IconPencil, IconLock } from "@/components/ui/Icons";
+import { IconPencil, IconLock, IconEye } from "@/components/ui/Icons";
 import ProfileSummaryDashboard from "./ProfileSummaryDashboard";
 import AdvancedSettings from "./AdvancedSettings";
 import ProfileArchiveModal from "./ProfileArchiveModal";
@@ -202,7 +202,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                       : "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:ring-slate-400",
                   ].join(" ")}
                 >
-                  <IconPencil className="h-4 w-4" />
+                  <IconEye className="h-4 w-4" />
                   {showDetailedTabs ? "Back to Overview" : "View Detailed Records"}
                 </button>
               )}
@@ -241,7 +241,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </ol>
             </nav>
 
-            <fieldset disabled={isArchived} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <fieldset className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
                 {(() => {
                   const ActiveTabContent = TAB_COMPONENTS[activeTab];
