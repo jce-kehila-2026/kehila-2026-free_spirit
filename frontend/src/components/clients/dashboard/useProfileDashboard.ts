@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
-import { restoreClient, archiveClient } from "@/application/ClientManagementService";
+import { restoreClientInDb, archiveClientInDb } from "@/firebase/clientDbService";
 import { toast } from "sonner";
 import { type TabId } from "./ClientProfileDashboard";
 
@@ -22,7 +22,7 @@ export function useProfileDashboard(client: ClientDoc) {
   async function handleRestore() {
       setIsRestoring(true);
       try {
-          await restoreClient(client.id);
+          await restoreClientInDb(client.id);
           toast.success(`${client.first_name} ${client.last_name} has been restored to active clients.`);
           setLocalIsArchived(false);
       } catch (err) {
@@ -36,7 +36,7 @@ export function useProfileDashboard(client: ClientDoc) {
   async function handleArchive() {
       setIsArchiving(true);
       try {
-          await archiveClient(client.id);
+          await archiveClientInDb(client.id);
           toast.success(`${client.first_name} ${client.last_name} has been archived.`);
           setLocalIsArchived(true);
           setShowArchiveModal(false);
