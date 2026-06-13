@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { restoreClient as dbRestore } from "@/application/ClientManagementService";
 import { toast } from "sonner";
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
+
+// Import purely from our Tier 4 Data Layer!
+import { subscribeToClients, restoreClientInDb } from "@/firebase/clientDbService";
 
 export const useClientManagementService = () => {
   const [allDocs, setAllDocs] = useState<ClientDoc[]>([]);
@@ -13,16 +13,9 @@ export const useClientManagementService = () => {
   const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db!, "clients"), orderBy("created_at", "desc"));
-    
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const docs = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })) as ClientDoc[];
-        
+    // Tier 2 calling Tier 4 listener
+    const unsubscribe = subscribeToClients(
+      (docs) => {
         setAllDocs(docs);
         setIsLoading(false);
       },
@@ -33,14 +26,17 @@ export const useClientManagementService = () => {
       }
     );
 
+    // Clean up the listener when the component unmounts
     return () => unsubscribe();
   }, []);
 
   async function handleRestore() {
     if (!restoreTarget) return;
     setIsRestoring(true);
+    
     try {
-      await dbRestore(restoreTarget.id);
+      // Tier 2 calling Tier 4 database mutation
+      await restoreClientInDb(restoreTarget.id);
       toast.success(`${restoreTarget.first_name} ${restoreTarget.last_name} restored successfully.`);
       setRestoreTarget(null);
     } catch {
@@ -60,19 +56,3 @@ export const useClientManagementService = () => {
     handleRestore 
   };
 };
-
-export async function restoreClient(clientId: string): Promise<void> {
-  const docRef = doc(db!, "clients", clientId);
-  await updateDoc(docRef, {
-    is_archived: false,
-    updated_at: serverTimestamp(),
-  });
-}
-
-export async function archiveClient(clientId: string): Promise<void> {
-  const docRef = doc(db!, "clients", clientId);
-  await updateDoc(docRef, {
-    is_archived: true,
-    updated_at: serverTimestamp(),
-  });
-}

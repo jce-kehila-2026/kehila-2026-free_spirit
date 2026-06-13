@@ -17,7 +17,7 @@ import {
   basicInfoSchema,
   clientSchema,
   type ClientFormInput,
-} from "@/schemas/clientSchema";
+} from "@/schema/clientSchema";
 
 import BasicInfoStep from "./steps/BasicInfoStep";
 import DemographicsStep from "./steps/DemographicsStep";

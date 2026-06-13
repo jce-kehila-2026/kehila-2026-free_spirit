@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
-import type { ClientFormInput } from "@/schemas/clientSchema";
+import type { ClientFormInput } from "@/schema/clientSchema";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

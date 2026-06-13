@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
@@ -10,7 +11,7 @@ import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
 import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
 import { QuickCopy } from "@/components/ui/QuickCopy";
-import { IconPencil, IconLock } from "@/components/ui/Icons";
+import { IconPencil, IconLock, IconEye } from "@/components/ui/Icons";
 import ProfileSummaryDashboard from "./ProfileSummaryDashboard";
 import AdvancedSettings from "./AdvancedSettings";
 import ProfileArchiveModal from "./ProfileArchiveModal";
@@ -64,6 +65,9 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
     setActiveTab,
     isEditable,
     setIsEditable,
+    showDetailedTabs,
+    setShowDetailedTabs,
+    effectiveEditable,
     isArchived,
     isRestoring,
     showArchiveModal,
@@ -72,6 +76,17 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
     handleRestore,
     handleArchive,
   } = useProfileDashboard(client);
+
+  const router = useRouter();
+  const handleCreateMeetingNavigation = () => {
+    // Navigates to the events path passing the client context via URL query parameters
+    const queryParams = new URLSearchParams({
+      action: "new-meeting",
+      clientId: client.id,
+      clientName: `${client.first_name} ${client.last_name}`,
+    });
+    router.push(`/events?${queryParams.toString()}`);
+  };
 
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
@@ -132,41 +147,71 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </div>
             </div>
 
-            <div className="ml-auto shrink-0">
-              <button
-                type="button"
-                id="btn-toggle-edit-mode"
-                disabled={isArchived}
-                onClick={() => setIsEditable((prev) => !prev)}
-                aria-pressed={isEditable && !isArchived}
-                className={[
-                  "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                  "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                  isArchived
-                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
-                    : isEditable
+            <div className="ml-auto shrink-0 flex items-center gap-2">
+              {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
+              {!isArchived && (
+                <button
+                  type="button"
+                  id="btn-toggle-edit-mode"
+                  onClick={() => {
+                    if (isEditable) {
+                      // Lock: collapse back to summary view
+                      setIsEditable(false);
+                      setShowDetailedTabs(false);
+                    } else {
+                      // Edit: open detailed tabs in edit mode
+                      setIsEditable(true);
+                      setShowDetailedTabs(true);
+                    }
+                  }}
+                  aria-pressed={isEditable}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    isEditable
                       ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
                       : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
-                ].join(" ")}
-              >
-                {isEditable && !isArchived ? (
-                  <>
-                    <IconLock className="h-4 w-4" />
-                    Lock Editing
-                  </>
-                ) : (
-                  <>
-                    <IconPencil className="h-4 w-4" />
-                    Edit Profile
-                  </>
-                )}
-              </button>
+                  ].join(" ")}
+                >
+                  {isEditable ? (
+                    <>
+                      <IconLock className="h-4 w-4" />
+                      Lock Editing
+                    </>
+                  ) : (
+                    <>
+                      <IconPencil className="h-4 w-4" />
+                      Edit Profile
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* ── Archived client: read-only tab access ── */}
+              {isArchived && (
+                <button
+                  type="button"
+                  id="btn-view-detailed-records"
+                  onClick={() => setShowDetailedTabs((prev) => !prev)}
+                  aria-pressed={showDetailedTabs}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                    "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    showDetailedTabs
+                      ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-400"
+                      : "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:ring-slate-400",
+                  ].join(" ")}
+                >
+                  <IconEye className="h-4 w-4" />
+                  {showDetailedTabs ? "Back to Overview" : "View Detailed Records"}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* ── View Switcher ── */}
-        {isEditable ? (
+        {showDetailedTabs ? (
           <>
             <nav aria-label="Client profile sections">
               <ol role="tablist" className="flex flex-wrap gap-2 w-full border-b border-slate-200 pb-2">
@@ -196,7 +241,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </ol>
             </nav>
 
-            <fieldset disabled={isArchived} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <fieldset className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
                 {(() => {
                   const ActiveTabContent = TAB_COMPONENTS[activeTab];
@@ -205,7 +250,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                   return (
                     <ActiveTabContent
                       client={client}
-                      isEditable={isArchived ? false : isEditable}
+                      isEditable={effectiveEditable}
                       onBack={activeTab === "profile" ? onBack : undefined}
                     />
                   );
@@ -214,7 +259,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
             </fieldset>
           </>
         ) : (
-          <ProfileSummaryDashboard isArchived={isArchived} />
+          <ProfileSummaryDashboard isArchived={isArchived} onCreateMeeting={handleCreateMeetingNavigation} />
         )}
 
         {/* ── Advanced Settings ── */}

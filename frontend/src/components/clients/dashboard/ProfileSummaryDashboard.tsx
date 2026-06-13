@@ -5,9 +5,11 @@ import { IconCheck, IconClock, IconCalendar } from "@/components/ui/Icons";
 
 interface ProfileSummaryDashboardProps {
   isArchived: boolean;
+  /** Called when the user clicks "Create Meeting". Provided by the parent to keep routing logic out of this presentation component. */
+  onCreateMeeting?: () => void;
 }
 
-export default function ProfileSummaryDashboard({ isArchived }: ProfileSummaryDashboardProps) {
+export default function ProfileSummaryDashboard({ isArchived, onCreateMeeting }: ProfileSummaryDashboardProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* ── Alert banner (full-width) ── */}
@@ -60,7 +62,7 @@ export default function ProfileSummaryDashboard({ isArchived }: ProfileSummaryDa
             <button
               type="button"
               disabled={isArchived}
-              onClick={() => toast.info("Meeting scheduler coming soon!")}
+              onClick={onCreateMeeting}
               className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-semibold shadow-sm"
             >
               Create Meeting
