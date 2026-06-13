@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import type { ClientFormInput } from "@/schemas/clientSchema";
+import type { ClientFormInput } from "@/schema/clientSchema";
 import {
   GENDER_OPTIONS,
   EDUCATION_STATUS_OPTIONS,
-} from "@/schemas/clientSchema";
+} from "@/schema/clientSchema";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

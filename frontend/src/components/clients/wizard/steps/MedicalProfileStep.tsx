@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import type { ClientFormInput } from "@/schemas/clientSchema";
-import { MEDICAL_CLEARANCE_STATUS } from "@/schemas/clientSchema";
+import type { ClientFormInput } from "@/schema/clientSchema";
+import { MEDICAL_CLEARANCE_STATUS } from "@/schema/clientSchema";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

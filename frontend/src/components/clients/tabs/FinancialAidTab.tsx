@@ -7,13 +7,7 @@ import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-import {
-  financialAidTabSchema,
-  FINANCIAL_AID_STATUS,
-  type FinancialAidTabFormData,
-  type FinancialAidApplication,
-  type PaymentInstallment,
-} from "@/schemas/clientSchema";
+import { financialAidTabSchema, type FinancialAidTabFormData, FINANCIAL_AID_STATUS, type FinancialAidApplication, type PaymentInstallment  } from "@/schema/financialAidSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────

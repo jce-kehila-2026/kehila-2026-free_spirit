@@ -8,14 +8,8 @@ import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-import {
-  medicalProfileSchema,
-  MEDICAL_CLEARANCE_STATUS,
-  type MedicalProfile,
-  type HealthcareProvider,
-  type Vaccination,
-  type Hospitalization,
-} from "@/schemas/clientSchema";
+import { medicalProfileSchema, type MedicalProfile, type HealthcareProvider, type Vaccination, type Hospitalization } from "@/schema/medicalSchema";
+import { MEDICAL_CLEARANCE_STATUS } from "@/schema/constants";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────

@@ -8,14 +8,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db, storage } from "@/firebase/firebase";
 
-import {
-  uploadDocumentFormSchema,
-  DOCUMENT_TYPE_OPTIONS,
-  DOCUMENT_STATUS_OPTIONS,
-  type UploadDocumentFormData,
-  type ClientDocument,
-  type DocumentStatus,
-} from "@/schemas/clientSchema";
+import { DOCUMENT_TYPE_OPTIONS, DOCUMENT_STATUS_OPTIONS, type DocumentStatus, uploadDocumentFormSchema, type UploadDocumentFormData, type ClientDocument } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────

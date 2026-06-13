@@ -8,13 +8,9 @@ import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-import {
-  basicInfoSchema,
-  GENDER_OPTIONS,
-  EDUCATION_STATUS_OPTIONS,
-  type BasicInfoFormData,
-  type Dependent,
-} from "@/schemas/clientSchema";
+import { type Dependent } from "@/schema/supplementarySchema";
+import { GENDER_OPTIONS, EDUCATION_STATUS_OPTIONS } from "@/schema/constants";
+import { basicInfoSchema, type BasicInfoFormData } from "@/schema/clientSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────

@@ -7,12 +7,9 @@ import { toast } from "sonner";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-import {
-  contactsStepSchema,
-  CONTACT_RELATIONSHIP,
-  type Contact,
-  type ContactsFormData,
-} from "@/schemas/clientSchema";
+import { contactsStepSchema, type Contact, type ContactsFormData } from "@/schema/contactSchema";
+
+import { CONTACT_RELATIONSHIP } from "@/schema/constants";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // ─── Props ────────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { type Timestamp } from "firebase/firestore";
-import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schemas/clientSchema";
+import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schema/clientSchema";
 import { IconArchive, IconExport } from "@/components/ui/Icons";
 import ClientRow from "./ClientRow";
 import FilterableHeaderCell from "./FilterableHeaderCell";
