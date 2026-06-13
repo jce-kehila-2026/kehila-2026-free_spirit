@@ -3,6 +3,18 @@ import { db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
+// ─── Safety Helpers ───────────────────────────────────────────────────────────
+
+export function getFirestoreDb() {
+  if (!db) throw new Error("Firestore DB is not initialized.");
+  return db;
+}
+
+export function getFirebaseStorage() {
+  if (!storage) throw new Error("Firebase Storage is not initialized.");
+  return storage;
+}
+
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
 /**
@@ -33,7 +45,7 @@ export async function updateClientDoc(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: Record<string, any>
 ): Promise<void> {
-  const docRef = doc(db!, "clients", clientId);
+  const docRef = doc(getFirestoreDb(), "clients", clientId);
   
   await updateDoc(docRef, {
     ...sanitizeFirestorePayload(payload),
@@ -42,7 +54,7 @@ export async function updateClientDoc(
 }
 
 export async function restoreClientInDb(clientId: string): Promise<void> {
-  const docRef = doc(db!, "clients", clientId);
+  const docRef = doc(getFirestoreDb(), "clients", clientId);
   await updateDoc(docRef, {
     is_archived: false,
     updated_at: serverTimestamp(),
@@ -50,7 +62,7 @@ export async function restoreClientInDb(clientId: string): Promise<void> {
 }
 
 export async function archiveClientInDb(clientId: string): Promise<void> {
-  const docRef = doc(db!, "clients", clientId);
+  const docRef = doc(getFirestoreDb(), "clients", clientId);
   await updateDoc(docRef, {
     is_archived: true,
     updated_at: serverTimestamp(),
@@ -65,7 +77,7 @@ export function subscribeToClients(
   onData: (clients: ClientDoc[]) => void,
   onError: (error: Error) => void
 ) {
-  const q = query(collection(db!, "clients"), orderBy("created_at", "desc"));
+  const q = query(collection(getFirestoreDb(), "clients"), orderBy("created_at", "desc"));
   
   return onSnapshot(
     q,
@@ -91,7 +103,7 @@ export async function uploadClientDocumentFile(
 ): Promise<string> {
   const timestamp = Date.now();
   const storageRef = ref(
-    storage!,
+    getFirebaseStorage(),
     `clients/${clientId}/documents/${timestamp}_${file.name}`
   );
   
