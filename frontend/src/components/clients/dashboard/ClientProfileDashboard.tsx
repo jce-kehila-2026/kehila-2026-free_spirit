@@ -259,7 +259,11 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
             </fieldset>
           </>
         ) : (
-          <ProfileSummaryDashboard isArchived={isArchived} onCreateMeeting={handleCreateMeetingNavigation} />
+          <ProfileSummaryDashboard 
+             client={client} 
+             isArchived={isArchived} 
+             onCreateMeeting={handleCreateMeetingNavigation} 
+          />
         )}
 
         {/* ── Advanced Settings ── */}

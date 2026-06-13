@@ -11,13 +11,14 @@ import { createGoogleCalendarEvent, updateGoogleCalendarEvent } from "@/firebase
 
 
 export default function ScheduleMeetingForm({
-  clientId = null,
+  clientId = "", // Changed from null to "" so typescript knows it can be a string
   clientName = "",
-  onMeetingCreated,
+  onMeetingCreated = null,
 
   initialData = null,
   isEditMode = false,
-  onEditCompleted,
+  onEditCompleted = null,
+  onClose, // Added this so the popup modal (in client card dashboard) can close
 }) {
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
@@ -249,6 +250,10 @@ export default function ScheduleMeetingForm({
       if (onMeetingCreated) {
         onMeetingCreated();
       }
+
+      if (onClose){
+        onClose();
+      } 
   
       alert("Meeting created successfully!");
       resetForm();
