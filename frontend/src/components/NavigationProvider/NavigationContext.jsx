@@ -24,12 +24,16 @@ export function NavigationProvider({ children }) {
       }
     };
 
-    // Keep the app build-safe when Firebase environment variables are unavailable.
+        // Keep the app build-safe when Firebase environment variables are unavailable.
+    // Defer local state updates so this effect remains compatible with React lint rules.
     if (!isFirebaseInitialized || !auth || !db) {
-      setLinks([]);
-      setLinksError("Firebase is not initialized (missing API key).");
-      setIsLoadingLinks(false);
-      return () => {};
+      const timeoutId = window.setTimeout(() => {
+        setLinks([]);
+        setLinksError("Firebase is not initialized (missing API key).");
+        setIsLoadingLinks(false);
+      }, 0);
+
+      return () => window.clearTimeout(timeoutId);
     }
 
     // Wait for Firebase Auth to restore the session before reading navigation permissions.

@@ -718,7 +718,7 @@ export default function AdminDashboardPage() {
             <div className="kpi-value">{kpis.pendingLeads}</div>
           </div>
           <div className="kpi-card">
-            <div className="kpi-title">Today's Tasks</div>
+            <div className="kpi-title">Today&apos;s Tasks</div>
             <div className="kpi-value">{isLoadingTasks ? "..." : pendingTasksCount}</div>
           </div>
         </div>

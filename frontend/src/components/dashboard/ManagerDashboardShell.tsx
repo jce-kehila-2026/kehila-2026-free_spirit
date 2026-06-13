@@ -17,7 +17,7 @@ import {
   CLIENT_STATUS,
   DOCUMENT_STATUS_OPTIONS,
   MEDICAL_CLEARANCE_STATUS,
-} from "@/schemas/clientSchema";
+} from "@/schema/clientSchema";
 
 const prospectSchema = basicInfoSchema
   .pick({
@@ -466,10 +466,20 @@ export default function ManagerDashboardShell() {
   const newestProspects = prospects.slice(0, 3);
 
   useEffect(() => {
+    if (!db) {
+      setErrorMessage(
+        "We could not load interested prospects. Please refresh and try again.",
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    const activeDb = db;
+
     // The status predicate limits the live query to the prospect workflow.
     const prospectsQuery = query(
-      collection(db, "clients"),
-      where("status", "==", "interested"),
+      collection(activeDb, "clients"),
+      where("status", "==", "interested"), 
     );
 
     return onSnapshot(
@@ -511,8 +521,18 @@ export default function ManagerDashboardShell() {
   }, []);
 
   useEffect(() => {
+    if (!db) {
+      setClientOverviewErrorMessage(
+        "We could not load the client overview. Please refresh and try again.",
+      );
+      setIsLoadingClientOverview(false);
+      return;
+    }
+
+    const activeDb = db;
+
     return onSnapshot(
-      collection(db, "clients"),
+      collection(activeDb, "clients"),
       (snapshot) => {
         let registeredCount = 0;
         let incompleteProfileCount = 0;
@@ -601,10 +621,20 @@ export default function ManagerDashboardShell() {
   }, []);
 
   useEffect(() => {
+    if (!db) {
+      setMeetingsErrorMessage(
+        "We could not load upcoming meetings. Please refresh and try again.",
+      );
+      setIsLoadingMeetings(false);
+      return;
+    }
+
+    const activeDb = db;
+
     // Subscribe to the existing collection without compound query predicates,
     // then apply the legacy string date/time contract defensively in memory.
     return onSnapshot(
-      collection(db, "events"),
+      collection(activeDb, "events"),
       (snapshot) => {
         const now = new Date();
         const nextMeetings = snapshot.docs

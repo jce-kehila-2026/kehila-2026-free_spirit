@@ -43,15 +43,25 @@ function DashboardRoleResolver() {
   useEffect(() => {
     let shouldIgnore = false;
 
+    if (!auth || !db) {
+      setDashboardKind(null);
+      setErrorMessage(
+        "We could not load your personal area. Please refresh and try again.",
+      );
+      return;
+    }
+    const activeAuth = auth;
+    const activeDb = db;
+
     // Resolve the role from the canonical account profile after Firebase restores
     // the active browser session. ProtectedRoute independently enforces access.
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(activeAuth, async (user) => {
       if (!user) {
         return;
       }
 
       try {
-        const accountSnapshot = await getDoc(doc(db, "accounts", user.uid));
+        const accountSnapshot = await getDoc(doc(activeDb, "accounts", user.uid));
         const role = accountSnapshot.exists()
           ? accountSnapshot.data().role
           : "User";
