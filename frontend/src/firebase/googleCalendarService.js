@@ -254,8 +254,10 @@ export async function deleteGoogleCalendarEvent(googleEventId) {
   return true;
 }
 
-export default {
+const googleCalendarService = {
   createGoogleCalendarEvent,
   updateGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
 };
+
+export default googleCalendarService;

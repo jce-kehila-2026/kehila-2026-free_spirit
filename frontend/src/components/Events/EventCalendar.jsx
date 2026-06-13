@@ -27,10 +27,18 @@ export default function EventCalendar({ refreshKey = 0 }) {
   }
 
   useEffect(() => {
+  // Defer the initial load so state updates do not run synchronously inside the effect body.
+  const initialLoadId = window.setTimeout(() => {
     load();
-    const id = setInterval(load, 60000);
-    return () => clearInterval(id);
-  }, [refreshKey]);
+  }, 0);
+
+  const refreshIntervalId = window.setInterval(load, 60000);
+
+  return () => {
+    window.clearTimeout(initialLoadId);
+    window.clearInterval(refreshIntervalId);
+  };
+}, [refreshKey]);
 
   // Map Firestore events to FullCalendar events
   const fcEvents = useMemo(() => {
@@ -103,12 +111,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
             events={fcEvents}
             eventContent={renderEventContent}
             eventClick={(clickInfo) => {
-              try {
-                // Prevent any default navigation behavior
-                clickInfo.jsEvent && clickInfo.jsEvent.preventDefault();
-              } catch (e) {
-                // ignore
-              }
+              clickInfo.jsEvent?.preventDefault();
 
               const original = clickInfo.event?.extendedProps?.originalEvent;
               if (original) setSelectedEvent(original);

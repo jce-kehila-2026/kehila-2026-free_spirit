@@ -10,6 +10,10 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
+import {
+  getPasswordRequirementResults,
+  isPasswordValid,
+} from "@/utils/passwordValidation";
 
 // Inline Google mark used by the OAuth button without adding another asset file.
 function GoogleLogo() {
@@ -40,6 +44,34 @@ function GoogleLogo() {
   );
 }
 
+function RequirementStatusIcon({ isMet }) {
+  return isMet ? (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d="m5 10 3 3 7-7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  ) : (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 20 20"
+    >
+      <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export default function Signup() {
   const router = useRouter();
 
@@ -54,6 +86,13 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [signupError, setSignupError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
+
+  const passwordRequirementResults = getPasswordRequirementResults(
+    formData.password,
+  );
 
   // Converts Firebase and custom registration errors into user-facing messages.
   const getFirebaseErrorMessage = (error) => {
@@ -63,7 +102,7 @@ export default function Signup() {
       case "auth/invalid-email":
         return "Please enter a valid email address.";
       case "auth/weak-password":
-        return "Password should be at least 6 characters.";
+        return "Password must meet all requirements.";
       default:
         return error.message || "Signup failed. Please try again.";
     }
@@ -85,14 +124,16 @@ export default function Signup() {
       nextErrors.email = "Email is required";
     }
 
-    if (!formData.password.trim()) {
+    if (!formData.password) {
       nextErrors.password = "Password is required";
+    } else if (!isPasswordValid(formData.password)) {
+      nextErrors.password = "Password must meet all requirements.";
     }
 
-    if (!formData.confirmPassword.trim()) {
+    if (!formData.confirmPassword) {
       nextErrors.confirmPassword = "Please confirm your password";
     } else if (formData.password !== formData.confirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match";
+      nextErrors.confirmPassword = "Passwords do not match.";
     }
 
     setErrors(nextErrors);
@@ -187,18 +228,50 @@ export default function Signup() {
           <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="password">
             Password
           </label>
-          <input
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Create a password"
-            value={formData.password}
-            onChange={handleChange}
-          />
+          <div className="relative">
+            <input
+              aria-describedby="password-requirements"
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              id="password"
+              name="password"
+              type={isPasswordVisible ? "text" : "password"}
+              placeholder="Create a password"
+              value={formData.password}
+              onChange={handleChange}
+            />
+            <button
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              type="button"
+              onClick={() => setIsPasswordVisible((isVisible) => !isVisible)}
+            >
+              {isPasswordVisible ? "Hide" : "Show"}
+            </button>
+          </div>
           {errors.password && (
-            <p className="mt-1.5 text-[13px] text-red-600">{errors.password}</p>
+            <p className="mt-1.5 text-[13px] text-red-600" role="alert">
+              {errors.password}
+            </p>
           )}
+          <ul
+            className="mt-3 grid gap-1.5 text-xs"
+            id="password-requirements"
+            aria-label="Password requirements"
+            aria-live="polite"
+          >
+            {passwordRequirementResults.map((requirement) => (
+              <li
+                className={`flex items-center gap-2 font-medium ${
+                  requirement.isMet ? "text-emerald-700" : "text-slate-500"
+                }`}
+                key={requirement.id}
+              >
+                <RequirementStatusIcon isMet={requirement.isMet} />
+                <span>{requirement.label}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="mb-[18px]">
@@ -208,17 +281,34 @@ export default function Signup() {
           >
             Confirm Password
           </label>
-          <input
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="Re-enter your password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
+          <div className="relative">
+            <input
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              id="confirmPassword"
+              name="confirmPassword"
+              type={isConfirmPasswordVisible ? "text" : "password"}
+              placeholder="Re-enter your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+            />
+            <button
+              aria-label={
+                isConfirmPasswordVisible
+                  ? "Hide confirm password"
+                  : "Show confirm password"
+              }
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              type="button"
+              onClick={() =>
+                setIsConfirmPasswordVisible((isVisible) => !isVisible)
+              }
+            >
+              {isConfirmPasswordVisible ? "Hide" : "Show"}
+            </button>
+          </div>
           {errors.confirmPassword && (
-            <p className="mt-1.5 text-[13px] text-red-600">
+            <p className="mt-1.5 text-[13px] text-red-600" role="alert">
               {errors.confirmPassword}
             </p>
           )}
