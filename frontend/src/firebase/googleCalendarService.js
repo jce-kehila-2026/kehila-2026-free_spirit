@@ -123,7 +123,11 @@ function buildEventPayload(event) {
   if (event.notes) descriptionParts.push(String(event.notes));
   if (event.clientName) descriptionParts.push(`Participant: ${event.clientName}`);
   if (event.priority) descriptionParts.push(`Priority: ${event.priority}`);
-  if (event.reminderLabel || event.reminderOption) descriptionParts.push(`Reminder: ${event.reminderLabel || event.reminderOption}`);
+  // Include reminder text only when user opted into reminders. If `addReminder === false`,
+  // do not mention reminder timing in the Google Calendar event description.
+  if (event.addReminder !== false && (event.reminderLabel || event.reminderOption)) {
+    descriptionParts.push(`Reminder: ${event.reminderLabel || event.reminderOption}`);
+  }
 
   const description = descriptionParts.join("\n\n");
 
@@ -153,39 +157,46 @@ function buildEventPayload(event) {
 
   // Add Google Calendar reminder overrides derived from our event reminder settings.
   try {
-    const PRESET_MINUTES = {
-      half_hour_before: 30,
-      two_hours_before: 120,
-      one_day_before: 1440,
-      three_days_before: 4320,
-      one_week_before: 10080,
-      event_time: 0,
-    };
-
-    let minutesBefore = null;
-
-    if (event.reminderMode === "custom") {
-      if (event.customReminderDate && event.customReminderTime) {
-        const scheduledFor = new Date(`${event.customReminderDate}T${event.customReminderTime}`);
-        if (!Number.isNaN(scheduledFor.getTime())) {
-          minutesBefore = Math.round((start.getTime() - scheduledFor.getTime()) / 60000);
-        }
-      }
+    // If the user explicitly disabled reminders in the UI/form, ensure we clear any
+    // Google Calendar reminders (do not allow calendar default reminders to apply).
+    // This respects the `addReminder` boolean carried on the event payload.
+    if (event.addReminder === false) {
+      payload.reminders = { useDefault: false, overrides: [] };
     } else {
-      // preset
-      minutesBefore = PRESET_MINUTES[event.reminderOption];
-    }
-
-    if (Number.isFinite(minutesBefore) && minutesBefore >= 0) {
-      payload.reminders = {
-        useDefault: false,
-        overrides: [
-          {
-            method: "popup",
-            minutes: minutesBefore,
-          },
-        ],
+      const PRESET_MINUTES = {
+        half_hour_before: 30,
+        two_hours_before: 120,
+        one_day_before: 1440,
+        three_days_before: 4320,
+        one_week_before: 10080,
+        event_time: 0,
       };
+
+      let minutesBefore = null;
+
+      if (event.reminderMode === "custom") {
+        if (event.customReminderDate && event.customReminderTime) {
+          const scheduledFor = new Date(`${event.customReminderDate}T${event.customReminderTime}`);
+          if (!Number.isNaN(scheduledFor.getTime())) {
+            minutesBefore = Math.round((start.getTime() - scheduledFor.getTime()) / 60000);
+          }
+        }
+      } else {
+        // preset
+        minutesBefore = PRESET_MINUTES[event.reminderOption];
+      }
+
+      if (Number.isFinite(minutesBefore) && minutesBefore >= 0) {
+        payload.reminders = {
+          useDefault: false,
+          overrides: [
+            {
+              method: "popup",
+              minutes: minutesBefore,
+            },
+          ],
+        };
+      }
     }
   } catch {
     // If reminder conversion fails, do not break event creation/update — skip Google reminders.
