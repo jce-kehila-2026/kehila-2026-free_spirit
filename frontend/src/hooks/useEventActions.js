@@ -6,7 +6,7 @@ import {
   deleteEvent,
   updateEvent,
 } from "@/firebase/eventsService";
-import { deleteGoogleCalendarEvent } from "@/firebase/googleCalendarService";
+import { deleteGoogleCalendarEvent, isGisAvailableSync, ensureGisLoaded } from "@/firebase/googleCalendarService";
 import { updateNotificationsByEventId } from "@/firebase/notificationsService";
 
 export default function useEventActions({ onRefresh } = {}) {
@@ -39,39 +39,58 @@ export default function useEventActions({ onRefresh } = {}) {
 
       // If synced to Google Calendar, attempt to remove it (non-blocking)
       if (event.googleCalendarEventId) {
-        try {
-          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
-
+        // If GIS is already available synchronously, attempt interactive removal (may open auth popup).
+        if (isGisAvailableSync()) {
           try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "removed",
-              calendarSyncLabel: "Removed from Google Calendar after cancellation",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete", e);
-          }
-        } catch (googleErr) {
-          // Treat a 410 (resource already deleted) as a non-fatal success.
-          const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
-          if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+            await deleteGoogleCalendarEvent(event.googleCalendarEventId);
+
             try {
               await updateEvent(event.id, {
                 calendarSyncStatus: "removed",
-                calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+                calendarSyncLabel: "Removed from Google Calendar after cancellation",
               });
             } catch (e) {
-              console.warn("Failed to update calendar sync metadata after Google 410", e);
+              console.warn("Failed to update calendar sync metadata after Google delete", e);
             }
-          } else {
-            console.error("Failed to remove Google Calendar event", googleErr);
-            try {
-              await updateEvent(event.id, {
-                calendarSyncStatus: "failed",
-                calendarSyncLabel: "Failed to remove from Google Calendar",
-              });
-            } catch (e) {
-              console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          } catch (googleErr) {
+            // Treat a 410 (resource already deleted) as a non-fatal success.
+            const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
+            if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+              try {
+                await updateEvent(event.id, {
+                  calendarSyncStatus: "removed",
+                  calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+                });
+              } catch (e) {
+                console.warn("Failed to update calendar sync metadata after Google 410", e);
+              }
+            } else {
+              console.warn("Failed to remove Google Calendar event", googleErr);
+              try {
+                await updateEvent(event.id, {
+                  calendarSyncStatus: "failed",
+                  calendarSyncLabel: "Failed to remove from Google Calendar",
+                });
+              } catch (e) {
+                console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+              }
             }
+          }
+        } else {
+          // GIS not loaded yet. Preload it in the background for future actions,
+          // but do not attempt interactive auth here because loading is async and
+          // browsers will block popups if token request is not in the original user gesture.
+          ensureGisLoaded().catch(() => {
+            // ignore preload errors; we will mark sync as failed below
+          });
+
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Google Calendar cleanup deferred (GIS not loaded)",
+            });
+          } catch (e) {
+            console.warn("Failed to mark calendar sync as failed when GIS missing", e);
           }
         }
       }
@@ -99,39 +118,55 @@ export default function useEventActions({ onRefresh } = {}) {
 
       // If synced to Google Calendar, attempt to remove it (non-blocking)
       if (event.googleCalendarEventId) {
-        try {
-          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
-
+        if (isGisAvailableSync()) {
           try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "removed",
-              calendarSyncLabel: "Removed from Google Calendar after deletion",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete", e);
-          }
-        } catch (googleErr) {
-          // Treat a 410 (resource already deleted) as a non-fatal success.
-          const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
-          if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+            await deleteGoogleCalendarEvent(event.googleCalendarEventId);
+
             try {
               await updateEvent(event.id, {
                 calendarSyncStatus: "removed",
-                calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+                calendarSyncLabel: "Removed from Google Calendar after deletion",
               });
             } catch (e) {
-              console.warn("Failed to update calendar sync metadata after Google 410", e);
+              console.warn("Failed to update calendar sync metadata after Google delete", e);
             }
-          } else {
-            console.error("Failed to remove Google Calendar event", googleErr);
-            try {
-              await updateEvent(event.id, {
-                calendarSyncStatus: "failed",
-                calendarSyncLabel: "Failed to remove from Google Calendar",
-              });
-            } catch (e) {
-              console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          } catch (googleErr) {
+            // Treat a 410 (resource already deleted) as a non-fatal success.
+            const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
+            if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+              try {
+                await updateEvent(event.id, {
+                  calendarSyncStatus: "removed",
+                  calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+                });
+              } catch (e) {
+                console.warn("Failed to update calendar sync metadata after Google 410", e);
+              }
+            } else {
+              console.warn("Failed to remove Google Calendar event", googleErr);
+              try {
+                await updateEvent(event.id, {
+                  calendarSyncStatus: "failed",
+                  calendarSyncLabel: "Failed to remove from Google Calendar",
+                });
+              } catch (e) {
+                console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+              }
             }
+          }
+        } else {
+          // Preload GIS for future actions, but do not attempt interactive auth here.
+          ensureGisLoaded().catch(() => {
+            /* ignore */
+          });
+
+          try {
+            await updateEvent(event.id, {
+              calendarSyncStatus: "failed",
+              calendarSyncLabel: "Google Calendar cleanup deferred (GIS not loaded)",
+            });
+          } catch (e) {
+            console.warn("Failed to mark calendar sync as failed when GIS missing", e);
           }
         }
       }
