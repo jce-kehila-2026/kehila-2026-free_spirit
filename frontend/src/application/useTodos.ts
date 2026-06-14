@@ -51,8 +51,30 @@ export function useTodos(clientId?: string): UseTodosReturn {
   }, [clientId]);
 
   useEffect(() => {
-    loadTodos();
-  }, [loadTodos]);
+    let isCancelled = false;
+
+    fetchTodos(clientId)
+      .then((data) => {
+        if (isCancelled) return;
+        setTodos(data);
+        setError(null);
+      })
+      .catch((err) => {
+        if (isCancelled) return;
+        const message =
+          err instanceof Error ? err.message : "Failed to load todos.";
+        setError(message);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [clientId]);
 
   // ── Action: Add ─────────────────────────────────────────────────────────────
   const add = useCallback(

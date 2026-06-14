@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CalendarPlus, Check, Cloud, Clock3 } from "lucide-react";
 
 import { createEvent } from "@/firebase/eventsService";
 import { createNotifications } from "@/firebase/notificationsService";
@@ -39,7 +40,7 @@ export default function ScheduleMeetingForm({
   const [syncWarning, setSyncWarning] = useState("");
 
   const inputClass =
-    "w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100";
+    "w-full rounded-xl border border-[#C9D9D1] bg-[#F7FAF5] px-4 py-3 text-sm text-[#173A40] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:bg-white focus:ring-4 focus:ring-[#D7E7D4]";
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -269,28 +270,34 @@ export default function ScheduleMeetingForm({
   };
 
   return (
-    <section className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/70 ring-1 ring-slate-200">
-      <div className="mb-6">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-lg shadow-blue-200">
-          📅
+    <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+      <div className="mb-5 border-b border-[#D7E3D5] pb-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2C6975] text-white">
+            <CalendarPlus aria-hidden="true" className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Meeting details
+            </p>
+            <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">
+              {isEditMode ? "Edit Meeting" : "Schedule a New Meeting"}
+            </h2>
+          </div>
         </div>
 
-        <h2 className="text-2xl font-black text-slate-950">
-          {isEditMode ? "Edit Meeting" : "Schedule a New Meeting"}
-        </h2>
-
         {clientName ? (
-          <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+          <p className="mt-4 rounded-xl bg-[#DCEAD6] px-4 py-3 text-sm font-semibold text-[#2C6975]">
             Scheduling meeting for: {clientName}
           </p>
         ) : (
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-[#60777B]">
             Create a general meeting or event and choose when the reminder should be sent.
           </p>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {formError && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             {formError}
@@ -304,7 +311,7 @@ export default function ScheduleMeetingForm({
         )}
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Meeting title
           </label>
 
@@ -320,7 +327,7 @@ export default function ScheduleMeetingForm({
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Meeting notes
           </label>
 
@@ -335,7 +342,7 @@ export default function ScheduleMeetingForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
               Date
             </label>
 
@@ -350,7 +357,7 @@ export default function ScheduleMeetingForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
               Time
             </label>
 
@@ -366,7 +373,7 @@ export default function ScheduleMeetingForm({
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Follow-up importance
           </label>
 
@@ -382,7 +389,7 @@ export default function ScheduleMeetingForm({
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Reminder setup
           </label>
 
@@ -399,7 +406,7 @@ export default function ScheduleMeetingForm({
 
         {formData.reminderMode === "preset" ? (
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
               Reminder timing
             </label>
 
@@ -417,14 +424,15 @@ export default function ScheduleMeetingForm({
             </select>
           </div>
         ) : (
-          <div className="rounded-3xl border border-blue-100 bg-blue-50/60 p-4">
-            <p className="mb-3 text-sm font-bold text-blue-900">
+          <div className="rounded-2xl border border-[#BFD9D2] bg-[#EAF2EA] p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[#245C66]">
+              <Clock3 aria-hidden="true" className="h-4 w-4" />
               Custom reminder time
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#6A8589]">
                   Reminder date
                 </label>
 
@@ -438,7 +446,7 @@ export default function ScheduleMeetingForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#6A8589]">
                   Reminder time
                 </label>
 
@@ -456,25 +464,27 @@ export default function ScheduleMeetingForm({
 
         <div>
           {isEditMode && isAlreadySyncedToGoogle ? (
-            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+            <label className="mb-2 inline-flex items-start gap-3 rounded-xl bg-[#EEF4EC] p-3 text-sm font-bold leading-5 text-[#31585F]">
               <input
                 type="checkbox"
                 name="syncToGoogle"
                 checked={true}
                 disabled
-                className="h-4 w-4 rounded"
+                className="mt-0.5 h-4 w-4 rounded accent-[#2C6975]"
               />
+              <Cloud aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#2C6975]" />
               <span>Already synced to Google Calendar — edits will update the Google event</span>
             </label>
           ) : (
-            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+            <label className="mb-2 inline-flex items-center gap-3 rounded-xl bg-[#EEF4EC] p-3 text-sm font-bold text-[#31585F]">
               <input
                 type="checkbox"
                 name="syncToGoogle"
                 checked={syncToGoogle}
                 onChange={(e) => setSyncToGoogle(e.target.checked)}
-                className="h-4 w-4 rounded"
+                className="h-4 w-4 rounded accent-[#2C6975]"
               />
+              <Cloud aria-hidden="true" className="h-4 w-4 text-[#2C6975]" />
               <span>Sync to Google Calendar</span>
             </label>
           )}
@@ -483,8 +493,9 @@ export default function ScheduleMeetingForm({
        <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-2xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2C6975] px-5 py-3.5 font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:bg-[#9BB9B4]"
         >
+          {!loading && <Check aria-hidden="true" className="h-5 w-5" />}
           {loading
             ? isEditMode
               ? "Updating meeting..."

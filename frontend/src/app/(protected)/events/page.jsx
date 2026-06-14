@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Script from "next/script";
+import { BellRing, CalendarDays, Clock3 } from "lucide-react";
 
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import EventList from "@/components/Events/EventList";
@@ -16,31 +17,63 @@ export default function EventsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe,_transparent_35%),linear-gradient(135deg,_#f8fafc,_#eef2ff)] px-6 py-8">
+    <main className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(180deg,#E5EFE0_0%,#F3F6F0_26%,#DDEAD8_100%)] px-4 py-5 text-[#15383E] sm:px-6 sm:py-7 lg:px-8">
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
       />
-      <div className="mx-auto max-w-7xl">
-        <section className="mb-8 overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-9 text-white shadow-xl">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-blue-300">
-                Free Spirit Association
-              </p>
+      <div
+        aria-hidden="true"
+        className="absolute -right-36 top-24 -z-10 h-96 w-96 rounded-full border-[70px] border-[#BFD9C1]/60"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -left-40 top-[42rem] -z-10 h-96 w-96 rounded-full bg-[#C9DFC5]/70"
+      />
 
-              <h1 className="text-4xl font-black tracking-tight md:text-5xl">
-                Meetings & Follow-ups
-              </h1>
+      <div className="relative mx-auto max-w-7xl">
+        <section className="mb-6 overflow-hidden rounded-[1.75rem] bg-[#2C6975] text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)]">
+          <div className="grid lg:grid-cols-[1fr_auto]">
+            <div className="relative overflow-hidden px-7 py-7 sm:px-10 sm:py-8 lg:px-11">
+              <div
+                aria-hidden="true"
+                className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+              />
+              <div className="relative">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px w-10 bg-[#CDE0C9]" />
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#DCEAD6]">
+                    Community coordination
+                  </p>
+                </div>
+                <h1 className="max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
+                  Meetings & Follow-ups
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                  Keep participant conversations, reminders, and next steps
+                  organized in one calm, shared workspace.
+                </p>
+              </div>
+            </div>
 
-              <p className="mt-4 max-w-2xl text-base text-slate-300">
-                Schedule participant meetings, track reminders, and manage important follow-ups.
-              </p>
+            <div className="grid border-t border-white/15 bg-[#245C66] sm:grid-cols-3 lg:w-80 lg:grid-cols-1 lg:border-l lg:border-t-0">
+              <div className="flex items-center gap-3 px-5 py-3.5 sm:justify-center lg:justify-start lg:border-b lg:border-white/10">
+                <CalendarDays className="h-5 w-5 text-[#CDE0C9]" />
+                <span className="text-sm font-semibold">Plan meetings</span>
+              </div>
+              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-3.5 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start lg:border-b lg:border-l-0">
+                <BellRing className="h-5 w-5 text-[#CDE0C9]" />
+                <span className="text-sm font-semibold">Track reminders</span>
+              </div>
+              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-3.5 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start lg:border-l-0">
+                <Clock3 className="h-5 w-5 text-[#CDE0C9]" />
+                <span className="text-sm font-semibold">Stay connected</span>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[430px_1fr]">
+        <section className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ScheduleMeetingForm
             onMeetingCreated={handleMeetingCreated}
           />
@@ -49,9 +82,12 @@ export default function EventsPage() {
             refreshKey={refreshKey}
             onDataChanged={handleMeetingCreated}
           />
+
+          <div className="md:col-span-2 xl:col-span-1">
+            <EventNotifications refreshKey={refreshKey} />
+          </div>
         </section>
 
-        <EventNotifications refreshKey={refreshKey} />
         <EventCalendar refreshKey={refreshKey} />
       </div>
     </main>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CalendarDays, RefreshCw, X } from "lucide-react";
 
 import {
   cancelEvent,
@@ -200,14 +201,17 @@ export default function EventList({
 
 
   return (
-    <section className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/70 ring-1 ring-slate-200">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+      <div className="mb-5 flex flex-col justify-between gap-3 border-b border-[#D7E3D5] pb-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-2xl font-black text-slate-950">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+            Coming up
+          </p>
+          <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">
             Upcoming Meetings
           </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[#60777B]">
             View scheduled meetings and manage follow-ups.
           </p>
         </div>
@@ -215,38 +219,39 @@ export default function EventList({
         <button
           type="button"
           onClick={loadEvents}
-          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-[#BFD0CA] bg-white px-4 py-2 text-sm font-bold text-[#2C6975] transition hover:border-[#2C6975] hover:bg-[#F3F7F1]"
         >
+          <RefreshCw aria-hidden="true" className="h-4 w-4" />
           Refresh
         </button>
       </div>
 
       {loading ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-          <p className="text-lg font-bold text-slate-700">
+        <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] p-7 text-center">
+          <p className="text-lg font-bold text-[#31585F]">
             Loading meetings...
           </p>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#6A8589]">
             Fetching scheduled meetings
           </p>
         </div>
       ) : events.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-            🗓️
+        <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] p-7 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#2C6975] ring-1 ring-[#D7E3D5]">
+            <CalendarDays aria-hidden="true" className="h-7 w-7" />
           </div>
 
-          <p className="text-lg font-bold text-slate-800">
+          <p className="text-lg font-bold text-[#31585F]">
             No upcoming meetings
           </p>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#6A8589]">
             Create the first meeting using the form on the left.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {events.map((event) => (
            <EventCard
            key={event.id}
@@ -261,19 +266,30 @@ export default function EventList({
         </div>
       )}
       {eventToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-white p-4 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between px-2">
-              <h3 className="text-xl font-black text-slate-950">
-                Edit Meeting
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/65 px-4 py-8 backdrop-blur-sm">
+          <div
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[1.75rem] border border-white/50 bg-[#E7F0E2] p-3 shadow-[0_24px_60px_rgba(21,56,62,0.24)] sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit meeting"
+          >
+            <div className="mb-3 flex items-center justify-between rounded-2xl bg-[#2C6975] px-4 py-3 text-white">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#CDE0C9]">
+                  Meeting workspace
+                </p>
+                <h3 className="mt-0.5 text-lg font-bold">
+                  Edit Meeting
+                </h3>
+              </div>
 
               <button
                 type="button"
                 onClick={() => setEventToEdit(null)}
-                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-200"
+                aria-label="Close edit meeting"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white ring-1 ring-white/25 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
               >
-                Close
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
 
