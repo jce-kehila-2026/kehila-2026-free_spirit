@@ -77,7 +77,15 @@ export default function EventCard({
           Status
         </p>
 
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+            event.status === "completed"
+              ? "bg-emerald-100 text-emerald-700"
+              : event.status === "cancelled"
+              ? "bg-amber-100 text-amber-700"
+              : event.status === "deleted"
+              ? "bg-slate-100 text-slate-500"
+              : "bg-blue-100 text-blue-700"
+          }`}>
           {event.status || "scheduled"}
         </span>
       </div>
@@ -104,25 +112,29 @@ export default function EventCard({
           Edit
         </button>
 
-        <button
-          type="button"
-          onClick={() => onComplete(event.id)}
-          disabled={isActionLoading}
-          className="inline-flex items-center gap-2 rounded-full bg-[#4F8B75] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#3F7763] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Check aria-hidden="true" className="h-4 w-4" />
-          Complete
-        </button>
+        {event.status === "scheduled" && (
+          <>
+            <button
+              type="button"
+              onClick={() => onComplete(event.id)}
+              disabled={isActionLoading}
+              className="inline-flex items-center gap-2 rounded-full bg-[#4F8B75] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#3F7763] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Check aria-hidden="true" className="h-4 w-4" />
+              Complete
+            </button>
 
-        <button
-          type="button"
-          onClick={() => onCancel(event.id)}
-          disabled={isActionLoading}
-          className="inline-flex items-center gap-2 rounded-full border border-[#D6C898] bg-[#FFF8DF] px-4 py-2 text-sm font-bold text-[#80691B] transition hover:bg-[#F8EDC7] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <X aria-hidden="true" className="h-4 w-4" />
-          Cancel
-        </button>
+            <button
+              type="button"
+              onClick={() => onCancel(event.id)}
+              disabled={isActionLoading}
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6C898] bg-[#FFF8DF] px-4 py-2 text-sm font-bold text-[#80691B] transition hover:bg-[#F8EDC7] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+              Cancel
+            </button>
+          </>
+        )}
 
         <button
           type="button"

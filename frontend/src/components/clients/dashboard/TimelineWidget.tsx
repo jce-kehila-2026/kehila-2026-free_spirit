@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import EventCard from "@/components/Events/EventCard";
 import { getEventsByClientId, type ClientEvent } from "@/firebase/clientEventsService";
+import useEventActions from "@/hooks/useEventActions";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -41,32 +42,30 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
-  useEffect(() => {
-  let cancelled = false;
-
-  // Define the async fetcher inside
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getEventsByClientId(clientId);
-      if (!cancelled) {
-        setEvents(data);
-      }
+      setEvents(data);
     } catch (err) {
-      if (!cancelled){
-        console.error("Error fetching timeline:", err);
-        setError("Failed to load timeline");
-      }
+      console.error("Error fetching timeline:", err);
+      setError("Failed to load timeline");
     } finally {
-      if (!cancelled) setLoading(false);
+      setLoading(false);
     }
-  }
+  }, [clientId]);
 
-  fetchData();
+  useEffect(() => {
+    let cancelled = false;
 
-  return () => { cancelled = true; };
-}, [clientId]);
+    fetchData();
+
+    return () => { cancelled = true; };
+  }, [fetchData]);
+
+  // Wire shared actions and refresh hook
+  const { actionLoadingId, handleComplete, handleCancel, handleDelete } = useEventActions({ onRefresh: fetchData });
 
   // ── Render states ──────────────────────────────────────────────────────────
 
@@ -91,7 +90,10 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
     );
   }
 
-  if (events.length === 0) {
+  // Filter out deleted events from the main timeline view
+  const visibleEvents = events.filter((e) => e.status !== "deleted");
+
+  if (visibleEvents.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
         <span className="text-4xl" role="img" aria-label="No activity">
@@ -122,7 +124,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
       {/* Timeline spine */}
       <ol className="relative flex flex-col gap-6 border-l-2 border-slate-200 pl-6">
-        {events.map((event) => (
+        {visibleEvents.map((event) => (
           <li key={event.id} className="relative">
             {/* Connector dot */}
             <span
@@ -157,11 +159,31 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
              */}
             <EventCard
               event={event}
-              isActionLoading={false}
+              isActionLoading={actionLoadingId === event.id}
               onEdit={() => {}}
-              onComplete={() => {}}
-              onCancel={() => {}}
-              onDelete={() => {}}
+              onComplete={async (id) => {
+                try {
+                  await handleComplete(id);
+                } catch (err) {
+                  console.error("Complete failed:", err);
+                }
+              }}
+              onCancel={async (id) => {
+                try {
+                  const ev = events.find((x) => x.id === id);
+                  if (ev) await handleCancel(ev);
+                } catch (err) {
+                  console.error("Cancel failed:", err);
+                }
+              }}
+              onDelete={async (id) => {
+                try {
+                  const ev = events.find((x) => x.id === id);
+                  if (ev) await handleDelete(ev);
+                } catch (err) {
+                  console.error("Delete failed:", err);
+                }
+              }}
             />
           </li>
         ))}

@@ -23,7 +23,7 @@ export default function useEventActions({ onRefresh } = {}) {
         statusLabel: "Meeting completed",
       });
 
-      if (onRefresh) onRefresh();
+      if (onRefresh) await onRefresh();
 
       return { success: true };
     } catch (err) {
@@ -51,14 +51,27 @@ export default function useEventActions({ onRefresh } = {}) {
             console.warn("Failed to update calendar sync metadata after Google delete", e);
           }
         } catch (googleErr) {
-          console.error("Failed to remove Google Calendar event", googleErr);
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "failed",
-              calendarSyncLabel: "Failed to remove from Google Calendar",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          // Treat a 410 (resource already deleted) as a non-fatal success.
+          const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
+          if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+            try {
+              await updateEvent(event.id, {
+                calendarSyncStatus: "removed",
+                calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+              });
+            } catch (e) {
+              console.warn("Failed to update calendar sync metadata after Google 410", e);
+            }
+          } else {
+            console.error("Failed to remove Google Calendar event", googleErr);
+            try {
+              await updateEvent(event.id, {
+                calendarSyncStatus: "failed",
+                calendarSyncLabel: "Failed to remove from Google Calendar",
+              });
+            } catch (e) {
+              console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+            }
           }
         }
       }
@@ -70,7 +83,7 @@ export default function useEventActions({ onRefresh } = {}) {
         statusLabel: "Meeting cancelled",
       });
 
-      if (onRefresh) onRefresh();
+      if (onRefresh) await onRefresh();
 
       return { success: true };
     } catch (err) {
@@ -98,14 +111,27 @@ export default function useEventActions({ onRefresh } = {}) {
             console.warn("Failed to update calendar sync metadata after Google delete", e);
           }
         } catch (googleErr) {
-          console.error("Failed to remove Google Calendar event", googleErr);
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "failed",
-              calendarSyncLabel: "Failed to remove from Google Calendar",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+          // Treat a 410 (resource already deleted) as a non-fatal success.
+          const msg = googleErr && googleErr.message ? String(googleErr.message) : "";
+          if (msg.includes("Google Calendar API error 410") || msg.match(/\b410\b/)) {
+            try {
+              await updateEvent(event.id, {
+                calendarSyncStatus: "removed",
+                calendarSyncLabel: "Removed from Google Calendar (already deleted)",
+              });
+            } catch (e) {
+              console.warn("Failed to update calendar sync metadata after Google 410", e);
+            }
+          } else {
+            console.error("Failed to remove Google Calendar event", googleErr);
+            try {
+              await updateEvent(event.id, {
+                calendarSyncStatus: "failed",
+                calendarSyncLabel: "Failed to remove from Google Calendar",
+              });
+            } catch (e) {
+              console.warn("Failed to update calendar sync metadata after Google delete failure", e);
+            }
           }
         }
       }
@@ -119,7 +145,7 @@ export default function useEventActions({ onRefresh } = {}) {
       // Soft-delete the event document (deleteEvent performs soft-delete)
       await deleteEvent(event.id);
 
-      if (onRefresh) onRefresh();
+      if (onRefresh) await onRefresh();
 
       return { success: true };
     } catch (err) {
