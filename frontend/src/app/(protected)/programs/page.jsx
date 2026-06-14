@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import {
-  CalendarDays,
-  CheckCircle2,
-  MapPin,
-  Plus,
-  UsersRound,
-  X,
-} from "lucide-react";
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { Plus, CalendarDays, MapPin, UsersRound, CheckCircle2, X } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import ManagePrograms from "../manage-programs/page";
 
@@ -34,7 +27,13 @@ export default function ProgramsPage() {
   const [clientSearchError, setClientSearchError] = useState("");
   const [clientAddLoading, setClientAddLoading] = useState(false);
   const [clientAddSuccess, setClientAddSuccess] = useState("");
+  const [participantToRemove, setParticipantToRemove] = useState(null);
+  const [programToRemove, setProgramToRemove] = useState(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [editingField, setEditingField] = useState(null); // null | 'name' | 'location' | 'description'
+  const [editingValue, setEditingValue] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState('');
 
   const matchingClients = useMemo(() => {
     const q = clientQuery.trim().toLowerCase();
@@ -81,6 +80,85 @@ export default function ProgramsPage() {
 
     fetchClients();
   }, []);
+
+  const handleStartEditing = (field, value) => {
+    if (field === 'start_date' || field === 'end_date') {
+      const date = value?.toDate ? value.toDate() : new Date(value);
+      if (!isNaN(date.getTime())) {
+        setEditingValue(date.toISOString().split('T')[0]); // Format as YYYY-MM-DD for input type="date"
+      } else {
+        setEditingValue('');
+      }
+    } else if (field === 'min_members') {
+      setEditingValue(value !== undefined && value !== null ? String(value) : '');
+    } else {
+      setEditingValue(value);
+    }
+    setEditingField(field);
+    setUpdateError('');
+  };
+
+  const handleCancelEditing = () => {
+    setEditingField(null);
+    setEditingValue('');
+    setUpdateError('');
+  };
+
+  const handleSaveEditing = async () => {
+    if (isUpdating || !editingField || !selectedProgram) return;
+
+    setIsUpdating(true);
+    setUpdateError('');
+
+    let newValue = editingValue;
+
+    if (editingField === 'start_date' || editingField === 'end_date') {
+      newValue = new Date(editingValue);
+      if (isNaN(newValue.getTime())) {
+        setUpdateError(`Invalid date for ${editingField.replace('_', ' ')}. Please use YYYY-MM-DD format.`);
+        setIsUpdating(false);
+        return;
+      }
+    } else if (editingField === 'min_members') {
+      newValue = parseInt(editingValue, 10);
+      if (isNaN(newValue) || newValue < 0) { // Assuming min_members cannot be negative
+        setUpdateError(`Invalid number for minimum members. Please enter a non-negative number.`);
+        setIsUpdating(false);
+        return;
+      }
+    }
+
+    const programRef = doc(db, "programs", selectedProgram.id);
+
+    try {
+      await updateDoc(programRef, {
+        [editingField]: newValue,
+      });
+
+      const updatedProgram = { ...selectedProgram, [editingField]: newValue };
+      setSelectedProgram(updatedProgram);
+
+      setPrograms(prevPrograms =>
+        prevPrograms.map(p => (p.id === selectedProgram.id ? updatedProgram : p))
+      );
+
+      setEditingField(null);
+    } catch (err) {
+      console.error("Error updating program:", err);
+      setUpdateError(`Failed to update ${editingField}. Please try again.`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      handleSaveEditing();
+    } else if (e.key === 'Escape') {
+      handleCancelEditing();
+    }
+  };
 
   const openProgramModal = (program) => {
     setSelectedProgram(program);
@@ -163,6 +241,61 @@ export default function ProgramsPage() {
       setClientSearchError("Unable to add the client to the program.");
     } finally {
       setClientAddLoading(false);
+    }
+  };
+
+  const handleRemoveClientFromProgram = async (clientIdToRemove) => {
+    if (!selectedProgram) return;
+
+    try {
+      const currentParticipantIds = Array.isArray(selectedProgram.participant_ids)
+        ? selectedProgram.participant_ids
+        : [];
+      
+      const updatedParticipantIds = currentParticipantIds.filter(id => id !== clientIdToRemove);
+
+      const programRef = doc(db, "programs", selectedProgram.id);
+      await updateDoc(programRef, {
+        participant_ids: updatedParticipantIds,
+        participant_count: updatedParticipantIds.length,
+      });
+
+      setPrograms((prev) =>
+        prev.map((program) =>
+          program.id === selectedProgram.id
+            ? {
+                ...program,
+                participant_ids: updatedParticipantIds,
+                participant_count: updatedParticipantIds.length,
+              }
+            : program
+        )
+      );
+
+      setSelectedProgram((prev) =>
+        prev
+          ? {
+              ...prev,
+              participant_ids: updatedParticipantIds,
+              participant_count: updatedParticipantIds.length,
+            }
+          : prev
+      );
+
+    } catch (err) {
+      console.error("Error removing client from program:", err);
+    }
+  };
+
+  const handleDeleteProgram = async () => {
+    if (!programToRemove) return;
+    try {
+      await deleteDoc(doc(db, "programs", programToRemove.id));
+      setPrograms(prev => prev.filter(p => p.id !== programToRemove.id));
+      setProgramToRemove(null);
+    } catch (err) {
+      console.error("Error deleting program:", err);
+      // Optional: set some error state if you want to display an error
     }
   };
 
@@ -278,41 +411,55 @@ export default function ProgramsPage() {
                 statusClass = "bg-[#EEF1EE] text-[#687B7E]";
               }
 
-              return (
-                <article
-                  key={program.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openProgramModal(program)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") openProgramModal(program);
-                  }}
-                  className="group cursor-pointer rounded-[1.6rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_12px_28px_rgba(44,105,117,0.07)] transition hover:-translate-y-0.5 hover:border-[#AFC9BF] hover:shadow-[0_16px_34px_rgba(44,105,117,0.10)] focus:outline-none focus:ring-4 focus:ring-[#CDE0C9]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">Program</p>
-                      <h2 className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]">{program.name || "Untitled Program"}</h2>
+                return (
+                  <article
+                    key={program.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openProgramModal(program)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") openProgramModal(program);
+                    }}
+                    className="cursor-pointer rounded-[24px] bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-sm ring-1 ring-blue-200 transition hover:-translate-y-1 hover:shadow-lg relative group"
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProgramToRemove(program);
+                      }}
+                      className="absolute top-4 right-4 z-10 p-2 bg-white/50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Program"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h2 className="text-3xl font-bold text-blue-950">🌟 {program.name || "Untitled Program"}</h2>
+                      </div>
+                      <div className="flex flex-col items-start sm:items-end gap-2">
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-[0.1em] ${statusClass}`}>
+                          {statusText}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-white/60 px-3 py-1 text-base font-bold text-blue-800 ring-1 ring-blue-200 backdrop-blur-sm">
+                          📍 {program.location || "Unknown location"}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusText}</span>
-                  </div>
-                  <div className="mt-5 flex items-center gap-2 border-y border-[#D7E3D5] py-3 text-sm font-semibold text-[#4E6C70]">
-                    <MapPin aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
-                    <span className="truncate">{program.location || "Unknown location"}</span>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-[#EEF4EC] p-3">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Starts</p>
-                      <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
+                    
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl bg-[#EEF4EC] p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Starts</p>
+                        <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
+                      </div>
+                      <div className="rounded-xl bg-[#E4F0EC] p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Ends</p>
+                        <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
+                      </div>
                     </div>
-                    <div className="rounded-xl bg-[#E4F0EC] p-3">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Ends</p>
-                      <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm font-semibold text-[#2C6975]">Open program details</p>
-                </article>
-              );
+                  </article>
+                );
             })}
           </section>
         )}
@@ -330,9 +477,61 @@ export default function ProgramsPage() {
             )}
             <div className="flex items-start justify-between gap-4 bg-[#2C6975] p-6 text-white">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Program details</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-[-0.025em] sm:text-3xl">{selectedProgram.name || "Untitled Program"}</h2>
-                <p className="mt-2 flex items-center gap-2 text-sm text-white/72"><MapPin className="h-4 w-4" />{selectedProgram.location || "Location not set"}</p>
+                <p className="text-sm uppercase tracking-[0.24em] text-sky-600">Program details 📌</p>
+                {editingField === 'name' ? (
+                  <div onKeyDown={handleEditKeyDown}>
+                    <input
+                      type="text"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-5xl font-extrabold tracking-tight text-slate-950 outline-none ring-2 ring-blue-100"
+                      autoFocus
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </button>
+                      <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                        Cancel
+                      </button>
+                    </div>
+                    {updateError && editingField === 'name' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                  </div>
+                ) : (
+                  <div className="group relative" onClick={() => handleStartEditing('name', selectedProgram.name || '')}>
+                    <h2 className="mt-2 cursor-pointer text-5xl font-extrabold tracking-tight text-slate-950">{selectedProgram.name || "Untitled Program"}</h2>
+                    <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-2xl group-hover:inline-block">
+                      ✏️
+                    </span>
+                  </div>
+                )}
+                {editingField === 'location' ? (
+                  <div onKeyDown={handleEditKeyDown} className="mt-2">
+                    <input
+                      type="text"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      className="w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-base font-medium text-slate-900 outline-none ring-2 ring-blue-100"
+                      autoFocus
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </button>
+                      <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                        Cancel
+                      </button>
+                    </div>
+                    {updateError && editingField === 'location' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                  </div>
+                ) : (
+                  <div className="group relative" onClick={() => handleStartEditing('location', selectedProgram.location || '')}>
+                    <p className="mt-2 cursor-pointer text-base font-medium text-slate-600">{selectedProgram.location || "Location not set"}</p>
+                    <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">
+                      ✏️
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -344,11 +543,36 @@ export default function ProgramsPage() {
               </button>
             </div>
 
-            <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.5fr_0.75fr]">
-              <div className="space-y-5">
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">Description</p>
-                  <p className="mt-3 text-sm leading-6 text-[#5C7478]">{selectedProgram.description || "No description has been provided for this program."}</p>
+            <div className="grid gap-6 p-6 lg:grid-cols-[3fr_1fr]">
+              <div className="space-y-6">
+                <div className="rounded-[24px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+                  {editingField === 'description' ? (
+                    <div onKeyDown={handleEditKeyDown}>
+                      <p className="text-base font-semibold uppercase tracking-[0.22em] text-sky-500">Description 🧾</p>
+                      <textarea
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        className="mt-4 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-base leading-7 text-slate-600 outline-none ring-2 ring-blue-100"
+                        rows="4"
+                        autoFocus
+                      />
+                      <div className="mt-2 flex items-center gap-2">
+                        <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
+                          {isUpdating ? 'Saving...' : 'Save'}
+                        </button>
+                        <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                          Cancel
+                        </button>
+                      </div>
+                      {updateError && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                    </div>
+                  ) : (
+                    <div className="group relative" onClick={() => handleStartEditing('description', selectedProgram.description || '')}>
+                      <p className="text-base font-semibold uppercase tracking-[0.22em] text-sky-500">Description 🧾</p>
+                      <p className="mt-4 cursor-pointer text-base leading-7 text-slate-600">{selectedProgram.description || "No description has been provided for this program."}</p>
+                      <span className="absolute -right-8 top-0 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
@@ -363,8 +587,18 @@ export default function ProgramsPage() {
                   ) : (
                     <ul className="mt-4 space-y-2">
                       {registeredParticipants.map((participant) => (
-                        <li key={participant.id} className="rounded-xl border border-[#D7E3D5] bg-[#F3F7F1] px-4 py-3 text-sm font-semibold text-[#31585F]">
-                          {participant.name}
+                        <li key={participant.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-800">
+                          <span>{participant.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setParticipantToRemove(participant)}
+                            className="text-red-500 hover:text-red-700 transition"
+                            title="Remove participant"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -435,31 +669,77 @@ export default function ProgramsPage() {
                 <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">Program metrics</p>
                   <div className="mt-4 grid gap-3">
-                    <div className="rounded-xl bg-[#EEF4EC] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">Start</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.start_date)}</p>
+                    <div className="rounded-3xl bg-sky-50 p-4" onKeyDown={handleEditKeyDown}>
+                      {editingField === 'start_date' ? (
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">Start</p>
+                          <input
+                            type="date"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none ring-2 ring-blue-100"
+                            autoFocus
+                          />
+                          <div className="mt-2 flex items-center gap-2">
+                            <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
+                              {isUpdating ? 'Saving...' : 'Save'}
+                            </button>
+                            <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                          {updateError && editingField === 'start_date' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                        </div>
+                      ) : (
+                        <div className="group relative" onClick={() => handleStartEditing('start_date', selectedProgram.start_date)}>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">Start</p>
+                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.start_date)}</p>
+                          <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="rounded-xl bg-[#E4F0EC] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">End</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.end_date)}</p>
+                    <div className="rounded-3xl bg-emerald-50 p-4" onKeyDown={handleEditKeyDown}>
+                      {editingField === 'end_date' ? (
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">End</p>
+                          <input
+                            type="date"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none ring-2 ring-blue-100"
+                            autoFocus
+                          />
+                          <div className="mt-2 flex items-center gap-2">
+                            <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
+                              {isUpdating ? 'Saving...' : 'Save'}
+                            </button>
+                            <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                          {updateError && editingField === 'end_date' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                        </div>
+                      ) : (
+                        <div className="group relative" onClick={() => handleStartEditing('end_date', selectedProgram.end_date)}>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">End</p>
+                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.end_date)}</p>
+                          <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                        </div>
+                      )}
                     </div>
                     <div className="rounded-xl bg-[#EEF4EC] p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-400">Registered</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0}</p>
-                    </div>
-                    <div className="rounded-xl bg-[#F4F3E8] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-400">Minimum</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{selectedProgram.min_members || 0}</p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">{registeredParticipants.length}</p>
                     </div>
                     <div className="rounded-xl bg-[#F7EEEE] p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-400">Missing to minimum</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{Math.max(0, (selectedProgram.min_members || 0) - (selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0))}</p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">{Math.max(0, (selectedProgram.min_members || 0) - registeredParticipants.length)}</p>
                     </div>
                     <div className="rounded-xl bg-[#EEF1EE] p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Remaining to maximum</p>
                       <p className="mt-2 text-lg font-semibold text-slate-900">
                         {selectedProgram.max_members > 0
-                          ? Math.max(0, selectedProgram.max_members - (selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0))
+                          ? Math.max(0, selectedProgram.max_members - registeredParticipants.length)
                           : "Unlimited"}
                       </p>
                     </div>
@@ -490,6 +770,62 @@ export default function ProgramsPage() {
             </div>
             <div className="p-5 sm:p-6">
               <ManagePrograms onSuccess={() => setIsManageModalOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {participantToRemove && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-2xl font-bold text-slate-950">Confirm Removal</h3>
+            <p className="mb-6 text-base text-slate-600">
+              Are you sure you want to delete participant <span className="font-bold text-slate-900">{participantToRemove.name}</span> in program <span className="font-bold text-slate-900">{selectedProgram?.name}</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setParticipantToRemove(null)}
+                className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleRemoveClientFromProgram(participantToRemove.id);
+                  setParticipantToRemove(null);
+                }}
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {programToRemove && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-2xl font-bold text-slate-950">Confirm Delete Program</h3>
+            <p className="mb-6 text-base text-slate-600">
+              Are you sure you want to delete the program <span className="font-bold text-slate-900">{programToRemove.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setProgramToRemove(null)}
+                className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProgram}
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 shadow-sm"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
