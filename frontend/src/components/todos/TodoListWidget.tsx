@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, type FormEvent, type KeyboardEvent } from "react";
-import { useTodos } from "@/hooks/useTodos";
+import { useTodos } from "@/application/useTodos";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
