@@ -135,6 +135,24 @@ export default function ScheduleMeetingForm({
     try {
       setLoading(true);
   
+      // Read latest reminder controls directly from the form to avoid stale/overwritten state
+      let resolvedReminderMode = formData.reminderMode;
+      let resolvedReminderOption = formData.reminderOption;
+      let resolvedCustomReminderDate = formData.customReminderDate;
+      let resolvedCustomReminderTime = formData.customReminderTime;
+
+      if (addReminder && event.currentTarget && event.currentTarget.elements) {
+        const elems = event.currentTarget.elements;
+        if (elems["reminderMode"]) resolvedReminderMode = elems["reminderMode"].value;
+        if (resolvedReminderMode === "preset" && elems["reminderOption"]) {
+          resolvedReminderOption = elems["reminderOption"].value;
+        }
+        if (resolvedReminderMode === "custom") {
+          if (elems["customReminderDate"]) resolvedCustomReminderDate = elems["customReminderDate"].value;
+          if (elems["customReminderTime"]) resolvedCustomReminderTime = elems["customReminderTime"].value;
+        }
+      }
+
       const eventPayload = {
         title: formData.title,
         notes: formData.notes,
@@ -142,10 +160,10 @@ export default function ScheduleMeetingForm({
         time: formData.time,
         priority: formData.priority,
         // persist reminder fields but actual creation is conditional on `addReminder`
-        reminderMode: formData.reminderMode,
-        reminderOption: formData.reminderOption,
-        customReminderDate: formData.customReminderDate,
-        customReminderTime: formData.customReminderTime,
+        reminderMode: addReminder ? resolvedReminderMode : null,
+        reminderOption: addReminder && resolvedReminderMode === "preset" ? resolvedReminderOption : null,
+        customReminderDate: addReminder && resolvedReminderMode === "custom" ? resolvedCustomReminderDate : "",
+        customReminderTime: addReminder && resolvedReminderMode === "custom" ? resolvedCustomReminderTime : "",
         addReminder: addReminder,
         
         calendarSyncStatus: initialData?.calendarSyncStatus || "not_synced",
