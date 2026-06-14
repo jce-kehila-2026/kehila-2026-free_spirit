@@ -42,6 +42,12 @@ export const navigationLinks = [
     visibility: "authenticated",
     allowedRoles: ["Admin"],
   },
+  {
+    href: "/statistic",
+    label: "Statistics",
+    visibility: "authenticated",
+    allowedRoles: ["Admin"],
+  },
 ];
 
 // Function to filter navigation links based on user authentication status and role.
