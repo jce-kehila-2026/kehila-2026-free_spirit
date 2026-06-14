@@ -344,7 +344,6 @@ export default function ManagePrograms({ onSuccess }) {
             type="button" 
             className={styles.secondaryButton} 
             onClick={toggleScratchMode}
-            style={{ marginBottom: '24px' }}
           >
             {isScratch ? "Cancel Create from Scratch" : "Create New Program from Scratch"}
           </button>
