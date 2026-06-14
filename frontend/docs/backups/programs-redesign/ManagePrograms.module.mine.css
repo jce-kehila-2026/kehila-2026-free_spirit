@@ -1,0 +1,259 @@
+.form {
+  width: 100%;
+}
+
+.header {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #d7e3d5;
+}
+
+.title {
+  margin: 0;
+  color: #15383e;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: #60777b;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.row .field {
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  margin-bottom: 7px;
+  color: #31585f;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  padding: 11px 14px;
+  color: #173a40;
+  background: #f7faf5;
+  border: 1px solid #c9d9d1;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input:hover {
+  border-color: #9fbfb4;
+}
+
+.input:focus {
+  background: #ffffff;
+  border-color: #6bb2a0;
+  box-shadow: 0 0 0 4px #d7e7d4;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.input::placeholder {
+  color: #829497;
+}
+
+textarea.input {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.inputError {
+  border-color: #dc7b7b;
+  box-shadow: 0 0 0 3px rgba(220, 123, 123, 0.13);
+}
+
+.error {
+  margin: 6px 0 0;
+  color: #b42323;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.authError {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  color: #a52525;
+  background: #fff1f1;
+  border: 1px solid #f1caca;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.button,
+.secondaryButton {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.button {
+  margin-top: 2px;
+  color: #ffffff;
+  background: #2c6975;
+  border: 1px solid #2c6975;
+}
+
+.button:hover:not(:disabled) {
+  background: #245c66;
+  border-color: #245c66;
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.secondaryButton {
+  margin-bottom: 20px;
+  color: #2c6975;
+  background: #eef4ec;
+  border: 1px solid #bfd0ca;
+}
+
+.secondaryButton:hover {
+  background: #dcead6;
+  border-color: #9fbfb4;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: #d7e3d5;
+}
+
+.dividerText {
+  color: #7c9194;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  max-height: 220px;
+  overflow: auto;
+  background: #fffdf8;
+  border: 1px solid #c9d9d1;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(44, 105, 117, 0.12);
+}
+
+.suggestionItem {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  color: #31585f;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #eef4ec;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestionItem:hover {
+  background: #eef4ec;
+}
+
+.suggestionLoading {
+  padding: 10px 12px;
+  color: #6a8589;
+  font-size: 0.8rem;
+}
+
+.successPopup {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(92vw, 420px);
+  padding: 14px 18px;
+  color: #245c4f;
+  background: #effaf3;
+  border: 1px solid #b9dec5;
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(44, 105, 117, 0.14);
+  font-size: 0.875rem;
+  font-weight: 700;
+  transform: translateX(-50%);
+  animation: popIn 180ms ease-out;
+}
+
+.successIcon {
+  font-size: 1rem;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .header {
+    margin-bottom: 18px;
+  }
+}
