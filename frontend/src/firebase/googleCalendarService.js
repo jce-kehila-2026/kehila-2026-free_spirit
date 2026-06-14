@@ -16,17 +16,97 @@ function ensureClientId() {
   }
 }
 
-function ensureGisLoaded() {
-  if (typeof window === "undefined" || !window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-    throw new Error(
-      "Google Identity Services not available. Make sure the GIS script (https://accounts.google.com/gsi/client) is loaded on the page.",
-    );
+let gisLoadPromise = null;
+
+export async function ensureGisLoaded() {
+  if (typeof window === "undefined") {
+    throw new Error("Google Identity Services not available in this environment (server).");
   }
+
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+    return;
+  }
+
+  if (gisLoadPromise) return gisLoadPromise;
+
+  gisLoadPromise = new Promise((resolve, reject) => {
+    // Check if a script tag already exists on the document
+    const EXISTING_SRC = "https://accounts.google.com/gsi/client";
+    const existingScript = Array.from(document.getElementsByTagName("script")).find((s) => {
+      return s.src === EXISTING_SRC || s.src === EXISTING_SRC + ".js" || s.src.endsWith("gsi/client");
+    });
+
+    const finish = () => {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        resolve();
+      } else {
+        reject(new Error("Google Identity Services did not initialize after loading the GIS script."));
+      }
+    };
+
+    if (existingScript) {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        resolve();
+        return;
+      }
+
+      // Wait for it to load or fail
+      existingScript.addEventListener("load", finish);
+      existingScript.addEventListener("error", () => reject(new Error("Failed to load GIS script from existing script tag.")));
+      return;
+    }
+
+    // Create a new script tag to load GIS
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+
+    script.addEventListener("load", () => {
+      // small delay may be needed for the library to initialize
+      try {
+        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+          resolve();
+        } else {
+          // If the library didn't attach the expected object immediately, poll briefly
+          const timeout = setTimeout(() => {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+              resolve();
+            } else {
+              reject(new Error("Google Identity Services loaded but did not initialize properly."));
+            }
+          }, 50);
+          // Also attempt a microtask check
+          if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        }
+      } catch (e) {
+        reject(new Error("Error while initializing GIS after script load."));
+      }
+    });
+
+    script.addEventListener("error", () => reject(new Error("Failed to load GIS script (https://accounts.google.com/gsi/client).")));
+
+    document.head.appendChild(script);
+  });
+
+  return gisLoadPromise;
+}
+
+export function isGisAvailableSync() {
+  if (typeof window === "undefined") return false;
+  return Boolean(window.google && window.google.accounts && window.google.accounts.oauth2);
 }
 
 function initTokenClient() {
   ensureClientId();
-  ensureGisLoaded();
+  // ensureGisLoaded may load the GIS script dynamically; make callers await it when necessary
+  // For initTokenClient we use a synchronous check only when possible, otherwise throw
+  if (!(window.google && window.google.accounts && window.google.accounts.oauth2)) {
+    throw new Error("Google Identity Services not available. Callers should await ensureGisLoaded() before initializing token client.");
+  }
 
   if (!tokenClient) {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -46,8 +126,9 @@ function initTokenClient() {
 }
 
 function requestAccessTokenInteractive() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
+      await ensureGisLoaded();
       initTokenClient();
 
       // If we already have a valid token, return it
@@ -85,7 +166,7 @@ function requestAccessTokenInteractive() {
 
 async function getAccessToken() {
   ensureClientId();
-  ensureGisLoaded();
+  await ensureGisLoaded();
 
   if (accessToken && Date.now() < accessTokenExpiresAt - 5000) {
     return accessToken;
@@ -123,7 +204,11 @@ function buildEventPayload(event) {
   if (event.notes) descriptionParts.push(String(event.notes));
   if (event.clientName) descriptionParts.push(`Participant: ${event.clientName}`);
   if (event.priority) descriptionParts.push(`Priority: ${event.priority}`);
-  if (event.reminderLabel || event.reminderOption) descriptionParts.push(`Reminder: ${event.reminderLabel || event.reminderOption}`);
+  // Include reminder text only when user opted into reminders. If `addReminder === false`,
+  // do not mention reminder timing in the Google Calendar event description.
+  if (event.addReminder !== false && (event.reminderLabel || event.reminderOption)) {
+    descriptionParts.push(`Reminder: ${event.reminderLabel || event.reminderOption}`);
+  }
 
   const description = descriptionParts.join("\n\n");
 
@@ -153,39 +238,46 @@ function buildEventPayload(event) {
 
   // Add Google Calendar reminder overrides derived from our event reminder settings.
   try {
-    const PRESET_MINUTES = {
-      half_hour_before: 30,
-      two_hours_before: 120,
-      one_day_before: 1440,
-      three_days_before: 4320,
-      one_week_before: 10080,
-      event_time: 0,
-    };
-
-    let minutesBefore = null;
-
-    if (event.reminderMode === "custom") {
-      if (event.customReminderDate && event.customReminderTime) {
-        const scheduledFor = new Date(`${event.customReminderDate}T${event.customReminderTime}`);
-        if (!Number.isNaN(scheduledFor.getTime())) {
-          minutesBefore = Math.round((start.getTime() - scheduledFor.getTime()) / 60000);
-        }
-      }
+    // If the user explicitly disabled reminders in the UI/form, ensure we clear any
+    // Google Calendar reminders (do not allow calendar default reminders to apply).
+    // This respects the `addReminder` boolean carried on the event payload.
+    if (event.addReminder === false) {
+      payload.reminders = { useDefault: false, overrides: [] };
     } else {
-      // preset
-      minutesBefore = PRESET_MINUTES[event.reminderOption];
-    }
-
-    if (Number.isFinite(minutesBefore) && minutesBefore >= 0) {
-      payload.reminders = {
-        useDefault: false,
-        overrides: [
-          {
-            method: "popup",
-            minutes: minutesBefore,
-          },
-        ],
+      const PRESET_MINUTES = {
+        half_hour_before: 30,
+        two_hours_before: 120,
+        one_day_before: 1440,
+        three_days_before: 4320,
+        one_week_before: 10080,
+        event_time: 0,
       };
+
+      let minutesBefore = null;
+
+      if (event.reminderMode === "custom") {
+        if (event.customReminderDate && event.customReminderTime) {
+          const scheduledFor = new Date(`${event.customReminderDate}T${event.customReminderTime}`);
+          if (!Number.isNaN(scheduledFor.getTime())) {
+            minutesBefore = Math.round((start.getTime() - scheduledFor.getTime()) / 60000);
+          }
+        }
+      } else {
+        // preset
+        minutesBefore = PRESET_MINUTES[event.reminderOption];
+      }
+
+      if (Number.isFinite(minutesBefore) && minutesBefore >= 0) {
+        payload.reminders = {
+          useDefault: false,
+          overrides: [
+            {
+              method: "popup",
+              minutes: minutesBefore,
+            },
+          ],
+        };
+      }
     }
   } catch {
     // If reminder conversion fails, do not break event creation/update — skip Google reminders.
@@ -221,7 +313,7 @@ async function callGoogleCalendarApi(path, method = "GET", body = null) {
 
 export async function createGoogleCalendarEvent(event) {
   ensureClientId();
-  ensureGisLoaded();
+  await ensureGisLoaded();
 
   const payload = buildEventPayload(event);
 
@@ -232,7 +324,7 @@ export async function createGoogleCalendarEvent(event) {
 
 export async function updateGoogleCalendarEvent(googleEventId, event) {
   ensureClientId();
-  ensureGisLoaded();
+  await ensureGisLoaded();
 
   if (!googleEventId) throw new Error("googleEventId is required to update a Google Calendar event.");
 
@@ -245,7 +337,7 @@ export async function updateGoogleCalendarEvent(googleEventId, event) {
 
 export async function deleteGoogleCalendarEvent(googleEventId) {
   ensureClientId();
-  ensureGisLoaded();
+  await ensureGisLoaded();
 
   if (!googleEventId) throw new Error("googleEventId is required to delete a Google Calendar event.");
 

@@ -14,6 +14,51 @@ import {
 } from "lucide-react";
 import { getEvents } from "@/firebase/eventsService";
 
+// Local mapping for preset reminder labels (kept minimal and stable)
+const PRESET_REMINDER_LABELS = {
+  half_hour_before: "30 minutes before",
+  two_hours_before: "2 hours before",
+  one_day_before: "1 day before",
+  three_days_before: "3 days before",
+  one_week_before: "1 week before",
+  event_time: "At meeting time",
+};
+
+function formatCustomReminder(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  const d = new Date(`${dateStr}T${timeStr}`);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+
+  return `${day}/${month}/${year}, ${hours}:${minutes}`;
+}
+
+function getReminderDisplay(e) {
+  if (!e || e.addReminder === false) return null;
+
+  // Prefer explicitly stored reminderLabel
+  if (e.reminderLabel) return e.reminderLabel;
+
+  // Custom reminder
+  if (e.reminderMode === "custom") {
+    const formatted = formatCustomReminder(e.customReminderDate, e.customReminderTime);
+    return formatted ? `Custom reminder — ${formatted}` : null;
+  }
+
+  // Preset reminder
+  if (e.reminderOption) {
+    return PRESET_REMINDER_LABELS[e.reminderOption] || e.reminderOption;
+  }
+
+  return null;
+}
+
 
 export default function EventCalendar({ refreshKey = 0 }) {
   const [events, setEvents] = useState([]);
@@ -204,19 +249,17 @@ export default function EventCalendar({ refreshKey = 0 }) {
                 </div>
               )}
 
-              {selectedEvent.reminderLabel && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Reminder</div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.reminderLabel}</div>
-                </div>
-              )}
-
-              {selectedEvent.reminderOption && !selectedEvent.reminderLabel && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Reminder</div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.reminderOption}</div>
-                </div>
-              )}
+              {(() => {
+                const reminderDisplay = getReminderDisplay(selectedEvent);
+                return (
+                  reminderDisplay && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Reminder</div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{reminderDisplay}</div>
+                    </div>
+                  )
+                );
+              })()}
 
               {selectedEvent.calendarSyncLabel && (
                 <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">

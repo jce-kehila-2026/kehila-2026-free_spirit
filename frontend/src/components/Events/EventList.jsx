@@ -3,15 +3,8 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, RefreshCw, X } from "lucide-react";
 
-import {
-  cancelEvent,
-  completeEvent,
-  deleteEvent,
-  getEventsWithinDays,
-  updateEvent,
-} from "@/firebase/eventsService";
-import { deleteGoogleCalendarEvent } from "@/firebase/googleCalendarService";
-import { updateNotificationsByEventId } from "@/firebase/notificationsService";
+import { getEventsWithinDays } from "@/firebase/eventsService";
+import useEventActions from "@/hooks/useEventActions";
 
 import ScheduleMeetingForm from "./ScheduleMeetingForm";
 
@@ -23,7 +16,6 @@ export default function EventList({
 }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [eventToEdit, setEventToEdit] = useState(null);
 
   async function loadEvents() {
@@ -39,6 +31,14 @@ export default function EventList({
     }
   }
 
+  // Shared action handlers (business logic) are provided by the hook.
+  const {
+    actionLoadingId,
+    handleComplete: hookComplete,
+    handleCancel: hookCancel,
+    handleDelete: hookDelete,
+  } = useEventActions({ onRefresh: loadEvents });
+
   function handleEditCompleted() {
     setEventToEdit(null);
   
@@ -48,78 +48,29 @@ export default function EventList({
   
     loadEvents();
   }
-
   async function handleComplete(eventId) {
     try {
-      setActionLoadingId(eventId);
-  
-      await completeEvent(eventId);
-  
-      await updateNotificationsByEventId(eventId, {
-        status: "completed",
-        statusLabel: "Meeting completed",
-      });
+      await hookComplete(eventId);
 
       if (onDataChanged) {
         onDataChanged();
       }
-  
-      await loadEvents();
     } catch (error) {
       console.error(error);
       alert("Failed to complete meeting.");
-    } finally {
-      setActionLoadingId(null);
     }
   }
 
   async function handleCancel(event) {
     try {
-      setActionLoadingId(event.id);
-
-      // If synced to Google Calendar, attempt to remove it (non-blocking)
-      if (event.googleCalendarEventId) {
-        try {
-          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
-
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "removed",
-              calendarSyncLabel: "Removed from Google Calendar after cancellation",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete", e);
-          }
-        } catch (googleErr) {
-          console.error("Failed to remove Google Calendar event", googleErr);
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "failed",
-              calendarSyncLabel: "Failed to remove from Google Calendar",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
-          }
-        }
-      }
-
-      await cancelEvent(event.id);
-
-      await updateNotificationsByEventId(event.id, {
-        status: "cancelled",
-        statusLabel: "Meeting cancelled",
-      });
+      await hookCancel(event);
 
       if (onDataChanged) {
         onDataChanged();
       }
-
-      await loadEvents();
     } catch (error) {
       console.error(error);
       alert("Failed to cancel meeting.");
-    } finally {
-      setActionLoadingId(null);
     }
   }
 
@@ -133,53 +84,14 @@ export default function EventList({
     }
 
     try {
-      setActionLoadingId(event.id);
-
-      // If synced to Google Calendar, attempt to remove it (non-blocking)
-      if (event.googleCalendarEventId) {
-        try {
-          await deleteGoogleCalendarEvent(event.googleCalendarEventId);
-
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "removed",
-              calendarSyncLabel: "Removed from Google Calendar after deletion",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete", e);
-          }
-        } catch (googleErr) {
-          console.error("Failed to remove Google Calendar event", googleErr);
-          try {
-            await updateEvent(event.id, {
-              calendarSyncStatus: "failed",
-              calendarSyncLabel: "Failed to remove from Google Calendar",
-            });
-          } catch (e) {
-            console.warn("Failed to update calendar sync metadata after Google delete failure", e);
-          }
-        }
-      }
-
-      // Preserve notification history by marking them deleted
-      await updateNotificationsByEventId(event.id, {
-        status: "deleted",
-        statusLabel: "Meeting deleted",
-      });
-
-      // Soft-delete the event document (deleteEvent now performs soft-delete)
-      await deleteEvent(event.id);
+      await hookDelete(event);
 
       if (onDataChanged) {
         onDataChanged();
       }
-
-      await loadEvents();
     } catch (error) {
       console.error(error);
       alert("Failed to delete meeting.");
-    } finally {
-      setActionLoadingId(null);
     }
   }
 
