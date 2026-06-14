@@ -2,13 +2,14 @@
 
 import { useState } from "react"; // 1. Added useState
 import { toast } from "sonner";
-import { IconCheck, IconCalendar } from "@/components/ui/Icons";
+import { IconCheck } from "@/components/ui/Icons";
 
 import TimelineWidget from "@/components/clients/dashboard/TimelineWidget";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 
 // 2. Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm"; 
+import TodoListWidget from "@/components/todos/TodoListWidget";
 
 interface ProfileSummaryDashboardProps {
   client: ClientDoc;
@@ -61,7 +62,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
           </div>
         </div>
 
-        {/* ── Right rail (col-span-1): Actions + Meetings stacked ── */}
+        {/* ── Right rail (col-span-1): Actions + Todos stacked ── */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           
           {/* Action Buttons card */}
@@ -71,7 +72,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
               <button
                 type="button"
                 disabled={isArchived}
-                onClick={() => setIsMeetingModalOpen(true)} // 4. Open modal instead of navigating!
+                onClick={() => setIsMeetingModalOpen(true)}
                 className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-semibold shadow-sm"
               >
                 Create Meeting
@@ -95,27 +96,11 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
             </div>
           </div>
 
-          {/* Recent Meetings & Logs card */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 flex flex-col flex-1">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-base font-semibold text-slate-800">
-                  Recent Meetings &amp; Logs
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Interaction history
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center justify-center flex-1 py-8">
-              <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-3">
-                <IconCalendar className="h-6 w-6" />
-              </div>
-              <p className="text-sm font-medium text-slate-900 mb-1">No meetings logged</p>
-              <p className="text-xs text-slate-500 text-center px-4">Click &lsquo;Create Meeting&rsquo; above to schedule or log an interaction.</p>
-            </div>
-          </div>
+          {/* Client Tasks / Todo List Widget */}
+          <TodoListWidget 
+            clientId={client.id} 
+            title="Client Tasks" 
+          />
           
         </div>
       </div>
