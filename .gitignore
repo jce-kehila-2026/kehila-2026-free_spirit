@@ -32,3 +32,6 @@ backend/privateKey.json
 # Local AI Agent files
 .agents/
 skills-lock.json
+
+# Local AI Agents Configurations
+docs/agents/

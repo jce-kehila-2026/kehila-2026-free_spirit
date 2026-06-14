@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import type { ClientFormInput } from "@/schemas/clientSchema";
+import type { ClientFormInput } from "@/schema/clientSchema";
 import {
   GENDER_OPTIONS,
   EDUCATION_STATUS_OPTIONS,
-} from "@/schemas/clientSchema";
+} from "@/schema/clientSchema";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export default function DemographicsStep() {
     formState: { errors },
   } = useFormContext<ClientFormInput>();
 
-  const [open, setOpen] = useState({ identification: true, notes: false });
+  const [open, setOpen] = useState({ identification: false, notes: false });
 
   function toggle(key: keyof typeof open) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));

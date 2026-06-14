@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
-import type { ClientFormInput, Contact } from "@/schemas/clientSchema";
-import { CONTACT_RELATIONSHIP } from "@/schemas/clientSchema";
+import type { ClientFormInput, Contact } from "@/schema/clientSchema";
+import { CONTACT_RELATIONSHIP } from "@/schema/clientSchema";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

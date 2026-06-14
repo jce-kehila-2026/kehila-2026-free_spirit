@@ -10,10 +10,7 @@ import {
   updateEvent,
 } from "@/firebase/eventsService";
 import { deleteGoogleCalendarEvent } from "@/firebase/googleCalendarService";
-import {
-  deleteNotificationsByEventId,
-  updateNotificationsByEventId,
-} from "@/firebase/notificationsService";
+import { updateNotificationsByEventId } from "@/firebase/notificationsService";
 
 import ScheduleMeetingForm from "./ScheduleMeetingForm";
 

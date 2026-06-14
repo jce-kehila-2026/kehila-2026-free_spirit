@@ -187,7 +187,7 @@ function buildEventPayload(event) {
         ],
       };
     }
-  } catch (err) {
+  } catch {
     // If reminder conversion fails, do not break event creation/update — skip Google reminders.
     // Intentionally swallow errors here to avoid affecting the primary flow.
   }
@@ -254,8 +254,10 @@ export async function deleteGoogleCalendarEvent(googleEventId) {
   return true;
 }
 
-export default {
+const googleCalendarService = {
   createGoogleCalendarEvent,
   updateGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
 };
+
+export default googleCalendarService;
