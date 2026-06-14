@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import ManagePrograms from "../manage-programs/page";
 
@@ -27,6 +27,7 @@ export default function ProgramsPage() {
   const [clientAddLoading, setClientAddLoading] = useState(false);
   const [clientAddSuccess, setClientAddSuccess] = useState("");
   const [participantToRemove, setParticipantToRemove] = useState(null);
+  const [programToRemove, setProgramToRemove] = useState(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [editingField, setEditingField] = useState(null); // null | 'name' | 'location' | 'description'
   const [editingValue, setEditingValue] = useState('');
@@ -285,6 +286,18 @@ export default function ProgramsPage() {
     }
   };
 
+  const handleDeleteProgram = async () => {
+    if (!programToRemove) return;
+    try {
+      await deleteDoc(doc(db, "programs", programToRemove.id));
+      setPrograms(prev => prev.filter(p => p.id !== programToRemove.id));
+      setProgramToRemove(null);
+    } catch (err) {
+      console.error("Error deleting program:", err);
+      // Optional: set some error state if you want to display an error
+    }
+  };
+
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
@@ -406,8 +419,20 @@ export default function ProgramsPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") openProgramModal(program);
                     }}
-                    className="cursor-pointer rounded-[24px] bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-sm ring-1 ring-blue-200 transition hover:-translate-y-1 hover:shadow-lg"
+                    className="cursor-pointer rounded-[24px] bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-sm ring-1 ring-blue-200 transition hover:-translate-y-1 hover:shadow-lg relative group"
                   >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProgramToRemove(program);
+                      }}
+                      className="absolute top-4 right-4 z-10 p-2 bg-white/50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Program"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
                     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h2 className="text-3xl font-bold text-blue-950">🌟 {program.name || "Untitled Program"}</h2>
@@ -518,7 +543,7 @@ export default function ProgramsPage() {
               </button>
             </div>
 
-            <div className="grid gap-6 p-6 lg:grid-cols-[2fr_1fr]">
+            <div className="grid gap-6 p-6 lg:grid-cols-[3fr_1fr]">
               <div className="space-y-6">
                 <div className="rounded-[24px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
                   {editingField === 'description' ? (
@@ -704,46 +729,17 @@ export default function ProgramsPage() {
                     </div>
                     <div className="rounded-3xl bg-indigo-50 p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-400">Registered</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0}</p>
-                    </div>
-                    <div className="rounded-3xl bg-amber-50 p-4" onKeyDown={handleEditKeyDown}>
-                      {editingField === 'min_members' ? (
-                        <div>
-                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-400">Minimum</p>
-                          <input
-                            type="number"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            className="mt-2 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none ring-2 ring-blue-100"
-                            autoFocus
-                          />
-                          <div className="mt-2 flex items-center gap-2">
-                            <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-sky-600 px-3 py-1 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">
-                              {isUpdating ? 'Saving...' : 'Save'}
-                            </button>
-                            <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
-                              Cancel
-                            </button>
-                          </div>
-                          {updateError && editingField === 'min_members' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
-                        </div>
-                      ) : (
-                        <div className="group relative" onClick={() => handleStartEditing('min_members', selectedProgram.min_members || 0)}>
-                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-400">Minimum</p>
-                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900">{selectedProgram.min_members || 0}</p>
-                          <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
-                        </div>
-                      )}
+                      <p className="mt-2 text-lg font-semibold text-slate-900">{registeredParticipants.length}</p>
                     </div>
                     <div className="rounded-3xl bg-rose-50 p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-400">Missing to minimum</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{Math.max(0, (selectedProgram.min_members || 0) - (selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0))}</p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">{Math.max(0, (selectedProgram.min_members || 0) - registeredParticipants.length)}</p>
                     </div>
                     <div className="rounded-3xl bg-slate-50 p-4">
                       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Remaining to maximum</p>
                       <p className="mt-2 text-lg font-semibold text-slate-900">
                         {selectedProgram.max_members > 0
-                          ? Math.max(0, selectedProgram.max_members - (selectedProgram.participant_ids?.length ?? selectedProgram.participant_count ?? 0))
+                          ? Math.max(0, selectedProgram.max_members - registeredParticipants.length)
                           : "Unlimited"}
                       </p>
                     </div>
@@ -794,6 +790,32 @@ export default function ProgramsPage() {
                   handleRemoveClientFromProgram(participantToRemove.id);
                   setParticipantToRemove(null);
                 }}
+                className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {programToRemove && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-2xl font-bold text-slate-950">Confirm Delete Program</h3>
+            <p className="mb-6 text-base text-slate-600">
+              Are you sure you want to delete the program <span className="font-bold text-slate-900">{programToRemove.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setProgramToRemove(null)}
+                className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProgram}
                 className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 shadow-sm"
               >
                 Delete
