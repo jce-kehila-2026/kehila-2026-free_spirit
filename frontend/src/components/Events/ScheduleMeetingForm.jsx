@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CalendarPlus, Check, Cloud, Clock3 } from "lucide-react";
 
 import { createEvent } from "@/firebase/eventsService";
 import { createNotifications } from "@/firebase/notificationsService";
@@ -37,9 +38,19 @@ export default function ScheduleMeetingForm({
   const isAlreadySyncedToGoogle = Boolean(initialData?.googleCalendarEventId);
   const [syncToGoogle, setSyncToGoogle] = useState(isAlreadySyncedToGoogle);
   const [syncWarning, setSyncWarning] = useState("");
+  const [addReminder, setAddReminder] = useState(
+    initialData
+      ? Boolean(
+          initialData.reminderMode ||
+            initialData.reminderOption ||
+            initialData.customReminderDate ||
+            initialData.customReminderTime,
+        )
+      : false,
+  );
 
   const inputClass =
-    "w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100";
+    "w-full rounded-xl border border-[#C9D9D1] bg-[#F7FAF5] px-4 py-3 text-sm text-[#173A40] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:bg-white focus:ring-4 focus:ring-[#D7E7D4]";
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -72,7 +83,7 @@ export default function ScheduleMeetingForm({
       return "Meeting time must be in the future.";
     }
 
-    if (formData.reminderMode === "custom") {
+    if (addReminder && formData.reminderMode === "custom") {
       if (!formData.customReminderDate || !formData.customReminderTime) {
         return "Please choose a custom reminder date and time.";
       }
@@ -107,6 +118,7 @@ export default function ScheduleMeetingForm({
       customReminderDate: "",
       customReminderTime: "",
     });
+    setAddReminder(false);
   };
 
   const handleSubmit = async (event) => {
@@ -123,16 +135,36 @@ export default function ScheduleMeetingForm({
     try {
       setLoading(true);
   
+      // Read latest reminder controls directly from the form to avoid stale/overwritten state
+      let resolvedReminderMode = formData.reminderMode;
+      let resolvedReminderOption = formData.reminderOption;
+      let resolvedCustomReminderDate = formData.customReminderDate;
+      let resolvedCustomReminderTime = formData.customReminderTime;
+
+      if (addReminder && event.currentTarget && event.currentTarget.elements) {
+        const elems = event.currentTarget.elements;
+        if (elems["reminderMode"]) resolvedReminderMode = elems["reminderMode"].value;
+        if (resolvedReminderMode === "preset" && elems["reminderOption"]) {
+          resolvedReminderOption = elems["reminderOption"].value;
+        }
+        if (resolvedReminderMode === "custom") {
+          if (elems["customReminderDate"]) resolvedCustomReminderDate = elems["customReminderDate"].value;
+          if (elems["customReminderTime"]) resolvedCustomReminderTime = elems["customReminderTime"].value;
+        }
+      }
+
       const eventPayload = {
         title: formData.title,
         notes: formData.notes,
         date: formData.date,
         time: formData.time,
         priority: formData.priority,
-        reminderMode: formData.reminderMode,
-        reminderOption: formData.reminderOption,
-        customReminderDate: formData.customReminderDate,
-        customReminderTime: formData.customReminderTime,
+        // persist reminder fields but actual creation is conditional on `addReminder`
+        reminderMode: addReminder ? resolvedReminderMode : null,
+        reminderOption: addReminder && resolvedReminderMode === "preset" ? resolvedReminderOption : null,
+        customReminderDate: addReminder && resolvedReminderMode === "custom" ? resolvedCustomReminderDate : "",
+        customReminderTime: addReminder && resolvedReminderMode === "custom" ? resolvedCustomReminderTime : "",
+        addReminder: addReminder,
         
         calendarSyncStatus: initialData?.calendarSyncStatus || "not_synced",
         calendarSyncLabel:
@@ -190,14 +222,19 @@ export default function ScheduleMeetingForm({
           );
         }
 
-        await deleteNotificationsByEventId(initialData.id);
+        // Reminder handling: if user disabled reminders, remove any existing notifications.
+        if (!addReminder) {
+          await deleteNotificationsByEventId(initialData.id);
+        } else {
+          await deleteNotificationsByEventId(initialData.id);
 
-        const reminders = buildReminderSchedule(
-          eventPayload,
-          initialData.id,
-        );
+          const reminders = buildReminderSchedule(
+            eventPayload,
+            initialData.id,
+          );
 
-        await createNotifications(reminders);
+          await createNotifications(reminders);
+        }
 
         if (onEditCompleted) {
           onEditCompleted();
@@ -208,13 +245,12 @@ export default function ScheduleMeetingForm({
       }
   
       const eventId = await createEvent(eventPayload);
-  
-      const reminders = buildReminderSchedule(
-        eventPayload,
-        eventId,
-      );
-  
-      await createNotifications(reminders);
+
+      // Only create reminders if the user opted into them
+      if (addReminder) {
+        const reminders = buildReminderSchedule(eventPayload, eventId);
+        await createNotifications(reminders);
+      }
       // Optional Google Calendar sync (non-blocking for meeting creation)
       if (syncToGoogle) {
         try {
@@ -269,28 +305,34 @@ export default function ScheduleMeetingForm({
   };
 
   return (
-    <section className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/70 ring-1 ring-slate-200">
-      <div className="mb-6">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-lg shadow-blue-200">
-          📅
+    <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+      <div className="mb-5 border-b border-[#D7E3D5] pb-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2C6975] text-white">
+            <CalendarPlus aria-hidden="true" className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Meeting details
+            </p>
+            <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">
+              {isEditMode ? "Edit Meeting" : "Schedule a New Meeting"}
+            </h2>
+          </div>
         </div>
 
-        <h2 className="text-2xl font-black text-slate-950">
-          {isEditMode ? "Edit Meeting" : "Schedule a New Meeting"}
-        </h2>
-
         {clientName ? (
-          <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+          <p className="mt-4 rounded-xl bg-[#DCEAD6] px-4 py-3 text-sm font-semibold text-[#2C6975]">
             Scheduling meeting for: {clientName}
           </p>
         ) : (
-          <p className="mt-1 text-sm text-slate-500">
-            Create a general meeting or event and choose when the reminder should be sent.
+          <p className="mt-2 text-sm leading-6 text-[#60777B]">
+            Create a meeting or follow-up. You can add a reminder if needed.
           </p>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         {formError && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             {formError}
@@ -304,7 +346,7 @@ export default function ScheduleMeetingForm({
         )}
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Meeting title
           </label>
 
@@ -317,25 +359,25 @@ export default function ScheduleMeetingForm({
             className={inputClass}
             required
           />
-        </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
-            Meeting notes
-          </label>
+          <div className="mt-3">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
+              Meeting notes
+            </label>
 
-          <textarea
-            name="notes"
-            placeholder="Add notes or important details..."
-            value={formData.notes}
-            onChange={handleChange}
-            className={`${inputClass} min-h-28 resize-none`}
-          />
+            <textarea
+              name="notes"
+              placeholder="Notes about the meeting (agenda, links, participants...)"
+              value={formData.notes}
+              onChange={handleChange}
+              className={inputClass + " min-h-[88px] resize-none"}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
               Date
             </label>
 
@@ -350,7 +392,7 @@ export default function ScheduleMeetingForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
+            <label className="mb-2 block text-sm font-bold text-[#31585F]">
               Time
             </label>
 
@@ -366,7 +408,7 @@ export default function ScheduleMeetingForm({
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
+          <label className="mb-2 block text-sm font-bold text-[#31585F]">
             Follow-up importance
           </label>
 
@@ -381,100 +423,123 @@ export default function ScheduleMeetingForm({
           </select>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-bold text-slate-700">
-            Reminder setup
+        <div className="mt-1">
+          <p className="mb-2 block text-sm font-bold text-[#31585F]">Reminder</p>
+
+          <label className="mb-2 inline-flex flex-col gap-2 rounded-xl bg-[#EEF4EC] p-3 text-sm text-[#31585F] w-full">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="addReminder"
+                checked={addReminder}
+                onChange={(e) => setAddReminder(e.target.checked)}
+                className="h-4 w-4 rounded accent-[#2C6975]"
+              />
+              <span className="font-bold">Add reminder for this meeting</span>
+            </div>
+            <span className="text-xs text-[#60777B]">Create a notification before this meeting.</span>
           </label>
 
-          <select
-            name="reminderMode"
-            value={formData.reminderMode}
-            onChange={handleChange}
-            className={inputClass}
-          >
-            <option value="preset">Choose from common options</option>
-            <option value="custom">Choose a specific reminder time</option>
-          </select>
+          {addReminder && (
+            <>
+              <label className="mb-2 mt-3 block text-sm font-bold text-[#31585F]">
+                Reminder setup
+              </label>
+
+              <select
+                name="reminderMode"
+                value={formData.reminderMode}
+                onChange={handleChange}
+                className={inputClass}
+              >
+                <option value="preset">Choose from common options</option>
+                <option value="custom">Choose a specific reminder time</option>
+              </select>
+
+              {formData.reminderMode === "preset" ? (
+                <div className="mt-3">
+                  <label className="mb-2 block text-sm font-bold text-[#31585F]">
+                    Reminder timing
+                  </label>
+
+                  <select
+                    name="reminderOption"
+                    value={formData.reminderOption}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="two_hours_before">Remind 2 hours before</option>
+                    <option value="one_day_before">Remind 1 day before</option>
+                    <option value="three_days_before">Remind 3 days before</option>
+                    <option value="one_week_before">Remind 1 week before</option>
+                    <option value="event_time">Remind at meeting time</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#BFD9D2] bg-[#EAF2EA] p-4 mt-3">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[#245C66]">
+                    <Clock3 aria-hidden="true" className="h-4 w-4" />
+                    Custom reminder time
+                  </p>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        Reminder date
+                      </label>
+
+                      <input
+                        type="date"
+                        name="customReminderDate"
+                        value={formData.customReminderDate}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        Reminder time
+                      </label>
+
+                      <input
+                        type="time"
+                        name="customReminderTime"
+                        value={formData.customReminderTime}
+                        onChange={handleChange}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
-
-        {formData.reminderMode === "preset" ? (
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
-              Reminder timing
-            </label>
-
-            <select
-              name="reminderOption"
-              value={formData.reminderOption}
-              onChange={handleChange}
-              className={inputClass}
-            >
-              <option value="two_hours_before">Remind 2 hours before</option>
-              <option value="one_day_before">Remind 1 day before</option>
-              <option value="three_days_before">Remind 3 days before</option>
-              <option value="one_week_before">Remind 1 week before</option>
-              <option value="event_time">Remind at meeting time</option>
-            </select>
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-blue-100 bg-blue-50/60 p-4">
-            <p className="mb-3 text-sm font-bold text-blue-900">
-              Custom reminder time
-            </p>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">
-                  Reminder date
-                </label>
-
-                <input
-                  type="date"
-                  name="customReminderDate"
-                  value={formData.customReminderDate}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">
-                  Reminder time
-                </label>
-
-                <input
-                  type="time"
-                  name="customReminderTime"
-                  value={formData.customReminderTime}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         <div>
           {isEditMode && isAlreadySyncedToGoogle ? (
-            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+            <label className="mb-2 inline-flex items-start gap-3 rounded-xl bg-[#EEF4EC] p-3 text-sm font-bold leading-5 text-[#31585F]">
               <input
                 type="checkbox"
                 name="syncToGoogle"
                 checked={true}
                 disabled
-                className="h-4 w-4 rounded"
+                className="mt-0.5 h-4 w-4 rounded accent-[#2C6975]"
               />
+              <Cloud aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#2C6975]" />
               <span>Already synced to Google Calendar — edits will update the Google event</span>
             </label>
           ) : (
-            <label className="mb-2 inline-flex items-center gap-3 text-sm font-bold text-slate-700">
+            <label className="mb-2 inline-flex items-center gap-3 rounded-xl bg-[#EEF4EC] p-3 text-sm font-bold text-[#31585F]">
               <input
                 type="checkbox"
                 name="syncToGoogle"
                 checked={syncToGoogle}
                 onChange={(e) => setSyncToGoogle(e.target.checked)}
-                className="h-4 w-4 rounded"
+                className="h-4 w-4 rounded accent-[#2C6975]"
               />
+              <Cloud aria-hidden="true" className="h-4 w-4 text-[#2C6975]" />
               <span>Sync to Google Calendar</span>
             </label>
           )}
@@ -483,8 +548,9 @@ export default function ScheduleMeetingForm({
        <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-2xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2C6975] px-5 py-3.5 font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:bg-[#9BB9B4]"
         >
+          {!loading && <Check aria-hidden="true" className="h-5 w-5" />}
           {loading
             ? isEditMode
               ? "Updating meeting..."

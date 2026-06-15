@@ -77,8 +77,8 @@ export default function ClientsPage() {
   }
 // ─────────────────────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className={`mx-auto max-w-5xl`}>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(220,234,214,0.72),_transparent_30%),linear-gradient(180deg,_#F7FAF5_0%,_#EEF5F7_100%)] px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-7xl">
         
         <ClientPageHeader 
           view={view} 

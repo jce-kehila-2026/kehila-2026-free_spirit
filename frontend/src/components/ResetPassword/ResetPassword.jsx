@@ -175,9 +175,9 @@ export default function ResetPassword() {
 
   if (verificationState === "checking") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
+      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
         <section
-          className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.12)]"
+          className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 text-center shadow-[0_24px_60px_rgba(36,92,102,0.14)]"
           role="status"
         >
           <p className="text-sm font-semibold text-slate-600">
@@ -190,19 +190,19 @@ export default function ResetPassword() {
 
   if (verificationState === "success") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
-        <section className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.12)]">
+      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
+        <section className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 text-center shadow-[0_24px_60px_rgba(36,92,102,0.14)]">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
             <RequirementStatusIcon isMet />
           </div>
-          <h1 className="mt-5 text-3xl font-bold text-slate-950">
+          <h1 className="mt-5 text-3xl font-bold tracking-[-0.03em] text-[#15383E]">
             Password reset complete
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600" role="status">
             Your password has been reset. You can now sign in.
           </p>
           <Link
-            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:bg-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
             href="/login"
           >
             Back to login
@@ -214,9 +214,9 @@ export default function ResetPassword() {
 
   if (verificationState === "error") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
-        <section className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.12)]">
-          <h1 className="text-3xl font-bold text-slate-950">
+      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
+        <section className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 text-center shadow-[0_24px_60px_rgba(36,92,102,0.14)]">
+          <h1 className="text-3xl font-bold tracking-[-0.03em] text-[#15383E]">
             Reset link unavailable
           </h1>
           <p
@@ -226,7 +226,7 @@ export default function ResetPassword() {
             {resetError}
           </p>
           <Link
-            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:bg-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
             href="/login"
           >
             Back to login
@@ -237,14 +237,14 @@ export default function ResetPassword() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
       <form
-        className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.12)]"
+        className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 shadow-[0_24px_60px_rgba(36,92,102,0.14)]"
         onSubmit={handleSubmit}
         noValidate
       >
         <div className="mb-7 text-center">
-          <h1 className="text-3xl font-bold leading-tight text-slate-950">
+          <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-[#15383E]">
             Reset your password
           </h1>
           <p className="mt-2 text-[15px] text-slate-500">
@@ -268,7 +268,7 @@ export default function ResetPassword() {
             <input
               aria-describedby="reset-password-requirements"
               autoComplete="new-password"
-              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              className="w-full rounded-2xl border border-[#D7E3D5] bg-white py-3 pl-3.5 pr-20 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
               id="reset-password"
               name="password"
               type={isPasswordVisible ? "text" : "password"}
@@ -278,7 +278,7 @@ export default function ResetPassword() {
             />
             <button
               aria-label={isPasswordVisible ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-1"
               type="button"
               onClick={() => setIsPasswordVisible((isVisible) => !isVisible)}
             >
@@ -320,7 +320,7 @@ export default function ResetPassword() {
           <div className="relative">
             <input
               autoComplete="new-password"
-              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              className="w-full rounded-2xl border border-[#D7E3D5] bg-white py-3 pl-3.5 pr-20 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
               id="reset-confirm-password"
               name="confirmPassword"
               type={isConfirmPasswordVisible ? "text" : "password"}
@@ -334,7 +334,7 @@ export default function ResetPassword() {
                   ? "Hide confirm password"
                   : "Show confirm password"
               }
-              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-1"
               type="button"
               onClick={() =>
                 setIsConfirmPasswordVisible((isVisible) => !isVisible)
@@ -360,7 +360,7 @@ export default function ResetPassword() {
         )}
 
         <button
-          className="mt-2 w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+          className="mt-2 w-full rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-[#173A40] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           type="submit"
           disabled={isSubmitting}
         >
@@ -369,7 +369,7 @@ export default function ResetPassword() {
 
         <p className="mt-5 text-center text-sm font-medium text-slate-600">
           <Link
-            className="font-bold text-blue-600 hover:text-blue-700"
+            className="font-bold text-[#2C6975] hover:text-[#173A40]"
             href="/login"
           >
             Back to login

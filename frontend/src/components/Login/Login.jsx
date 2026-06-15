@@ -235,10 +235,10 @@ export default function Login() {
     <main className={styles.page}>
       {showAccessDenied && (
         <div
-          className="fixed left-1/2 top-24 z-[60] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center text-sm font-bold text-red-700 shadow-lg"
+          className="fixed left-1/2 top-24 z-[60] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-[#E8C1BA] bg-[#FFF2EF] px-5 py-4 text-center text-sm font-bold text-[#A3483C] shadow-lg"
           role="alert"
         >
-          אין לך הרשאה לגשת לדף זה
+          You do not have permission to access that page.
         </div>
       )}
 
@@ -283,7 +283,7 @@ export default function Login() {
         </div>
 
         <Link
-          className="mb-5 inline-block text-sm font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="mb-5 inline-block text-sm font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
           href="/forgot-password"
         >
           Forgot password?
@@ -291,11 +291,11 @@ export default function Login() {
 
         {/* Remember Me checkbox */}
         <label
-          className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-700"
+          className="mb-5 flex items-center gap-2 text-sm font-medium text-[#31585F]"
           htmlFor="rememberMe"
         >
           <input
-            className="h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-[#B9CFCA] text-[#245C66] accent-[#245C66] focus:ring-[#6BB2A0]"
             id="rememberMe"
             name="rememberMe"
             type="checkbox"
@@ -314,7 +314,7 @@ export default function Login() {
         {/* Public route for users who still need to create an account. */}
         <p className="mt-5 text-center text-sm font-medium text-slate-600">
           Don&apos;t have an account?{" "}
-          <Link className="font-bold text-blue-600 hover:text-blue-700" href="/signup">
+          <Link className="font-bold text-[#2C6975] hover:text-[#173A40]" href="/signup">
             Sign Up
           </Link>
         </p>

@@ -1,8 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { LogOut, Menu, UserRound, X } from "lucide-react";
 
 import NotificationBell from "@/components/Events/NotificationBell";
+import freeSpiritLogo from "../../../docs/design-reference/image.png";
 
 import { usePathname, useRouter } from "next/navigation";
 
@@ -258,13 +261,13 @@ export default function Navbar() {
   
   const getLinkClassName = (href) =>
 
-    `rounded-md px-3 py-2 text-sm font-semibold transition ${
+    `rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
 
       isActivePath(href)
 
-        ? "bg-blue-50 text-blue-700"
+        ? "bg-[#D8E9D5] text-[#1F5C65] shadow-[inset_0_0_0_1px_rgba(44,105,117,0.08)]"
 
-        : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
+        : "text-[#405D62] hover:bg-[#EEF4EC] hover:text-[#1F5C65]"
 
     }`;
 
@@ -348,13 +351,13 @@ export default function Navbar() {
   /* Internal comments in code are always in English */
 
   return (
-<header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+<header className="sticky top-0 z-50 border-b border-[#D7E3D5] bg-[#FFFDF8]/95 shadow-[0_4px_18px_rgba(44,105,117,0.06)] backdrop-blur">
 
       {/* 1. Global Email Verification Warning Banner */}
 
       {isEmailUnverified && (
 <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-<div className="mx-auto flex w-full max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+<div className="mx-auto flex w-full max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 <div>
 <p>
 
@@ -373,7 +376,7 @@ export default function Navbar() {
 </div>
 <button
 
-              className="w-fit rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-fit rounded-full bg-amber-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-70"
 
               type="button"
 
@@ -402,7 +405,7 @@ export default function Navbar() {
       {verificationToast && (
 <div
 
-          className="fixed left-1/2 top-24 z-[70] w-[min(92vw,460px)] -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-center text-sm font-bold text-amber-900 shadow-lg"
+          className="fixed left-1/2 top-24 z-[70] w-[min(92vw,460px)] -translate-x-1/2 rounded-2xl border border-amber-200 bg-[#FFFDF8] px-5 py-4 text-center text-sm font-bold text-amber-900 shadow-[0_14px_34px_rgba(44,105,117,0.12)]"
 
           role="alert"
 >
@@ -413,17 +416,34 @@ export default function Navbar() {
       )}
  
       {/* 3. Main Consolidated Navigation Bar */}
-<nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+<nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-5 px-4 py-3 sm:px-6">
 
         {/* Her updated Brand Logo and routing */}
 <Link
 
-          className="text-lg font-bold text-slate-950"
+          aria-label="Free Spirit home"
+          className="group flex shrink-0 items-center gap-3"
 
           href={currentUser ? "/home" : "/"}
 >
 
-          Kehila Programs
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 ring-1 ring-[#D7E3D5] transition group-hover:ring-[#6BB2A0]">
+            <Image
+              src={freeSpiritLogo}
+              alt=""
+              className="h-auto w-full object-contain"
+              priority
+              sizes="44px"
+            />
+          </span>
+          <span className="hidden sm:block">
+            <span className="block text-base font-bold leading-tight text-[#173A40]">
+              Free Spirit
+            </span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6A8589]">
+              Kehila Programs
+            </span>
+          </span>
 </Link>
 
         {/* Mobile Hamburger Button */}
@@ -433,54 +453,59 @@ export default function Navbar() {
 
           aria-label="Toggle navigation menu"
 
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 text-slate-700 transition hover:bg-slate-100 sm:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#C9D9D1] text-[#2C6975] transition hover:bg-[#E8F0E5] sm:hidden"
 
           type="button"
 
           onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
 >
-<span className="flex flex-col gap-1.5">
-<span className="block h-0.5 w-5 rounded bg-current"></span>
-<span className="block h-0.5 w-5 rounded bg-current"></span>
-<span className="block h-0.5 w-5 rounded bg-current"></span>
-</span>
+          {isMobileMenuOpen ? (
+            <X aria-hidden="true" className="h-5 w-5" />
+          ) : (
+            <Menu aria-hidden="true" className="h-5 w-5" />
+          )}
 </button>
  
         {/* Desktop Navigation Control */}
-<div className="hidden items-center gap-4 sm:flex">
+<div className="hidden min-w-0 items-center gap-3 sm:flex">
 
           {/* Dynamic role-based navigation loops - renders all tabs from accessControl */}
-<div className="flex items-center gap-2">
+<div className="flex items-center gap-1">
 
             {renderNavLinks()}
 </div>
  
           {currentUser && (
-<div className="flex items-center gap-3 border-l border-slate-200 pl-3">
+<div className="flex items-center gap-2 border-l border-[#D7E3D5] pl-3">
 
               {/* Her integrated Notification Bell */}
 <NotificationBell />
  
               {/* Your User Profile Tag */}
-<div className="flex max-w-[240px] items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-<span className="truncate text-sm font-semibold text-slate-700">
+<div className="flex max-w-[235px] items-center gap-2.5 rounded-full bg-[#EEF4EC] py-1.5 pl-1.5 pr-3 ring-1 ring-[#D7E3D5]">
+<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C6975] text-white">
+  <UserRound aria-hidden="true" className="h-4 w-4" />
+</span>
+<span className="min-w-0">
+<span className="block truncate text-xs font-bold text-[#244B52]">
 
                   {profileEmail}
 </span>
 
                 {userRole && (
-<span className="shrink-0 rounded bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-700">
+<span className="block truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-[#6A8589]">
 
                     {userRole}
 </span>
 
                 )}
+</span>
 </div>
  
               {/* Standardized Single Logout Button */}
 <button
 
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center gap-2 rounded-full border border-[#BFD0CA] bg-white px-3.5 py-2 text-sm font-bold text-[#2C6975] transition hover:border-[#2C6975] hover:bg-[#F3F7F1] disabled:cursor-not-allowed disabled:opacity-70"
 
                 type="button"
 
@@ -489,7 +514,8 @@ export default function Navbar() {
                 disabled={isLoggingOut}
 >
 
-                {isLoggingOut ? "Logging out..." : "Logout"}
+                <LogOut aria-hidden="true" className="h-4 w-4" />
+                {isLoggingOut ? "Logging out..." : "Log out"}
 </button>
 </div>
 
@@ -500,22 +526,22 @@ export default function Navbar() {
       {/* 4. Mobile Menu Navigation Dropdown */}
 
       {isMobileMenuOpen && (
-<div className="mx-auto w-full max-w-6xl border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
-<div className="flex flex-col gap-2">
+<div className="mx-auto w-full max-w-7xl border-t border-[#D7E3D5] bg-[#FFFDF8] px-4 py-4 sm:hidden">
+<div className="flex flex-col gap-1.5">
 
             {renderNavLinks()}
 
             {currentUser && (
-<div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-2">
-<div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+<div className="mt-2 flex flex-col gap-3 border-t border-[#D7E3D5] pt-4">
+<div className="flex items-center justify-between rounded-2xl border border-[#D7E3D5] bg-[#EEF4EC] px-3 py-2.5">
 <div className="flex flex-col gap-0.5 min-w-0">
-<span className="truncate text-sm font-semibold text-slate-700">
+<span className="truncate text-sm font-semibold text-[#244B52]">
 
                       {profileEmail}
 </span>
 
                     {userRole && (
-<span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+<span className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">
 
                         {userRole}
 </span>
@@ -528,7 +554,7 @@ export default function Navbar() {
 </div>
 <button
 
-                  className="rounded-md bg-red-600 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#2C6975] px-4 py-2.5 text-center text-sm font-bold text-white transition hover:bg-[#245A64] disabled:cursor-not-allowed disabled:opacity-70"
 
                   type="button"
 
@@ -537,7 +563,8 @@ export default function Navbar() {
                   disabled={isLoggingOut}
 >
 
-                  {isLoggingOut ? "Logging out..." : "Logout"}
+                  <LogOut aria-hidden="true" className="h-4 w-4" />
+                  {isLoggingOut ? "Logging out..." : "Log out"}
 </button>
 </div>
 
