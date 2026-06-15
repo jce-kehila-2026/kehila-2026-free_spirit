@@ -3,6 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  ArrowRight,
+  CalendarDays,
+  CheckSquare2,
+  CircleDashed,
+  Clock3,
+  FolderKanban,
+  HeartPulse,
+  UserRoundCheck,
+  UsersRound,
+} from "lucide-react";
+import {
   collection,
   onSnapshot,
   query,
@@ -138,13 +149,13 @@ function formatMeetingDateTime(scheduledAt: Date) {
 function ProspectsLoadingState() {
   return (
     <div
-      className="space-y-3 px-5 py-6 sm:px-6"
+      className="space-y-3 px-5 py-6 sm:px-7"
       role="status"
       aria-label="Loading interested prospects"
     >
       {[0, 1, 2].map((item) => (
         <div
-          className="h-14 animate-pulse rounded-lg bg-slate-100"
+          className="h-14 animate-pulse rounded-2xl bg-[#EEF4EC]"
           key={item}
         />
       ))}
@@ -163,18 +174,16 @@ interface DashboardCardCtaProps {
  */
 function DashboardCardCta({ href, label }: DashboardCardCtaProps) {
   return (
-    <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+    <div className="mt-auto border-t border-[#D7E3D5] bg-[#F7FAF5] px-5 py-4 sm:px-7">
       <Link
-        className="group inline-flex items-center rounded-sm text-sm font-bold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+        className="group inline-flex items-center gap-2 rounded-full text-sm font-bold text-[#2C6975] transition-colors hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
         href={href}
       >
         {label}
-        <span
-          className="ml-2 transition-transform group-hover:translate-x-0.5"
+        <ArrowRight
           aria-hidden="true"
-        >
-          →
-        </span>
+          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+        />
       </Link>
     </div>
   );
@@ -184,49 +193,59 @@ interface PlaceholderSummaryCardProps {
   title: string;
   description: string;
   emptyState: string;
-  accentClassName: string;
+  variant: "blue" | "green";
   href?: string;
   linkLabel?: string;
-  emphasized?: boolean;
 }
 
 /**
  * Presents a future dashboard integration without implying that live data is
- * already available. Links are limited to established protected routes.
+ * already available, while keeping it visually equal to connected cards.
  */
 function PlaceholderSummaryCard({
   title,
   description,
   emptyState,
-  accentClassName,
+  variant,
   href,
   linkLabel,
-  emphasized = false,
 }: PlaceholderSummaryCardProps) {
+  const isBlue = variant === "blue";
+  const Icon = isBlue ? CheckSquare2 : FolderKanban;
+
   return (
     <section
-      className={[
-        "flex min-h-56 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md",
-        emphasized
-          ? "border-blue-200 ring-1 ring-blue-100"
-          : "border-slate-200",
-      ].join(" ")}
+      className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
     >
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div
-            className={`mt-2 h-1.5 w-12 rounded-full ${accentClassName}`}
-            aria-hidden="true"
-          />
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+      <div className="flex flex-1 flex-col p-5 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <span
+            className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+              isBlue
+                ? "bg-[#DCEBEF] text-[#2C6975]"
+                : "bg-[#DCEAD6] text-[#3F7763]"
+            }`}
+          >
+            <Icon aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D7E3D5] bg-[#F3F7F1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+            <CircleDashed aria-hidden="true" className="h-3.5 w-3.5" />
             Integration pending
           </span>
         </div>
-        <h2 className="mt-5 text-lg font-bold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+        <h2 className="mt-6 text-xl font-bold tracking-[-0.02em] text-[#15383E]">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#5C7478]">{description}</p>
 
         <div className="mt-auto pt-6">
-          <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+          <p
+            className={`rounded-2xl border border-dashed px-4 py-4 text-sm font-semibold leading-6 ${
+              isBlue
+                ? "border-[#B9CFD5] bg-[#EEF5F7] text-[#527078]"
+                : "border-[#B9CFCA] bg-[#EEF4EC] text-[#5C7478]"
+            }`}
+          >
             {emptyState}
           </p>
         </div>
@@ -257,68 +276,81 @@ function UpcomingMeetingsCard({
 
   return (
     <section
-      className="flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
       aria-labelledby="upcoming-meetings-title"
     >
-      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
-        <h2
-          className="text-sm font-semibold text-violet-700"
-          id="upcoming-meetings-title"
-        >
-          Upcoming meetings
-        </h2>
-        <p
-          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
-        >
-          {isLoading || errorMessage ? "..." : meetings.length}
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          {meetings.length === 1
-            ? "scheduled meeting is coming up"
-            : "scheduled meetings are coming up"}
-        </p>
+      <div className="border-b border-[#D7E3D5] px-5 py-5 sm:px-7 sm:py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Schedule
+            </p>
+            <h2
+              className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]"
+              id="upcoming-meetings-title"
+            >
+              Upcoming meetings
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E6E4F5] text-[#625B91]">
+            <CalendarDays aria-hidden="true" className="h-5 w-5" />
+          </span>
+        </div>
+        <div className="mt-5 flex items-end gap-3">
+          <p className="text-4xl font-bold tracking-[-0.04em] text-[#15383E]">
+            {isLoading || errorMessage ? "..." : meetings.length}
+          </p>
+          <p className="pb-1 text-sm text-[#6A8589]">
+            {meetings.length === 1 ? "meeting ahead" : "meetings ahead"}
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3 px-5 py-6 sm:px-6" role="status">
+        <div className="space-y-3 px-5 py-6 sm:px-7" role="status">
           {[0, 1, 2].map((item) => (
             <div
-              className="h-12 animate-pulse rounded-lg bg-slate-100"
+              className="h-12 animate-pulse rounded-2xl bg-[#EEF4EC]"
               key={item}
             />
           ))}
           <span className="sr-only">Loading upcoming meetings...</span>
         </div>
       ) : errorMessage ? (
-        <div className="px-5 py-8 sm:px-6">
+        <div className="px-5 py-8 sm:px-7">
           <p className="text-sm font-semibold text-red-700" role="alert">
             {errorMessage}
           </p>
         </div>
       ) : meetings.length === 0 ? (
-        <div className="px-5 py-8 sm:px-6">
-          <p className="text-sm font-semibold text-slate-700">
+        <div className="px-5 py-8 sm:px-7">
+          <p className="text-sm font-semibold text-[#31585F]">
             No upcoming meetings
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#6A8589]">
             Scheduled meetings will appear here automatically.
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-5 sm:px-6">
+        <ul className="divide-y divide-[#E4ECE2] px-5 sm:px-7">
           {nextMeetings.map((meeting) => (
-            <li className="py-3.5" key={meeting.id}>
-              <p className="truncate font-semibold text-slate-900" dir="auto">
-                {meeting.title}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                {formatMeetingDateTime(meeting.scheduledAt)}
-              </p>
-              {meeting.clientName && (
-                <p className="mt-1 truncate text-xs text-slate-500" dir="auto">
-                  Participant: {meeting.clientName}
+            <li className="flex gap-3 py-4" key={meeting.id}>
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EEF4EC] text-[#4E807F]">
+                <Clock3 aria-hidden="true" className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-[#173A40]" dir="auto">
+                  {meeting.title}
                 </p>
-              )}
+                <p className="mt-1 text-xs font-medium text-[#6A8589]">
+                  {formatMeetingDateTime(meeting.scheduledAt)}
+                </p>
+                {meeting.clientName && (
+                  <p className="mt-1 truncate text-xs text-[#6A8589]" dir="auto">
+                    Participant: {meeting.clientName}
+                  </p>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -346,99 +378,109 @@ function ClientOverviewCard({
 }: ClientOverviewCardProps) {
   return (
     <section
-      className="flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
       aria-labelledby="client-overview-title"
     >
-      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
-        <h2
-          className="text-sm font-semibold text-amber-700"
-          id="client-overview-title"
-        >
-          Client Overview &amp; Missing Items
-        </h2>
-        <p
-          className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
-        >
-          {isLoading || errorMessage ? "..." : overview.registeredCount}
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          active registered clients
-        </p>
+      <div className="border-b border-[#D7E3D5] px-5 py-5 sm:px-7 sm:py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Onboarding health
+            </p>
+            <h2
+              className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]"
+              id="client-overview-title"
+            >
+              Client Overview &amp; Missing Items
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F5E9CF] text-[#8A6B25]">
+            <HeartPulse aria-hidden="true" className="h-5 w-5" />
+          </span>
+        </div>
+        <div className="mt-5 flex items-end gap-3">
+          <p className="text-4xl font-bold tracking-[-0.04em] text-[#15383E]">
+            {isLoading || errorMessage ? "..." : overview.registeredCount}
+          </p>
+          <p className="pb-1 text-sm text-[#6A8589]">
+            active registered clients
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3 px-5 py-6 sm:px-6" role="status">
+        <div className="space-y-3 px-5 py-6 sm:px-7" role="status">
           {[0, 1, 2].map((item) => (
             <div
-              className="h-10 animate-pulse rounded-lg bg-slate-100"
+              className="h-10 animate-pulse rounded-2xl bg-[#EEF4EC]"
               key={item}
             />
           ))}
           <span className="sr-only">Loading client overview...</span>
         </div>
       ) : errorMessage ? (
-        <div className="px-5 py-8 sm:px-6">
+        <div className="px-5 py-8 sm:px-7">
           <p className="text-sm font-semibold text-red-700" role="alert">
             {errorMessage}
           </p>
         </div>
       ) : overview.registeredCount === 0 ? (
-        <div className="px-5 py-8 sm:px-6">
-          <p className="text-sm font-semibold text-slate-700">
+        <div className="px-5 py-8 sm:px-7">
+          <p className="text-sm font-semibold text-[#31585F]">
             No active registered clients
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#6A8589]">
             Client onboarding summaries will appear here automatically.
           </p>
         </div>
       ) : (
-        <div className="px-5 py-5 sm:px-6">
+        <div className="px-5 py-5 sm:px-7">
           <dl className="grid gap-2 text-center sm:grid-cols-3">
-            <div className="flex min-h-24 flex-col rounded-xl bg-red-50 px-3 py-3">
-              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-red-700">
+            <div className="flex min-h-24 flex-col rounded-2xl border border-[#F1D6D0] bg-[#FFF2EF] px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-semibold text-[#9A5549]">
                 Incomplete profiles
               </dt>
-              <dd className="mt-auto pt-2 text-xl font-bold text-red-700">
+              <dd className="mt-auto pt-2 text-xl font-bold text-[#9A5549]">
                 {overview.incompleteProfileCount}
               </dd>
             </div>
-            <div className="flex min-h-24 flex-col rounded-xl bg-amber-50 px-3 py-3">
-              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-amber-700">
+            <div className="flex min-h-24 flex-col rounded-2xl border border-[#EBDDB5] bg-[#FFF8E8] px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-semibold text-[#80691B]">
                 No active documents
               </dt>
-              <dd className="mt-auto pt-2 text-xl font-bold text-amber-700">
+              <dd className="mt-auto pt-2 text-xl font-bold text-[#80691B]">
                 {overview.missingActiveDocumentsCount}
               </dd>
             </div>
-            <div className="flex min-h-24 flex-col rounded-xl bg-blue-50 px-3 py-3">
-              <dt className="flex min-h-8 items-center justify-center text-xs font-medium text-blue-700">
+            <div className="flex min-h-24 flex-col rounded-2xl border border-[#C9DEE2] bg-[#EEF5F7] px-3 py-3">
+              <dt className="flex min-h-8 items-center justify-center text-xs font-semibold text-[#376B75]">
                 Health review
               </dt>
-              <dd className="mt-auto pt-2 text-xl font-bold text-blue-700">
+              <dd className="mt-auto pt-2 text-xl font-bold text-[#376B75]">
                 {overview.medicalAttentionCount}
               </dd>
             </div>
           </dl>
 
           {overview.attentionClients.length === 0 ? (
-            <p className="mt-5 text-sm font-medium text-emerald-700">
+            <p className="mt-5 rounded-2xl bg-[#E8F3E5] px-4 py-3 text-sm font-semibold text-[#3F7763]">
               No onboarding gaps require attention.
             </p>
           ) : (
             <div className="mt-5">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-[#173A40]">
                 Needs attention
               </h3>
-              <ul className="mt-2 divide-y divide-slate-100">
+              <ul className="mt-2 divide-y divide-[#E4ECE2]">
                 {overview.attentionClients.map((client) => (
                   <li className="py-2.5" key={client.id}>
                     <p
-                      className="truncate text-sm font-semibold text-slate-800"
+                      className="truncate text-sm font-semibold text-[#31585F]"
                       dir="auto"
                     >
                       {client.name}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                    <p className="mt-0.5 truncate text-xs text-[#6A8589]">
                       {client.gaps.join(", ")}
                     </p>
                   </li>
@@ -685,50 +727,123 @@ export default function ManagerDashboardShell() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">
-            Onboarding control center
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Manager Onboarding Dashboard
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            See what needs attention across your onboarding workflow.
-          </p>
+    <main className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(180deg,#E5EFE0_0%,#F3F6F0_28%,#DDEAD8_100%)] px-4 py-5 text-[#15383E] sm:px-6 sm:py-7 lg:px-8">
+      <div
+        aria-hidden="true"
+        className="absolute -right-36 top-28 -z-10 h-96 w-96 rounded-full border-[70px] border-[#BFD9C1]/60"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -left-40 top-[44rem] -z-10 h-96 w-96 rounded-full bg-[#C9DFC5]/70"
+      />
+
+      <div className="relative mx-auto max-w-7xl">
+        <header className="mb-6 overflow-hidden rounded-[1.75rem] bg-[#2C6975] text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)]">
+          <div className="grid lg:grid-cols-[1fr_auto]">
+            <div className="relative overflow-hidden px-7 py-8 sm:px-10 sm:py-9 lg:px-11">
+              <div
+                aria-hidden="true"
+                className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+              />
+              <div className="relative">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="h-px w-10 bg-[#CDE0C9]" />
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#DCEAD6]">
+                    Onboarding control center
+                  </p>
+                </div>
+                <h1 className="max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
+                  Manager Onboarding Dashboard
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+                  See what needs attention across your onboarding workflow.
+                </p>
+              </div>
+            </div>
+
+            {/* Reuse loaded state for orientation without introducing requests. */}
+            <div className="grid border-t border-white/15 bg-[#245C66] sm:grid-cols-3 lg:w-[27rem] lg:border-l lg:border-t-0">
+              <div className="flex items-center gap-3 px-5 py-4 sm:justify-center lg:justify-start">
+                <UsersRound
+                  aria-hidden="true"
+                  className="h-5 w-5 text-[#CDE0C9]"
+                />
+                <div>
+                  <p className="text-xl font-bold">
+                    {isLoading || errorMessage ? "..." : prospects.length}
+                  </p>
+                  <p className="text-xs text-white/70">Prospects</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
+                <CalendarDays
+                  aria-hidden="true"
+                  className="h-5 w-5 text-[#CDE0C9]"
+                />
+                <div>
+                  <p className="text-xl font-bold">
+                    {isLoadingMeetings || meetingsErrorMessage
+                      ? "..."
+                      : meetings.length}
+                  </p>
+                  <p className="text-xs text-white/70">Meetings</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
+                <UserRoundCheck
+                  aria-hidden="true"
+                  className="h-5 w-5 text-[#CDE0C9]"
+                />
+                <div>
+                  <p className="text-xl font-bold">
+                    {isLoadingClientOverview || clientOverviewErrorMessage
+                      ? "..."
+                      : clientOverview.registeredCount}
+                  </p>
+                  <p className="text-xs text-white/70">Active clients</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </header>
 
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <PlaceholderSummaryCard
-            accentClassName="bg-blue-500"
             description="Keep today's onboarding follow-ups and staff actions visible."
             emptyState="Task integration is not connected yet."
-            emphasized
             title="Today To-Do"
+            variant="blue"
           />
 
           <section
-            className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2"
+            className="flex flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)] md:col-span-2"
             aria-labelledby="prospects-summary-title"
           >
-            <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
-              <h2
-                className="text-sm font-semibold text-amber-700"
-                id="prospects-summary-title"
-              >
-                Interested prospects
-              </h2>
-              <div>
-                <p
-                  className="mt-2 text-4xl font-bold tracking-tight text-slate-950"
-                >
+            <div className="border-b border-[#D7E3D5] px-5 py-5 sm:px-7 sm:py-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+                    New interest
+                  </p>
+                  <h2
+                    className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]"
+                    id="prospects-summary-title"
+                  >
+                    Interested prospects
+                  </h2>
+                </div>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#DCEAD6] text-[#3F7763]">
+                  <UsersRound aria-hidden="true" className="h-5 w-5" />
+                </span>
+              </div>
+              <div className="mt-5 flex items-end gap-3">
+                <p className="text-4xl font-bold tracking-[-0.04em] text-[#15383E]">
                   {isLoading || errorMessage ? "..." : prospects.length}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="pb-1 text-sm text-[#6A8589]">
                   {prospects.length === 1
-                    ? "contact is waiting for follow-up"
-                    : "contacts are waiting for follow-up"}
+                    ? "contact awaiting follow-up"
+                    : "contacts awaiting follow-up"}
                 </p>
               </div>
             </div>
@@ -736,30 +851,30 @@ export default function ManagerDashboardShell() {
             {isLoading ? (
               <ProspectsLoadingState />
             ) : errorMessage ? (
-              <div className="px-5 py-12 text-center sm:px-6">
+              <div className="px-5 py-12 text-center sm:px-7">
                 <p className="text-sm font-semibold text-red-700" role="alert">
                   {errorMessage}
                 </p>
               </div>
             ) : prospects.length === 0 ? (
-              <div className="px-5 py-10 text-center sm:px-6">
-                <p className="text-sm font-semibold text-slate-700">
+              <div className="px-5 py-10 text-center sm:px-7">
+                <p className="text-sm font-semibold text-[#31585F]">
                   No interested prospects found
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[#6A8589]">
                   New interested contacts will appear here automatically.
                 </p>
               </div>
             ) : (
               <div className="flex-1">
-                <div className="px-5 pt-5 sm:px-6">
-                  <h3 className="text-sm font-bold text-slate-900">
+                <div className="px-5 pt-5 sm:px-7">
+                  <h3 className="text-sm font-bold text-[#173A40]">
                     Newest prospects
                   </h3>
                 </div>
 
                 {/* Limit the dashboard preview to the three newest validated records. */}
-                <ul className="divide-y divide-slate-100 px-5 sm:px-6">
+                <ul className="divide-y divide-[#E4ECE2] px-5 sm:px-7">
                   {newestProspects.map((prospect) => (
                     <li
                       className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
@@ -767,19 +882,19 @@ export default function ManagerDashboardShell() {
                     >
                       <div className="min-w-0">
                         <p
-                          className="truncate font-semibold text-slate-900"
+                          className="truncate font-semibold text-[#173A40]"
                           dir="auto"
                         >
                           {prospect.first_name} {prospect.last_name}
                         </p>
                         <p
-                          className="mt-0.5 truncate text-sm text-slate-500"
+                          className="mt-0.5 truncate text-sm text-[#6A8589]"
                           dir="auto"
                         >
                           {prospect.email}
                         </p>
                       </div>
-                      <p className="shrink-0 text-xs font-medium text-slate-500">
+                      <p className="shrink-0 rounded-full bg-[#EEF4EC] px-3 py-1.5 text-xs font-semibold text-[#5C7478]">
                         Added {formatDate(prospect.created_at)}
                       </p>
                     </li>
@@ -798,12 +913,12 @@ export default function ManagerDashboardShell() {
           />
           {/* These cards remain presentation-only until integrations are supplied. */}
           <PlaceholderSummaryCard
-            accentClassName="bg-emerald-500"
             description="Monitor programs currently moving through onboarding."
             emptyState="Program summary data is not connected yet."
             href="/manage-programs"
             linkLabel="Manage programs"
             title="Active Programs"
+            variant="green"
           />
           <ClientOverviewCard
             errorMessage={clientOverviewErrorMessage}
