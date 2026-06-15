@@ -10,6 +10,7 @@ import { type ClientDoc } from "@/components/clients/list/ClientList";
 // 2. Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm"; 
 import TodoListWidget from "@/components/todos/TodoListWidget";
+import ClientProgramsWidget from "@/components/clients/dashboard/ClientProgramsWidget";
 
 interface ProfileSummaryDashboardProps {
   client: ClientDoc;
@@ -98,9 +99,15 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
           </div>
 
           {/* Client Tasks / Todo List Widget */}
-          <TodoListWidget 
-            clientId={client.id} 
-            title="Client Tasks" 
+          <TodoListWidget
+            clientId={client.id}
+            title="Client Tasks"
+          />
+
+          {/* Client's Programs Widget */}
+          <ClientProgramsWidget
+            clientId={client.id}
+            programIds={client.program_ids ?? []}
           />
           
         </div>

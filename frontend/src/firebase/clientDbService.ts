@@ -1,4 +1,4 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
@@ -131,4 +131,83 @@ export async function uploadClientDocumentFile(
       }
     );
   });
+}
+
+// ─── Programs Integration (Tier 4 — Clients Domain) ──────────────────────────
+
+/**
+ * A lightweight snapshot of a program document — only what the
+ * ClientProgramsWidget needs to populate the dropdown and enrolled list.
+ */
+export interface ProgramSummary {
+  id: string;
+  name: string;
+}
+
+/**
+ * One-time read of the entire `programs` collection, returning only
+ * the `id` and `name` fields needed by the widget dropdown.
+ * Mirrors the same pattern the programs page uses to fetch all clients.
+ */
+export async function fetchAllPrograms(): Promise<ProgramSummary[]> {
+  const snapshot = await getDocs(collection(getFirestoreDb(), "programs"));
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    name: (d.data().name as string) ?? "Unnamed Program",
+  }));
+}
+
+/**
+ * Atomically assigns a client to a program using a Firestore writeBatch.
+ *
+ * Writes performed in a single commit:
+ *   1. `arrayUnion(programId)` → `clients/{clientId}.program_ids`
+ *   2. `arrayUnion(clientId)`  → `programs/{programId}.participant_ids`
+ *
+ * Using arrayUnion means no prior read is needed and duplicate inserts
+ * are silently ignored by Firestore.
+ */
+export async function assignClientToProgram(
+  clientId: string,
+  programId: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, "clients", clientId), {
+    program_ids: arrayUnion(programId),
+    updated_at: serverTimestamp(),
+  });
+
+  batch.update(doc(db, "programs", programId), {
+    participant_ids: arrayUnion(clientId),
+  });
+
+  await batch.commit();
+}
+
+/**
+ * Atomically removes a client from a program using a Firestore writeBatch.
+ *
+ * Writes performed in a single commit:
+ *   1. `arrayRemove(programId)` → `clients/{clientId}.program_ids`
+ *   2. `arrayRemove(clientId)`  → `programs/{programId}.participant_ids`
+ */
+export async function removeClientFromProgram(
+  clientId: string,
+  programId: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, "clients", clientId), {
+    program_ids: arrayRemove(programId),
+    updated_at: serverTimestamp(),
+  });
+
+  batch.update(doc(db, "programs", programId), {
+    participant_ids: arrayRemove(clientId),
+  });
+
+  await batch.commit();
 }
