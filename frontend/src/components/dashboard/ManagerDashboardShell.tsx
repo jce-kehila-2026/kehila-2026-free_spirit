@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
   CheckSquare2,
-  CircleDashed,
   Clock3,
   FolderKanban,
   HeartPulse,
   MapPin,
   UserRoundCheck,
   UsersRound,
+  X,
 } from "lucide-react";
 import {
   collection,
@@ -109,6 +109,22 @@ interface DashboardClientAttention {
   id: string;
   name: string;
   gaps: string[];
+}
+
+interface ManagerActionItem {
+  id: string;
+  title: string;
+  helper: string;
+  kind: "prospect" | "onboarding";
+  typeLabel: "Prospect follow-up" | "Onboarding gap";
+  personName: string;
+  detail: string;
+  recommendedNextStep: string;
+  email?: string;
+  phone?: string;
+  gaps?: string[];
+  href: "/clients";
+  ctaLabel: "Open clients page";
 }
 
 interface ClientOverview {
@@ -210,6 +226,66 @@ function formatProgramDateRange(program: DashboardProgram) {
   return "Dates not available";
 }
 
+/**
+ * Alternates existing prospect and onboarding signals so one workflow cannot
+ * crowd the other out. The source arrays are already validated and prioritized.
+ */
+function buildManagerActionItems(
+  prospects: Prospect[],
+  attentionClients: DashboardClientAttention[],
+) {
+  const prospectActions: ManagerActionItem[] = prospects.map((prospect) => ({
+    id: `prospect-${prospect.id}`,
+    title: `Follow up with ${prospect.first_name} ${prospect.last_name}`,
+    helper: "Interested prospect needs outreach or meeting scheduling.",
+    kind: "prospect",
+    typeLabel: "Prospect follow-up",
+    personName: `${prospect.first_name} ${prospect.last_name}`,
+    detail:
+      "This prospect is marked as interested and may need outreach or meeting scheduling.",
+    recommendedNextStep:
+      "Contact the prospect to confirm interest and arrange the next conversation.",
+    email: prospect.email,
+    phone: prospect.phone,
+    href: "/clients",
+    ctaLabel: "Open clients page",
+  }));
+  const onboardingActions: ManagerActionItem[] = attentionClients.map(
+    (client) => ({
+      id: `onboarding-${client.id}`,
+      title: `Complete onboarding for ${client.name}`,
+      helper: "Missing required details or documents.",
+      kind: "onboarding",
+      typeLabel: "Onboarding gap",
+      personName: client.name,
+      detail:
+        "This client has missing onboarding items that should be reviewed.",
+      recommendedNextStep:
+        "Review the client record and coordinate completion of the listed onboarding gaps.",
+      gaps: client.gaps,
+      href: "/clients",
+      ctaLabel: "Open clients page",
+    }),
+  );
+  const actions: ManagerActionItem[] = [];
+  const longestSource = Math.max(
+    prospectActions.length,
+    onboardingActions.length,
+  );
+
+  for (let index = 0; index < longestSource; index += 1) {
+    if (prospectActions[index]) {
+      actions.push(prospectActions[index]);
+    }
+
+    if (onboardingActions[index]) {
+      actions.push(onboardingActions[index]);
+    }
+  }
+
+  return actions;
+}
+
 function ProspectsLoadingState() {
   return (
     <div
@@ -253,77 +329,437 @@ function DashboardCardCta({ href, label }: DashboardCardCtaProps) {
   );
 }
 
-interface PlaceholderSummaryCardProps {
-  title: string;
-  description: string;
-  emptyStateTitle: string;
-  emptyStateHelper: string;
-  variant: "blue" | "green";
-  href?: string;
-  linkLabel?: string;
+interface ManagerActionsCardProps {
+  actions: ManagerActionItem[];
+  isLoading: boolean;
+  hasError: boolean;
+}
+
+interface ManagerActionsModalProps {
+  actions: ManagerActionItem[];
+  initialAction: ManagerActionItem | null;
+  onClose: () => void;
 }
 
 /**
- * Presents a future dashboard integration without implying that live data is
- * already available, while keeping it visually equal to connected cards.
+ * Keeps the complete action review flow inside the dashboard while routing
+ * record-level work through the existing clients page.
  */
-function PlaceholderSummaryCard({
-  title,
-  description,
-  emptyStateTitle,
-  emptyStateHelper,
-  variant,
-  href,
-  linkLabel,
-}: PlaceholderSummaryCardProps) {
-  const isBlue = variant === "blue";
-  const Icon = isBlue ? CheckSquare2 : FolderKanban;
+function ManagerActionsModal({
+  actions,
+  initialAction,
+  onClose,
+}: ManagerActionsModalProps) {
+  const [selectedAction, setSelectedAction] = useState<ManagerActionItem | null>(
+    initialAction ?? actions[0] ?? null,
+  );
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement?.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   return (
-    <section
-      className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#15383E]/70 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
     >
-      <div className="flex flex-1 flex-col p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <span
-            className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-              isBlue
-                ? "bg-[#DCEBEF] text-[#2C6975]"
-                : "bg-[#DCEAD6] text-[#3F7763]"
-            }`}
+      <div
+        aria-describedby="manager-actions-dialog-description"
+        aria-labelledby="manager-actions-dialog-title"
+        aria-modal="true"
+        className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-white/60 bg-[#F3F6F0] shadow-[0_24px_60px_rgba(21,56,62,0.28)]"
+        ref={dialogRef}
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#D7E3D5] bg-[#FFFDF8] px-5 py-5 sm:px-7">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Manager actions
+            </p>
+            <h2
+              className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#15383E]"
+              id="manager-actions-dialog-title"
+            >
+              Onboarding action center
+            </h2>
+            <p
+              className="mt-2 text-sm leading-6 text-[#5C7478]"
+              id="manager-actions-dialog-description"
+            >
+              Review follow-ups and onboarding gaps that need a next step.
+            </p>
+            {/* Action state is derived live, so resolution happens in the source record. */}
+            <div className="mt-3 rounded-2xl border border-[#C9DDE1] bg-[#EEF5F7] px-4 py-3 text-sm leading-5 text-[#527078]">
+              <p className="font-semibold">
+                Actions are resolved automatically when the underlying prospect
+                or client record is updated.
+              </p>
+              <p className="mt-1">
+                Open the Clients page and search for this record by name or
+                email.
+              </p>
+            </div>
+          </div>
+          <button
+            aria-label="Close onboarding action center"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#C9D9D5] bg-white text-[#31585F] transition hover:bg-[#EEF4EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+            onClick={onClose}
+            ref={closeButtonRef}
+            type="button"
           >
-            <Icon aria-hidden="true" className="h-5 w-5" />
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C9DDE1] bg-[#EEF5F7] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#527078]">
-            <CircleDashed aria-hidden="true" className="h-3.5 w-3.5" />
-            Coming soon
-          </span>
+            <X aria-hidden="true" className="h-5 w-5" />
+          </button>
         </div>
-        <h2 className="mt-5 text-xl font-bold tracking-[-0.02em] text-[#15383E]">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[#5C7478]">{description}</p>
 
-        {/* A titled empty state makes the disconnected feature feel intentional. */}
-        <div className="mt-auto pt-5">
-          <div
-            className={`rounded-2xl border border-dashed px-4 py-4 text-sm font-semibold leading-6 ${
-              isBlue
-                ? "border-[#B9CFD5] bg-[#EEF5F7] text-[#527078]"
-                : "border-[#B9CFCA] bg-[#EEF4EC] text-[#5C7478]"
-            }`}
-          >
-            <p className="font-bold text-[#31585F]">{emptyStateTitle}</p>
-            <p className="mt-1 font-normal leading-5 text-[#607B80]">
-              {emptyStateHelper}
+        {actions.length === 0 ? (
+          <div className="overflow-y-auto p-5 sm:p-7">
+            <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-5 py-6">
+              <p className="font-bold text-[#31585F]">Nothing needs attention</p>
+              <p className="mt-1 text-sm leading-6 text-[#607B80]">
+                New follow-ups and onboarding gaps will appear here automatically.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="border-b border-[#D7E3D5] bg-[#F7FAF5] p-4 sm:p-5 lg:border-b-0 lg:border-r">
+              <p className="px-2 pb-3 text-xs font-bold uppercase tracking-[0.14em] text-[#6A8589]">
+                All actions ({actions.length})
+              </p>
+              <ul className="space-y-2">
+                {actions.map((action) => {
+                  const isSelected = selectedAction?.id === action.id;
+
+                  return (
+                    <li key={action.id}>
+                      <button
+                        aria-pressed={isSelected}
+                        className={`w-full rounded-2xl border px-4 py-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2 ${
+                          isSelected
+                            ? "border-[#8DBFB2] bg-white shadow-sm"
+                            : "border-transparent bg-transparent hover:border-[#D7E3D5] hover:bg-white/70"
+                        }`}
+                        onClick={() => setSelectedAction(action)}
+                        type="button"
+                      >
+                        <span
+                          className={`text-[11px] font-bold uppercase tracking-[0.12em] ${
+                            action.kind === "prospect"
+                              ? "text-[#3F7763]"
+                              : "text-[#9A7528]"
+                          }`}
+                        >
+                          {action.typeLabel}
+                        </span>
+                        <span
+                          className="mt-1 block font-semibold leading-5 text-[#173A40]"
+                          dir="auto"
+                        >
+                          {action.title}
+                        </span>
+                        <span className="mt-1 block text-[13px] leading-5 text-[#607B80]">
+                          {action.helper}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {selectedAction && (
+              <div className="bg-[#FFFDF8] p-5 sm:p-7">
+                <span
+                  className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold ${
+                    selectedAction.kind === "prospect"
+                      ? "bg-[#DCEAD6] text-[#3F7763]"
+                      : "bg-[#F5EACD] text-[#8A6822]"
+                  }`}
+                >
+                  {selectedAction.typeLabel}
+                </span>
+                <h3
+                  className="mt-4 text-2xl font-bold tracking-[-0.03em] text-[#15383E]"
+                  dir="auto"
+                >
+                  {selectedAction.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-[#5C7478]">
+                  {selectedAction.detail}
+                </p>
+
+                <dl className="mt-6 grid gap-3 rounded-2xl border border-[#D7E3D5] bg-white p-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+                      Person
+                    </dt>
+                    <dd className="mt-1 font-semibold text-[#173A40]" dir="auto">
+                      {selectedAction.personName}
+                    </dd>
+                  </div>
+                  {selectedAction.email && (
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+                        Email
+                      </dt>
+                      <dd
+                        className="mt-1 break-all text-sm text-[#31585F]"
+                        dir="auto"
+                      >
+                        {selectedAction.email}
+                      </dd>
+                    </div>
+                  )}
+                  {selectedAction.phone && (
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+                        Phone
+                      </dt>
+                      <dd className="mt-1 text-sm text-[#31585F]" dir="auto">
+                        {selectedAction.phone}
+                      </dd>
+                    </div>
+                  )}
+                  {selectedAction.gaps && selectedAction.gaps.length > 0 && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+                        Onboarding gaps
+                      </dt>
+                      <dd className="mt-2 flex flex-wrap gap-2">
+                        {selectedAction.gaps.map((gap) => (
+                          <span
+                            className="rounded-full bg-[#EEF4EC] px-3 py-1.5 text-xs font-semibold text-[#527078]"
+                            key={gap}
+                          >
+                            {gap}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="mt-5 rounded-2xl bg-[#DCEBEF] px-4 py-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#527078]">
+                    Recommended next step
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-[#31585F]">
+                    {selectedAction.recommendedNextStep}
+                  </p>
+                </div>
+
+                <Link
+                  className="group mt-6 inline-flex items-center gap-2 rounded-full bg-[#245C66] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+                  href={selectedAction.href}
+                >
+                  {selectedAction.ctaLabel}
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  />
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Presents locally derived follow-ups without introducing a separate task
+ * collection or persistence contract.
+ */
+function ManagerActionsCard({
+  actions,
+  isLoading,
+  hasError,
+}: ManagerActionsCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialAction, setInitialAction] = useState<ManagerActionItem | null>(
+    null,
+  );
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
+  const previewActions = actions.slice(0, 4);
+  const additionalActionCount = Math.max(
+    actions.length - previewActions.length,
+    0,
+  );
+
+  function openModal(action: ManagerActionItem | null = null) {
+    setInitialAction(action);
+    setIsModalOpen(true);
+  }
+
+  function closeModal() {
+    setIsModalOpen(false);
+    setInitialAction(null);
+    requestAnimationFrame(() => reviewButtonRef.current?.focus());
+  }
+
+  return (
+    <>
+      <section
+        className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
+        aria-labelledby="manager-actions-title"
+      >
+        <div className="border-b border-[#D7E3D5] px-5 py-5 sm:px-7 sm:py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+                Manager actions
+              </p>
+              <h2
+                className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]"
+                id="manager-actions-title"
+              >
+                Onboarding action center
+              </h2>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#DCEBEF] text-[#2C6975]">
+              <CheckSquare2 aria-hidden="true" className="h-5 w-5" />
+            </span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-[#5C7478]">
+            Follow-ups and onboarding gaps that need a manager next step.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3 px-5 py-6 sm:px-7" role="status">
+            {[0, 1, 2].map((item) => (
+              <div
+                className="h-14 animate-pulse rounded-2xl bg-[#EEF4EC]"
+                key={item}
+              />
+            ))}
+            <span className="sr-only">Loading manager actions...</span>
+          </div>
+        ) : hasError && actions.length === 0 ? (
+          <div className="px-5 py-8 sm:px-7">
+            <p className="text-sm font-semibold text-red-700" role="alert">
+              We could not load manager actions. Please refresh and try again.
             </p>
           </div>
+        ) : actions.length === 0 ? (
+          <div className="px-5 py-8 sm:px-7">
+            <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-4 py-4">
+              <p className="text-sm font-bold text-[#31585F]">
+                Nothing needs attention
+              </p>
+              <p className="mt-1 text-sm leading-5 text-[#607B80]">
+                New follow-ups and onboarding gaps will appear here automatically.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <ul className="divide-y divide-[#E4ECE2] px-5 sm:px-7">
+              {previewActions.map((action) => (
+                <li className="py-1" key={action.id}>
+                  <button
+                    className="flex w-full gap-3 rounded-xl py-3 text-left transition hover:bg-[#F7FAF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+                    onClick={() => openModal(action)}
+                    type="button"
+                  >
+                    <span
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        action.kind === "prospect"
+                          ? "bg-[#6BB2A0]"
+                          : "bg-[#D2A94F]"
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0">
+                      <span
+                        className="block font-semibold leading-5 text-[#173A40]"
+                        dir="auto"
+                      >
+                        {action.title}
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-5 text-[#607B80]">
+                        {action.helper}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {additionalActionCount > 0 && (
+              <p className="px-5 pb-4 text-xs font-semibold text-[#6A8589] sm:px-7">
+                +{additionalActionCount} more need attention
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-auto border-t border-[#D7E3D5] bg-[#F7FAF5] px-5 py-3.5 sm:px-7">
+          <button
+            className="group inline-flex items-center gap-2 rounded-full bg-[#E5F0E2] px-4 py-2 text-sm font-bold text-[#245C66] ring-1 ring-[#D0E1CD] transition hover:bg-[#D8E9D5] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+            onClick={() => openModal()}
+            ref={reviewButtonRef}
+            type="button"
+          >
+            Review actions
+            <ArrowRight
+              aria-hidden="true"
+              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            />
+          </button>
         </div>
-      </div>
-      {href && linkLabel && (
-        <DashboardCardCta href={href} label={linkLabel} />
+      </section>
+
+      {isModalOpen && (
+        <ManagerActionsModal
+          actions={actions}
+          initialAction={initialAction}
+          onClose={closeModal}
+        />
       )}
-    </section>
+    </>
   );
 }
 
@@ -712,6 +1148,10 @@ export default function ManagerDashboardShell() {
   const [clientOverviewErrorMessage, setClientOverviewErrorMessage] =
     useState(() => (db ? "" : clientOverviewLoadError));
   const newestProspects = prospects.slice(0, 3);
+  const managerActions = buildManagerActionItems(
+    prospects,
+    clientOverview.attentionClients,
+  );
 
   useEffect(() => {
     if (!db) {
@@ -1102,12 +1542,10 @@ export default function ManagerDashboardShell() {
         </header>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <PlaceholderSummaryCard
-            description="A focused home for daily onboarding follow-ups and staff actions."
-            emptyStateHelper="Daily follow-ups will appear here once task data is connected."
-            emptyStateTitle="Task list coming soon"
-            title="Today To-Do"
-            variant="blue"
+          <ManagerActionsCard
+            actions={managerActions}
+            hasError={Boolean(errorMessage || clientOverviewErrorMessage)}
+            isLoading={isLoading || isLoadingClientOverview}
           />
 
           <section
