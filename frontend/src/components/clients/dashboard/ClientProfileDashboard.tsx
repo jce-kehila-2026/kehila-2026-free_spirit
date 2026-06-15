@@ -91,18 +91,18 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl py-2">
       {/* ── Archive Banner ── */}
       {isArchived && (
-        <div className="mb-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
-          <p className="text-sm font-medium text-amber-800">
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#E5C97D] bg-[#F7EED8] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-[#785B20]">
             ⚠️ This client is archived. You are viewing this profile in Read-Only mode.
           </p>
           <button
             type="button"
             onClick={handleRestore}
             disabled={isRestoring}
-            className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-[#8A6822] ring-1 ring-[#E5C97D] transition-colors hover:bg-[#FBF5E8] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isRestoring ? "Restoring..." : "Restore Client"}
           </button>
@@ -110,28 +110,31 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <div className="space-y-6">
+      <div className="space-y-5">
         <button
           type="button"
           id="btn-back-to-clients"
           onClick={onBack}
-          className="inline-flex items-center text-sm font-semibold text-slate-500 transition-colors hover:text-indigo-600"
+          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#31585F] shadow-sm ring-1 ring-[#D7E3D5] transition-colors hover:bg-[#EEF4EC] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
         >
           ← Back to Clients
         </button>
 
         {/* ── Hero Card ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="flex items-center gap-5 px-6 py-5 border-b border-slate-100">
-            <div className="h-16 w-16 shrink-0 rounded-full bg-indigo-100 ring-4 ring-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-600 shadow-sm select-none">
+        <div className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)]">
+          <div className="flex flex-col gap-5 px-5 py-6 sm:flex-row sm:items-center sm:px-8 sm:py-7">
+            <div className="flex h-16 w-16 shrink-0 select-none items-center justify-center rounded-2xl bg-white/15 text-xl font-bold text-white ring-1 ring-white/25 shadow-sm">
               {initials}
             </div>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold text-slate-900 leading-tight truncate">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#CDE0C9]">
+                Client profile
+              </p>
+              <h1 className="mt-1 truncate text-3xl font-bold leading-tight tracking-[-0.04em]">
                 {client.first_name} {client.last_name}
               </h1>
-              <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-500">
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
                 {client.email && (
                   <div className="flex items-center gap-1">
                     {client.email}
@@ -147,7 +150,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </div>
             </div>
 
-            <div className="ml-auto shrink-0 flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
               {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
               {!isArchived && (
                 <button
@@ -169,8 +172,8 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
                     "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
                     isEditable
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:ring-emerald-400"
-                      : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400",
+                      ? "border-[#C5DDC0] bg-[#E5F0E2] text-[#3F7763] hover:bg-[#D8E9D5] focus:ring-[#6BB2A0]"
+                      : "border-white/30 bg-white text-[#245C66] hover:bg-[#EEF4EC] focus:ring-white",
                   ].join(" ")}
                 >
                   {isEditable ? (
@@ -198,8 +201,8 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
                     "border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
                     showDetailedTabs
-                      ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 focus:ring-amber-400"
-                      : "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:ring-slate-400",
+                      ? "border-[#E5C97D] bg-[#F7EED8] text-[#8A6822] hover:bg-[#F1E3BF] focus:ring-[#E5C97D]"
+                      : "border-white/30 bg-white/10 text-white hover:bg-white/20 focus:ring-white",
                   ].join(" ")}
                 >
                   <IconEye className="h-4 w-4" />
@@ -213,8 +216,8 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
         {/* ── View Switcher ── */}
         {showDetailedTabs ? (
           <>
-            <nav aria-label="Client profile sections">
-              <ol role="tablist" className="flex flex-wrap gap-2 w-full border-b border-slate-200 pb-2">
+            <nav aria-label="Client profile sections" className="overflow-x-auto rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]">
+              <ol role="tablist" className="flex min-w-max gap-1.5">
                 {TABS.map((tab) => {
                   const isActive = tab.id === activeTab;
                   return (
@@ -227,10 +230,10 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
                         type="button"
                         onClick={() => setActiveTab(tab.id)}
                         className={[
-                          "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+                          "whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]",
                           isActive
-                            ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+                            ? "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]"
+                            : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]",
                         ].join(" ")}
                       >
                         {tab.label}
@@ -241,7 +244,7 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
               </ol>
             </nav>
 
-            <fieldset className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <fieldset className="min-w-0 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
               <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
                 {(() => {
                   const ActiveTabContent = TAB_COMPONENTS[activeTab];

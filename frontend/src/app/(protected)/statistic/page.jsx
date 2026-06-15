@@ -28,7 +28,7 @@ import {
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28DFF'];
+const COLORS = ['#2C6975', '#6BB2A0', '#9BCB8E', '#D2A94F', '#7FA7B2'];
 
 export default function StatisticsPage() {
   const [clients, setClients] = useState([]);
@@ -188,8 +188,8 @@ export default function StatisticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
-        <p className="text-slate-500 font-medium">Loading statistics...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#F7FAF5_0%,#EEF5F7_100%)] p-6">
+        <p className="rounded-full bg-white px-5 py-3 font-semibold text-[#5C7478] shadow-sm" role="status">Loading statistics...</p>
       </div>
     );
   }
@@ -206,86 +206,87 @@ export default function StatisticsPage() {
   const actionItems = stats?.actionItems || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(220,234,214,0.72),_transparent_30%),linear-gradient(180deg,_#F7FAF5_0%,_#EEF5F7_100%)] px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-7xl space-y-5">
         
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <header className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] px-6 py-8 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-9 sm:py-10">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Statistics & Reports</h1>
-            <p className="text-slate-500 mt-1">Overview of system metrics and program analytics</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Operational insight</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Statistics &amp; reports</h1>
+            <p className="mt-3 text-sm leading-6 text-white/75">Overview of system metrics and program analytics</p>
           </div>
-        </div>
+        </header>
 
         {/* KPIs (Top 4 tabs) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {kpiData.map((kpi) => {
             const Icon = kpi.icon;
             return (
-              <div key={kpi.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+              <article key={kpi.id} className="flex flex-col justify-between rounded-[1.5rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_12px_30px_rgba(44,105,117,0.07)]">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-slate-500">{kpi.title}</p>
-                    <h3 className="text-3xl font-bold text-slate-800 mt-2">{kpi.value}</h3>
+                    <p className="text-sm font-semibold text-[#6A8589]">{kpi.title}</p>
+                    <h3 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[#15383E]">{kpi.value}</h3>
                   </div>
                   <div className={`p-3 rounded-xl ${kpi.bgColor} ${kpi.color}`}>
                     <Icon size={24} />
                   </div>
                 </div>
-                <div className="mt-4 text-sm text-slate-600">
+                <div className="mt-4 text-sm text-[#5C7478]">
                   {kpi.trend}
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
 
         {/* Main Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           
           {/* Growth Trends - Line Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 lg:col-span-2">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Activity className="text-blue-500" />
+          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] lg:col-span-2">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+              <Activity className="text-[#2C6975]" />
               Growth Trends (New Signups - Last 6 Months)
             </h2>
             <div className="h-[300px] w-full">
               {growthData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={growthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
+                    <XAxis dataKey="month" stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} />
+                    <YAxis stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} axisLine={false} allowDecimals={false} />
                     <RechartsTooltip 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Line 
                       type="monotone" 
                       dataKey="signups" 
-                      stroke="#3b82f6" 
+                      stroke="#2C6975"
                       strokeWidth={3}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      dot={{ fill: '#6BB2A0', strokeWidth: 2, r: 4 }}
                       activeDot={{ r: 6 }} 
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400">No growth data available</div>
+                <div className="flex h-full items-center justify-center text-[#6A8589]">No growth data available</div>
               )}
             </div>
-          </div>
+          </section>
 
           {/* Program Analytics - Bar Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <CalendarCheck className="text-green-500" />
+          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+              <CalendarCheck className="text-[#3F7763]" />
               Program Occupancy
             </h2>
             <div className="h-[300px] w-full">
               {programOccupancyData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={programOccupancyData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
                     <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} />
                     <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
                     <RechartsTooltip 
@@ -293,20 +294,20 @@ export default function StatisticsPage() {
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Bar dataKey="capacity" name="Total Capacity" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="enrolled" name="Enrolled" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="capacity" name="Total Capacity" fill="#C9DDE1" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="enrolled" name="Enrolled" fill="#6BB2A0" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400">No program occupancy data available</div>
+                <div className="flex h-full items-center justify-center text-[#6A8589]">No program occupancy data available</div>
               )}
             </div>
-          </div>
+          </section>
 
           {/* Demographics - Pie Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Users className="text-purple-500" />
+          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+              <Users className="text-[#7FA7B2]" />
               Client Demographics (Age)
             </h2>
             <div className="h-[300px] w-full">
@@ -335,23 +336,23 @@ export default function StatisticsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400">No demographics data available</div>
+                <div className="flex h-full items-center justify-center text-[#6A8589]">No demographics data available</div>
               )}
             </div>
-          </div>
+          </section>
 
         </div>
 
         {/* Action Items List */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <FileWarning className="text-orange-500" />
+        <section className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+          <h2 className="flex items-center gap-2 border-b border-[#D7E3D5] px-6 py-5 text-xl font-bold text-[#15383E]">
+            <FileWarning className="text-[#D2A94F]" />
             Action Items & Alerts
           </h2>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto p-4 sm:p-6">
             {actionItems.length > 0 ? (
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
+              <table className="w-full text-left text-sm text-[#5C7478]">
+                <thead className="border-b border-[#D7E3D5] bg-[#F7FAF5] text-[#607B80]">
                   <tr>
                     <th className="px-4 py-3 font-medium">Client</th>
                     <th className="px-4 py-3 font-medium">Issue</th>
@@ -362,8 +363,8 @@ export default function StatisticsPage() {
                 </thead>
                 <tbody>
                   {actionItems.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-4 font-medium text-slate-800">{item.client}</td>
+                    <tr key={item.id} className="border-b border-[#E4ECE2] transition-colors hover:bg-[#F7FAF5]">
+                      <td className="px-4 py-4 font-semibold text-[#173A40]">{item.client}</td>
                       <td className="px-4 py-4">{item.issue}</td>
                       <td className="px-4 py-4 text-slate-400">{item.program}</td>
                       <td className="px-4 py-4">
@@ -375,7 +376,7 @@ export default function StatisticsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
-                        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                        <button className="text-sm font-bold text-[#2C6975] hover:text-[#173A40]">
                           Review
                         </button>
                       </td>
@@ -384,14 +385,14 @@ export default function StatisticsPage() {
                 </tbody>
               </table>
             ) : (
-              <div className="py-6 text-center text-slate-500">
+              <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] py-10 text-center text-[#607B80]">
                 No pending action items found!
               </div>
             )}
           </div>
-        </div>
+        </section>
 
       </div>
-    </div>
+    </main>
   );
 }

@@ -32,7 +32,7 @@ function ChevronIcon({ isOpen }: { isOpen: boolean }) {
       fill="currentColor"
       aria-hidden="true"
       className={[
-        "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300",
+        "h-4 w-4 shrink-0 text-[#6A8589] transition-transform duration-300",
         isOpen ? "rotate-180" : "rotate-0",
       ].join(" ")}
     >
@@ -79,7 +79,7 @@ export function AccordionSection({
   children,
 }: AccordionSectionProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-[#D7E3D5] bg-white shadow-[0_8px_20px_rgba(44,105,117,0.05)]">
       {/* ── Clickable header ── */}
       <button
         type="button"
@@ -89,8 +89,8 @@ export function AccordionSection({
           "flex w-full items-center justify-between gap-4 px-5 py-4 text-left",
           "transition-colors duration-150",
           isOpen
-            ? "bg-slate-50"
-            : "bg-white hover:bg-slate-50",
+            ? "bg-[#F7FAF5]"
+            : "bg-white hover:bg-[#F7FAF5]",
           hasError && !isOpen
             ? "ring-1 ring-inset ring-red-300"
             : "",
@@ -110,13 +110,13 @@ export function AccordionSection({
             <h3
               className={[
                 "text-sm font-bold",
-                hasError ? "text-red-700" : "text-slate-800",
+                hasError ? "text-red-700" : "text-[#173A40]",
               ].join(" ")}
             >
               {title}
             </h3>
             {description && !isOpen && (
-              <p className="mt-0.5 truncate text-xs text-slate-400">
+              <p className="mt-0.5 truncate text-xs text-[#6A8589]">
                 {description}
               </p>
             )}
@@ -142,7 +142,7 @@ export function AccordionSection({
           {/* Description shown inside body when open */}
           <div className="px-5 pb-6 pt-1">
             {description && isOpen && (
-              <p className="mb-5 text-sm text-slate-500">{description}</p>
+              <p className="mb-5 text-sm leading-6 text-[#5C7478]">{description}</p>
             )}
             {children}
           </div>

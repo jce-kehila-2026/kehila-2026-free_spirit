@@ -48,13 +48,13 @@ export default function FilterableHeaderCell({
   }
 
   return (
-    <th className={["px-5 py-3 font-semibold text-slate-600 relative", hideOnMobile ? "hidden sm:table-cell" : ""].join(" ")}>
+    <th className={["relative px-5 py-3.5 text-xs font-bold uppercase tracking-[0.1em] text-[#607B80]", hideOnMobile ? "hidden sm:table-cell" : ""].join(" ")}>
       <div className="flex items-center gap-1.5">
         {label}
         <button
           type="button"
           onClick={() => setOpenFilter(isFilterOpen ? null : columnKey)}
-          className={["rounded p-1 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-200", iconActive ? "bg-indigo-50" : ""].join(" ")}
+          className={["rounded-full p-1 transition-colors hover:bg-[#DCEBEF] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]", iconActive ? "bg-[#DCEBEF] text-[#2C6975]" : ""].join(" ")}
           aria-label={`Filter and sort ${label}`}
         >
           <IconFunnel active={iconActive} />
@@ -62,20 +62,20 @@ export default function FilterableHeaderCell({
       </div>
 
       {isFilterOpen && (
-        <div className="absolute left-5 top-full z-50 mt-1 w-64 rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-5 top-full z-50 mt-2 w-64 rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] shadow-[0_18px_45px_rgba(21,56,62,0.18)]">
           {/* Sort options */}
-          <div className="border-b border-slate-100 p-1.5">
+          <div className="border-b border-[#D7E3D5] p-2">
             <button
               type="button"
               onClick={() => { onSortChange?.({ key: columnKey, direction: "asc" }); setOpenFilter(null); }}
-              className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal transition-colors hover:bg-slate-50", sortConfig?.key === columnKey && sortConfig.direction === "asc" ? "text-indigo-600" : "text-gray-700"].join(" ")}
+              className={["flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-[#EEF4EC]", sortConfig?.key === columnKey && sortConfig.direction === "asc" ? "text-[#2C6975]" : "text-[#31585F]"].join(" ")}
             >
               <IconSortAsc /> Sort A to Z
             </button>
             <button
               type="button"
               onClick={() => { onSortChange?.({ key: columnKey, direction: "desc" }); setOpenFilter(null); }}
-              className={["flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal transition-colors hover:bg-slate-50", sortConfig?.key === columnKey && sortConfig.direction === "desc" ? "text-indigo-600" : "text-gray-700"].join(" ")}
+              className={["flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-[#EEF4EC]", sortConfig?.key === columnKey && sortConfig.direction === "desc" ? "text-[#2C6975]" : "text-[#31585F]"].join(" ")}
             >
               <IconSortDesc /> Sort Z to A
             </button>
@@ -84,14 +84,14 @@ export default function FilterableHeaderCell({
           {/* Filter options */}
           <div className="p-3">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Filter</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#607B80]">Filter</span>
               <button
                 type="button"
                 onClick={() => {
                   onColumnFilterChange?.(columnKey, { text: "", values: [] });
                   setOpenFilter(null);
                 }}
-                className="text-xs font-medium text-indigo-600 focus:outline-none hover:text-indigo-800"
+                className="text-xs font-bold text-[#2C6975] focus:outline-none hover:text-[#173A40]"
               >
                 Clear All
               </button>
@@ -103,12 +103,12 @@ export default function FilterableHeaderCell({
               value={filterState.text}
               onChange={(e) => onColumnFilterChange?.(columnKey, { text: e.target.value })}
               placeholder={`Search ${label.toLowerCase()}…`}
-              className="mb-3 w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="mb-3 w-full rounded-xl border border-[#D7E3D5] px-3 py-2 text-sm text-[#173A40] placeholder:text-[#8BA0A3] focus:border-[#6BB2A0] focus:outline-none focus:ring-2 focus:ring-[#B9D4CC]"
             />
 
             {uniqueValues.length > 0 && (
               <>
-                <div className="max-h-40 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/50 p-2">
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-[#D7E3D5] bg-[#F7FAF5] p-2">
                   <div className="mb-2 border-b border-slate-200 pb-2">
                     <label className="flex cursor-pointer items-start gap-2">
                       <input
@@ -150,7 +150,7 @@ export default function FilterableHeaderCell({
                   <button
                     type="button"
                     onClick={() => setOpenFilter(null)}
-                    className="w-full rounded-md bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-full bg-[#245C66] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#173A40] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]"
                   >
                     Apply Filter
                   </button>

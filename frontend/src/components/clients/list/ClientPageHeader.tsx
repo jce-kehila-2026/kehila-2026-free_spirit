@@ -19,38 +19,48 @@ export default function ClientPageHeader({
   if (view === "dashboard") return null;
 
   return (
-    <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-      {/* Left: Page title */}
-      <h1 className="text-2xl font-bold text-slate-800">
-        {view === "list"
-          ? "Client Management"
-          : editingClient
-          ? "Edit Client"
-          : "New Client"}
-      </h1>
+    <header className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] px-5 py-6 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-8 sm:py-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">
+            Participant operations
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
+            {view === "list"
+              ? "Client management"
+              : editingClient
+                ? "Edit client"
+                : "New client"}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
+            {view === "list"
+              ? "Review participant records, follow onboarding progress, and open the details that need attention."
+              : "Keep core participant information accurate and ready for the onboarding team."}
+          </p>
+        </div>
 
-      {/* Right: Action buttons */}
-      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
         {view === "list" ? (
           <button
             type="button"
             onClick={onAddNew}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#245C66] shadow-sm transition hover:bg-[#EEF4EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9D4CC] focus-visible:ring-offset-2 focus-visible:ring-offset-[#245C66]"
           >
             <IconPlus className="h-4 w-4" />
-            Add New Client
+            Add new client
           </button>
         ) : (
           <button
             type="button"
             onClick={onBackToList}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <IconArrowLeft className="h-4 w-4" />
-            Back to List
+            Back to list
           </button>
         )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

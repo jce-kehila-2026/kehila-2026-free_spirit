@@ -6,8 +6,9 @@
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 32%),
-    linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+    radial-gradient(circle at top left, rgba(205, 224, 201, 0.82), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(185, 217, 210, 0.62), transparent 34%),
+    linear-gradient(135deg, #f7faf5 0%, #eef5f7 100%);
 }
 
 /* Styles the main login form container. */
@@ -15,10 +16,10 @@
   width: 100%;
   max-width: 420px;
   padding: 32px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  background: #fffdf8;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(36, 92, 102, 0.14);
 }
 
 /* Groups the title and subtitle. */
@@ -30,7 +31,7 @@
 /* Styles the main form title. */
 .title {
   margin: 0;
-  color: #111827;
+  color: #15383e;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.2;
@@ -39,7 +40,7 @@
 /* Styles the supporting text below the title. */
 .subtitle {
   margin: 8px 0 0;
-  color: #64748b;
+  color: #5c7478;
   font-size: 15px;
 }
 
@@ -52,7 +53,7 @@
 .label {
   display: block;
   margin-bottom: 8px;
-  color: #374151;
+  color: #31585f;
   font-size: 14px;
   font-weight: 600;
 }
@@ -61,10 +62,10 @@
 .input {
   width: 100%;
   padding: 12px 14px;
-  color: #111827;
+  color: #173a40;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid #d7e3d5;
+  border-radius: 16px;
   font-size: 15px;
   outline: none;
   transition:
@@ -74,13 +75,13 @@
 
 /* Sets a softer placeholder color. */
 .input::placeholder {
-  color: #94a3b8;
+  color: #8ba0a3;
 }
 
 /* Highlights the active input field. */
 .input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+  border-color: #6bb2a0;
+  box-shadow: 0 0 0 4px rgba(107, 178, 160, 0.18);
 }
 
 /* Styles validation error messages. */
@@ -105,9 +106,9 @@
   margin-top: 8px;
   padding: 12px 16px;
   color: #ffffff;
-  background: #2563eb;
+  background: #245c66;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -118,7 +119,7 @@
 
 /* Shows a visual response when hovering over the button. */
 .button:hover {
-  background: #1d4ed8;
+  background: #173a40;
   transform: translateY(-1px);
 }
 
@@ -139,12 +140,12 @@
 .dividerLine {
   flex: 1;
   height: 1px;
-  background: #e2e8f0;
+  background: #d7e3d5;
 }
 
 /* Styles the divider label text. */
 .dividerText {
-  color: #64748b;
+  color: #6a8589;
   font-size: 12px;
   font-weight: 700;
 }
@@ -157,10 +158,10 @@
   justify-content: center;
   gap: 10px;
   padding: 12px 16px;
-  color: #1f2937;
+  color: #31585f;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid #d7e3d5;
+  border-radius: 999px;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -172,8 +173,8 @@
 
 /* Shows a visual response when hovering over the Google button. */
 .googleButton:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: #eef4ec;
+  border-color: #b9cfca;
   transform: translateY(-1px);
 }
 
