@@ -17,10 +17,10 @@ interface TimelineTabProps {
 // ─── Status badge styling ─────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
-  scheduled:  "bg-blue-100   text-blue-700",
-  completed:  "bg-emerald-100 text-emerald-700",
-  cancelled:  "bg-amber-100  text-amber-700",
-  deleted:    "bg-slate-100  text-slate-500",
+  scheduled:  "bg-[#DCEBEF] text-[#2C6975]",
+  completed:  "bg-[#E5F0E2] text-[#3F7763]",
+  cancelled:  "bg-[#F7EED8] text-[#8A6822]",
+  deleted:    "bg-[#EEF4EC] text-[#607B80]",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -57,12 +57,37 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
   }, [clientId]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCancelled = false;
 
-    fetchData();
+    // Keep initial loading cancellable so a stale client request cannot update
+    // state after this widget unmounts or receives a different clientId.
+    Promise.resolve()
+      .then(() => {
+        if (isCancelled) return null;
 
-    return () => { cancelled = true; };
-  }, [fetchData]);
+        setLoading(true);
+        setError(null);
+        return getEventsByClientId(clientId);
+      })
+      .then((data) => {
+        if (isCancelled || !data) return;
+        setEvents(data);
+      })
+      .catch((err: unknown) => {
+        if (isCancelled) return;
+        console.error("Error fetching timeline:", err);
+        setError("Failed to load timeline");
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [clientId]);
 
   // Wire shared actions and refresh hook
   const { actionLoadingId, handleComplete, handleCancel, handleDelete } = useEventActions({ onRefresh: fetchData });
@@ -71,11 +96,11 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 py-6">
+      <div className="flex flex-col gap-3 py-4">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-36 w-full animate-pulse rounded-3xl bg-slate-100"
+            className="h-32 w-full animate-pulse rounded-2xl bg-[#EEF4EC]"
           />
         ))}
       </div>
@@ -84,8 +109,8 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-8 text-center">
-        <p className="text-sm font-semibold text-rose-600">{error}</p>
+      <div className="rounded-2xl border border-[#E8C1BA] bg-[#FFF2EF] px-6 py-8 text-center">
+        <p className="text-sm font-semibold text-[#A3483C]">{error}</p>
       </div>
     );
   }
@@ -95,12 +120,12 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
   if (visibleEvents.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-6 py-12 text-center">
         <span className="text-4xl" role="img" aria-label="No activity">
           🗂️
         </span>
-        <p className="text-base font-bold text-slate-700">No activity found</p>
-        <p className="text-sm text-slate-500">
+        <p className="text-base font-bold text-[#31585F]">No activity found</p>
+        <p className="max-w-sm text-sm leading-6 text-[#607B80]">
           Meetings and events scheduled for this client will appear here.
         </p>
       </div>
@@ -116,19 +141,19 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
   return (
     <section aria-label="Client activity timeline">
       <header className="mb-5 flex items-baseline justify-between">
-        <h2 className="text-lg font-black text-slate-900">Activity Timeline</h2>
-        <span className="text-xs font-semibold text-slate-400">
+        <h2 className="text-lg font-bold text-[#15383E]">Activity timeline</h2>
+        <span className="rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#607B80]">
           {events.length} event{events.length !== 1 ? "s" : ""}
         </span>
       </header>
 
       {/* Timeline spine */}
-      <ol className="relative flex flex-col gap-6 border-l-2 border-slate-200 pl-6">
+      <ol className="relative flex flex-col gap-6 border-l-2 border-[#D7E3D5] pl-6">
         {visibleEvents.map((event) => (
           <li key={event.id} className="relative">
             {/* Connector dot */}
             <span
-              className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white ${
+              className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
                 STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
               }`}
               aria-hidden
@@ -136,7 +161,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
             {/* Date stamp above card */}
             {event.date && (
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
                 {new Date(`${event.date}T${event.time ?? "00:00"}`).toLocaleDateString(
                   undefined,
                   { weekday: "short", year: "numeric", month: "short", day: "numeric" }
@@ -161,14 +186,14 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
               event={event}
               isActionLoading={actionLoadingId === event.id}
               onEdit={() => {}}
-              onComplete={async (id) => {
+              onComplete={async (id: string) => {
                 try {
                   await handleComplete(id);
                 } catch (err) {
                   console.error("Complete failed:", err);
                 }
               }}
-              onCancel={async (id) => {
+              onCancel={async (id: string) => {
                 try {
                   const ev = events.find((x) => x.id === id);
                   if (ev) await handleCancel(ev);
@@ -176,7 +201,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
                   console.error("Cancel failed:", err);
                 }
               }}
-              onDelete={async (id) => {
+              onDelete={async (id: string) => {
                 try {
                   const ev = events.find((x) => x.id === id);
                   if (ev) await handleDelete(ev);

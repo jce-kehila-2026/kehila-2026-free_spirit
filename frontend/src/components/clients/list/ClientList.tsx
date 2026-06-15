@@ -39,15 +39,15 @@ interface ClientListProps {
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
-    interested: { bg: "bg-amber-50 border-amber-200", text: "text-amber-700", label: "Interested" },
-    registered: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700", label: "Registered" },
-    draft: { bg: "bg-slate-50 border-slate-200", text: "text-slate-600", label: "Draft" },
+    interested: { bg: "bg-[#F7EED8] border-[#E5C97D]", text: "text-[#8A6822]", label: "Interested" },
+    registered: { bg: "bg-[#E5F0E2] border-[#C5DDC0]", text: "text-[#3F7763]", label: "Registered" },
+    draft: { bg: "bg-[#EEF5F7] border-[#C9DDE1]", text: "text-[#527078]", label: "Draft" },
   };
 
   const c = config[status] ?? config.draft;
 
   return (
-    <span className={["inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", c.bg, c.text].join(" ")}>
+    <span className={["inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold", c.bg, c.text].join(" ")}>
       {c.label}
     </span>
   );
@@ -96,17 +96,20 @@ export default function ClientList({
     : `${clients.length} ${showArchived ? "archived" : "active"} record${clients.length !== 1 ? "s" : ""}`;
 
   return (
-    <div className="space-y-4">
+    <section className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
       {/* ── Table Action Utilities Header (Sitting flat on the page background) ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
+      <div className="flex flex-col gap-3 border-b border-[#D7E3D5] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-slate-800">Clients</h2>
-          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 shadow-sm">
+          <div>
+            <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">Client records</h2>
+            <p className="mt-1 text-sm text-[#6A8589]">Open a record to review onboarding and participant details.</p>
+          </div>
+          <span className="hidden rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#527078] sm:inline-flex">
             {countText}
           </span>
           {hasActiveFilters && onClearAllFilters && (
-            <button type="button" onClick={onClearAllFilters} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
-              Clear Filters
+            <button type="button" onClick={onClearAllFilters} className="text-xs font-bold text-[#2C6975] transition-colors hover:text-[#173A40]">
+              Clear filters
             </button>
           )}
         </div>
@@ -116,10 +119,10 @@ export default function ClientList({
             type="button" 
             onClick={onToggleArchived} 
             className={[
-              "inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors shadow-sm", 
+              "inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold transition shadow-sm",
               showArchived 
-                ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" 
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? "border-[#E5C97D] bg-[#F7EED8] text-[#8A6822] hover:bg-[#F1E3BF]"
+                : "border-[#D7E3D5] bg-white text-[#31585F] hover:bg-[#EEF4EC]"
             ].join(" ")}
           >
             <IconArchive className="h-4 w-4" /> 
@@ -129,18 +132,18 @@ export default function ClientList({
       </div>
 
       {/* ── Table Container Card (White border closes cleanly around the list) ── */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div>
         {showArchived && (
-          <div className="m-5 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <IconArchive className="h-4 w-4 text-amber-600 shrink-0" />
-            <p className="text-sm font-medium text-amber-800">You are viewing <span className="font-bold">archived records</span>.</p>
+          <div className="m-5 flex items-center gap-2.5 rounded-2xl border border-[#E5C97D] bg-[#F7EED8] px-4 py-3 sm:mx-7">
+            <IconArchive className="h-4 w-4 shrink-0 text-[#9A7528]" />
+            <p className="text-sm font-medium text-[#785B20]">You are viewing <span className="font-bold">archived records</span>.</p>
           </div>
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+          <table className="w-full text-left text-sm text-[#5C7478]">
             <thead ref={theadRef}>
-              <tr className={["border-b", showArchived ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"].join(" ")}>
+              <tr className={["border-b", showArchived ? "border-[#E5C97D] bg-[#FBF5E8]" : "border-[#D7E3D5] bg-[#F7FAF5]"].join(" ")}>
                 {(["name", "email", "phone", "status"] as const).map((col) => (
                   <FilterableHeaderCell
                     key={col}
@@ -172,13 +175,18 @@ export default function ClientList({
               </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E4ECE2]">
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-24 text-center">
-                    <p className="text-base font-semibold text-slate-500">
+                  <td colSpan={5} className="px-6 py-20 text-center">
+                    <div className="mx-auto max-w-md rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-6 py-10">
+                    <p className="text-base font-bold text-[#31585F]">
                       {showArchived ? "No archived clients found" : "No clients found"}
                     </p>
+                    <p className="mt-2 text-sm text-[#607B80]">
+                      {showArchived ? "Archived records will appear here." : "Try adjusting the search or status filters."}
+                    </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -197,6 +205,6 @@ export default function ClientList({
           </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

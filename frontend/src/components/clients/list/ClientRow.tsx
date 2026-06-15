@@ -25,31 +25,31 @@ export default function ClientRow({
     <tr
       className={[
         "transition-colors",
-        showArchived ? "hover:bg-amber-50" : "hover:bg-slate-50",
+        showArchived ? "hover:bg-[#FBF5E8]" : "hover:bg-[#F7FAF5]",
       ].join(" ")}
     >
-      <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-800">
+      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#173A40]">
         <div className="flex items-center justify-between gap-2">
           <span>{client.first_name} {client.last_name}</span>
           <QuickCopy text={`${client.first_name} ${client.last_name}`} label="Name" />
         </div>
       </td>
-      <td className="px-5 py-3.5 text-slate-600">
+      <td className="px-5 py-4 text-[#5C7478]">
         <div className="flex items-center justify-between gap-2">
           <span>{client.email}</span>
           {client.email && <QuickCopy text={client.email} label="Email" />}
         </div>
       </td>
-      <td className="hidden px-5 py-3.5 text-slate-600 sm:table-cell">
+      <td className="hidden px-5 py-4 text-[#5C7478] sm:table-cell">
         <div className="flex items-center justify-between gap-2">
           <span>{client.phone}</span>
           {client.phone && <QuickCopy text={client.phone} label="Phone Number" />}
         </div>
       </td>
-      <td className="px-5 py-3.5">
+      <td className="px-5 py-4">
         {renderStatusBadge(client.status)}
       </td>
-      <td className="w-10 py-3.5 pr-4 text-right">
+      <td className="w-10 py-4 pr-5 text-right">
         {showArchived ? (
           <div className="flex items-center justify-end gap-2">
             <button
@@ -58,7 +58,7 @@ export default function ClientRow({
               id={`btn-view-archived-client-${client.id}`}
               onClick={() => onEdit(client)}
               aria-label={`View ${client.first_name} ${client.last_name}`}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="inline-flex items-center justify-center rounded-full p-2 text-[#6A8589] transition-colors hover:bg-[#DCEBEF] hover:text-[#2C6975] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]"
             >
               <Eye className="h-4 w-4" />
             </button>
@@ -66,7 +66,7 @@ export default function ClientRow({
               type="button"
               id={`btn-restore-client-${client.id}`}
               onClick={() => onRestoreSelect(client)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#E5F0E2] px-3 py-2 text-xs font-bold text-[#3F7763] transition-colors hover:bg-[#D8E9D5] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]"
             >
               <IconRestore />
               Restore
@@ -79,7 +79,7 @@ export default function ClientRow({
             id={`btn-edit-client-${client.id}`}
             onClick={() => onEdit(client)}
             aria-label={`Edit ${client.first_name} ${client.last_name}`}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="inline-flex items-center justify-center rounded-full p-2 text-[#6A8589] transition-colors hover:bg-[#DCEBEF] hover:text-[#2C6975] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]"
           >
             <IconPencil />
           </button>

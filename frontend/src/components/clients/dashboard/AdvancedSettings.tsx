@@ -7,12 +7,13 @@ interface AdvancedSettingsProps {
 
 export default function AdvancedSettings({ isArchived, onArchiveTrigger }: AdvancedSettingsProps) {
   return (
-    <div className="mt-8 pt-6 border-t border-slate-200">
-      <h2 className="text-lg font-semibold text-slate-900">Advanced Settings</h2>
-      <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 p-6 mt-4 shadow-sm">
+    <section className="mt-6 border-t border-[#D7E3D5] pt-6">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8A6822]">Record controls</p>
+      <h2 className="mt-1 text-lg font-bold text-[#15383E]">Advanced settings</h2>
+      <div className="mt-4 flex flex-col gap-4 rounded-[1.5rem] border border-[#E8D6D1] bg-[#FFF9F7] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
-          <p className="text-sm font-medium text-slate-900">Archive Client Record</p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm font-bold text-[#5F3530]">Archive client record</p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#7B625F]">
             Remove this client from the active list. Their data will be safely stored and can be restored at any time.
           </p>
         </div>
@@ -20,11 +21,11 @@ export default function AdvancedSettings({ isArchived, onArchiveTrigger }: Advan
           type="button"
           disabled={isArchived}
           onClick={onArchiveTrigger}
-          className="ml-6 shrink-0 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-full border border-[#E4BDB5] bg-white px-4 py-2.5 text-sm font-bold text-[#A3483C] transition-colors hover:bg-[#FCEDEA] focus:outline-none focus:ring-2 focus:ring-[#D98D80] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isArchived ? "Already Archived" : "Archive Client"}
         </button>
       </div>
-    </div>
+    </section>
   );
 }
