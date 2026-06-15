@@ -191,27 +191,27 @@ export default function Signup() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(185,217,210,0.62),transparent_34%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
       <form
-        className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.12)]"
+        className="w-full max-w-[440px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 shadow-[0_24px_60px_rgba(36,92,102,0.14)]"
         onSubmit={handleSubmit}
         noValidate
       >
         <div className="mb-7 text-center">
-          <h1 className="text-3xl font-bold leading-tight text-slate-950">
+          <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-[#15383E]">
             Sign Up
           </h1>
-          <p className="mt-2 text-[15px] text-slate-500">
+          <p className="mt-2 text-[15px] text-[#5C7478]">
             Create an account to manage programs.
           </p>
         </div>
 
         <div className="mb-[18px]">
-          <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="email">
+          <label className="mb-2 block text-sm font-semibold text-[#31585F]" htmlFor="email">
             Email
           </label>
           <input
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+            className="w-full rounded-2xl border border-[#D7E3D5] bg-white px-3.5 py-3 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
             id="email"
             name="email"
             type="email"
@@ -225,14 +225,14 @@ export default function Signup() {
         </div>
 
         <div className="mb-[18px]">
-          <label className="mb-2 block text-sm font-semibold text-slate-700" htmlFor="password">
+          <label className="mb-2 block text-sm font-semibold text-[#31585F]" htmlFor="password">
             Password
           </label>
           <div className="relative">
             <input
               aria-describedby="password-requirements"
               autoComplete="new-password"
-              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              className="w-full rounded-2xl border border-[#D7E3D5] bg-white py-3 pl-3.5 pr-20 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
               id="password"
               name="password"
               type={isPasswordVisible ? "text" : "password"}
@@ -242,7 +242,7 @@ export default function Signup() {
             />
             <button
               aria-label={isPasswordVisible ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-1"
               type="button"
               onClick={() => setIsPasswordVisible((isVisible) => !isVisible)}
             >
@@ -276,7 +276,7 @@ export default function Signup() {
 
         <div className="mb-[18px]">
           <label
-            className="mb-2 block text-sm font-semibold text-slate-700"
+            className="mb-2 block text-sm font-semibold text-[#31585F]"
             htmlFor="confirmPassword"
           >
             Confirm Password
@@ -284,7 +284,7 @@ export default function Signup() {
           <div className="relative">
             <input
               autoComplete="new-password"
-              className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-3.5 pr-20 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+              className="w-full rounded-2xl border border-[#D7E3D5] bg-white py-3 pl-3.5 pr-20 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
               id="confirmPassword"
               name="confirmPassword"
               type={isConfirmPasswordVisible ? "text" : "password"}
@@ -298,7 +298,7 @@ export default function Signup() {
                   ? "Hide confirm password"
                   : "Show confirm password"
               }
-              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+              className="absolute inset-y-0 right-3 my-auto h-fit rounded px-1.5 py-1 text-xs font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-1"
               type="button"
               onClick={() =>
                 setIsConfirmPasswordVisible((isVisible) => !isVisible)
@@ -321,7 +321,7 @@ export default function Signup() {
         )}
 
         <button
-          className="mt-2 w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+          className="mt-2 w-full rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-[#173A40] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           type="submit"
           disabled={isLoading}
         >
@@ -335,7 +335,7 @@ export default function Signup() {
         </div>
 
         <button
-          className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-300 bg-white px-4 py-3 text-[15px] font-bold text-slate-800 transition hover:-translate-y-px hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+          className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[#D7E3D5] bg-white px-4 py-3 text-[15px] font-bold text-[#31585F] transition hover:-translate-y-px hover:border-[#B9CFCA] hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           type="button"
           onClick={handleGoogleSignup}
           disabled={isLoading}
@@ -346,7 +346,7 @@ export default function Signup() {
 
         <p className="mt-5 text-center text-sm font-medium text-slate-600">
           Already have an account?{" "}
-          <Link className="font-bold text-blue-600 hover:text-blue-700" href="/">
+          <Link className="font-bold text-[#2C6975] hover:text-[#173A40]" href="/">
             Login
           </Link>
         </p>

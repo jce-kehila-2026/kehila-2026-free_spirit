@@ -76,9 +76,9 @@ export default function ForgotPassword() {
 
   if (isSubmitted) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
-        <section className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.12)]">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+      <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(185,217,210,0.62),transparent_34%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
+        <section className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 text-center shadow-[0_24px_60px_rgba(36,92,102,0.14)]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#DCEBEF] text-[#2C6975]">
             <svg
               aria-hidden="true"
               className="h-6 w-6"
@@ -94,15 +94,15 @@ export default function ForgotPassword() {
               />
             </svg>
           </div>
-          <h1 className="mt-5 text-3xl font-bold text-slate-950">
+          <h1 className="mt-5 text-3xl font-bold tracking-[-0.03em] text-[#15383E]">
             Check your email
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600" role="status">
+          <p className="mt-3 text-sm leading-6 text-[#5C7478]" role="status">
             If an account exists for this email, a password reset link has been
             sent.
           </p>
           <Link
-            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:bg-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
             href="/login"
           >
             Back to sign in
@@ -113,31 +113,31 @@ export default function ForgotPassword() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_32%),linear-gradient(135deg,#f8fafc_0%,#eef2f7_100%)] px-6 py-8">
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(185,217,210,0.62),transparent_34%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
       <form
-        className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.12)]"
+        className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 shadow-[0_24px_60px_rgba(36,92,102,0.14)]"
         onSubmit={handleSubmit}
         noValidate
       >
         <div className="mb-7 text-center">
-          <h1 className="text-3xl font-bold leading-tight text-slate-950">
+          <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-[#15383E]">
             Reset your password
           </h1>
-          <p className="mt-2 text-[15px] leading-6 text-slate-500">
+          <p className="mt-2 text-[15px] leading-6 text-[#5C7478]">
             Enter your email address and we will send you a secure reset link.
           </p>
         </div>
 
         <div className="mb-[18px]">
           <label
-            className="mb-2 block text-sm font-semibold text-slate-700"
+            className="mb-2 block text-sm font-semibold text-[#31585F]"
             htmlFor="reset-email"
           >
             Email address
           </label>
           <input
             autoComplete="email"
-            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.14)]"
+            className="w-full rounded-2xl border border-[#D7E3D5] bg-white px-3.5 py-3 text-[15px] text-[#173A40] outline-none transition focus:border-[#6BB2A0] focus:shadow-[0_0_0_4px_rgba(107,178,160,0.18)]"
             id="reset-email"
             name="email"
             type="email"
@@ -162,7 +162,7 @@ export default function ForgotPassword() {
         )}
 
         <button
-          className="mt-2 w-full rounded-lg bg-blue-600 px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+          className="mt-2 w-full rounded-full bg-[#245C66] px-4 py-3 text-base font-bold text-white transition hover:-translate-y-px hover:bg-[#173A40] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           type="submit"
           disabled={isSubmitting}
         >
@@ -171,7 +171,7 @@ export default function ForgotPassword() {
 
         <p className="mt-5 text-center text-sm font-medium text-slate-600">
           <Link
-            className="font-bold text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="font-bold text-[#2C6975] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
             href="/login"
           >
             Back to sign in
