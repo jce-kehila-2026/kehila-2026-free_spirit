@@ -10,11 +10,13 @@ import {
   Clock3,
   FolderKanban,
   HeartPulse,
+  MapPin,
   UserRoundCheck,
   UsersRound,
 } from "lucide-react";
 import {
   collection,
+  getDocs,
   onSnapshot,
   query,
   Timestamp,
@@ -68,6 +70,8 @@ const clientOverviewLoadError =
   "We could not load the client overview. Please refresh and try again.";
 const meetingsLoadError =
   "We could not load upcoming meetings. Please refresh and try again.";
+const programsLoadError =
+  "We could not load programs. Please refresh and try again.";
 
 const optionalDashboardString = z.string().trim().max(500).optional().or(z.literal(""));
 
@@ -115,6 +119,15 @@ interface ClientOverview {
   attentionClients: DashboardClientAttention[];
 }
 
+interface DashboardProgram {
+  id: string;
+  name: string;
+  location: string;
+  participantCount: number | null;
+  startDate: Date | null;
+  endDate: Date | null;
+}
+
 const emptyClientOverview: ClientOverview = {
   registeredCount: 0,
   incompleteProfileCount: 0,
@@ -146,6 +159,57 @@ function formatMeetingDateTime(scheduledAt: Date) {
   }).format(scheduledAt);
 }
 
+/**
+ * Normalizes the date shapes already stored by the Programs workflows.
+ * Invalid or missing values stay null so they cannot exclude a program.
+ */
+function parseProgramDate(value: unknown) {
+  let date: Date | null = null;
+
+  if (value instanceof Date) {
+    date = new Date(value.getTime());
+  } else if (value instanceof Timestamp) {
+    date = value.toDate();
+  } else if (
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    date = new Date(value);
+  } else if (
+    typeof value === "object" &&
+    value !== null &&
+    "toDate" in value &&
+    typeof value.toDate === "function"
+  ) {
+    const timestampLikeDate = value.toDate();
+    date = timestampLikeDate instanceof Date ? timestampLikeDate : null;
+  }
+
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function formatProgramDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+function formatProgramDateRange(program: DashboardProgram) {
+  if (program.startDate && program.endDate) {
+    return `${formatProgramDate(program.startDate)} - ${formatProgramDate(program.endDate)}`;
+  }
+
+  if (program.startDate) {
+    return `Starts ${formatProgramDate(program.startDate)}`;
+  }
+
+  if (program.endDate) {
+    return `Ends ${formatProgramDate(program.endDate)}`;
+  }
+
+  return "Dates not available";
+}
+
 function ProspectsLoadingState() {
   return (
     <div
@@ -174,9 +238,9 @@ interface DashboardCardCtaProps {
  */
 function DashboardCardCta({ href, label }: DashboardCardCtaProps) {
   return (
-    <div className="mt-auto border-t border-[#D7E3D5] bg-[#F7FAF5] px-5 py-4 sm:px-7">
+    <div className="mt-auto border-t border-[#D7E3D5] bg-[#F7FAF5] px-5 py-3.5 sm:px-7">
       <Link
-        className="group inline-flex items-center gap-2 rounded-full text-sm font-bold text-[#2C6975] transition-colors hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+        className="group inline-flex items-center gap-2 rounded-full bg-[#E5F0E2] px-4 py-2 text-sm font-bold text-[#245C66] ring-1 ring-[#D0E1CD] transition hover:bg-[#D8E9D5] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
         href={href}
       >
         {label}
@@ -192,7 +256,8 @@ function DashboardCardCta({ href, label }: DashboardCardCtaProps) {
 interface PlaceholderSummaryCardProps {
   title: string;
   description: string;
-  emptyState: string;
+  emptyStateTitle: string;
+  emptyStateHelper: string;
   variant: "blue" | "green";
   href?: string;
   linkLabel?: string;
@@ -205,7 +270,8 @@ interface PlaceholderSummaryCardProps {
 function PlaceholderSummaryCard({
   title,
   description,
-  emptyState,
+  emptyStateTitle,
+  emptyStateHelper,
   variant,
   href,
   linkLabel,
@@ -228,26 +294,30 @@ function PlaceholderSummaryCard({
           >
             <Icon aria-hidden="true" className="h-5 w-5" />
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D7E3D5] bg-[#F3F7F1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C9DDE1] bg-[#EEF5F7] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#527078]">
             <CircleDashed aria-hidden="true" className="h-3.5 w-3.5" />
-            Integration pending
+            Coming soon
           </span>
         </div>
-        <h2 className="mt-6 text-xl font-bold tracking-[-0.02em] text-[#15383E]">
+        <h2 className="mt-5 text-xl font-bold tracking-[-0.02em] text-[#15383E]">
           {title}
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#5C7478]">{description}</p>
 
-        <div className="mt-auto pt-6">
-          <p
+        {/* A titled empty state makes the disconnected feature feel intentional. */}
+        <div className="mt-auto pt-5">
+          <div
             className={`rounded-2xl border border-dashed px-4 py-4 text-sm font-semibold leading-6 ${
               isBlue
                 ? "border-[#B9CFD5] bg-[#EEF5F7] text-[#527078]"
                 : "border-[#B9CFCA] bg-[#EEF4EC] text-[#5C7478]"
             }`}
           >
-            {emptyState}
-          </p>
+            <p className="font-bold text-[#31585F]">{emptyStateTitle}</p>
+            <p className="mt-1 font-normal leading-5 text-[#607B80]">
+              {emptyStateHelper}
+            </p>
+          </div>
         </div>
       </div>
       {href && linkLabel && (
@@ -342,11 +412,14 @@ function UpcomingMeetingsCard({
                 <p className="truncate font-semibold text-[#173A40]" dir="auto">
                   {meeting.title}
                 </p>
-                <p className="mt-1 text-xs font-medium text-[#6A8589]">
+                <p className="mt-1 text-[13px] font-medium leading-5 text-[#607B80]">
                   {formatMeetingDateTime(meeting.scheduledAt)}
                 </p>
                 {meeting.clientName && (
-                  <p className="mt-1 truncate text-xs text-[#6A8589]" dir="auto">
+                  <p
+                    className="mt-0.5 truncate text-[13px] leading-5 text-[#607B80]"
+                    dir="auto"
+                  >
                     Participant: {meeting.clientName}
                   </p>
                 )}
@@ -357,6 +430,122 @@ function UpcomingMeetingsCard({
       )}
 
       <DashboardCardCta href="/events" label="Open events" />
+    </section>
+  );
+}
+
+interface ProgramsSummaryCardProps {
+  programs: DashboardProgram[];
+  isLoading: boolean;
+  errorMessage: string;
+}
+
+/**
+ * Summarizes current and upcoming programs using the established end-date
+ * definition. The preview contains only non-sensitive program metadata.
+ */
+function ProgramsSummaryCard({
+  programs,
+  isLoading,
+  errorMessage,
+}: ProgramsSummaryCardProps) {
+  const previewPrograms = programs.slice(0, 3);
+
+  return (
+    <section
+      className="flex min-h-64 flex-col overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]"
+      aria-labelledby="programs-summary-title"
+    >
+      <div className="border-b border-[#D7E3D5] px-5 py-5 sm:px-7 sm:py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
+              Programs
+            </p>
+            <h2
+              className="mt-2 text-xl font-bold tracking-[-0.02em] text-[#15383E]"
+              id="programs-summary-title"
+            >
+              Current &amp; upcoming programs
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#DCEAD6] text-[#3F7763]">
+            <FolderKanban aria-hidden="true" className="h-5 w-5" />
+          </span>
+        </div>
+        <div className="mt-4 flex items-end gap-3">
+          <p className="text-4xl font-bold tracking-[-0.04em] text-[#15383E]">
+            {isLoading || errorMessage ? "..." : programs.length}
+          </p>
+          <p className="pb-1 text-sm font-medium text-[#5C7478]">
+            {programs.length === 1 ? "program in motion" : "programs in motion"}
+          </p>
+        </div>
+        <p className="mt-1.5 text-sm text-[#6A8589]">
+          Current and upcoming programs
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3 px-5 py-6 sm:px-7" role="status">
+          {[0, 1, 2].map((item) => (
+            <div
+              className="h-14 animate-pulse rounded-2xl bg-[#EEF4EC]"
+              key={item}
+            />
+          ))}
+          <span className="sr-only">Loading programs...</span>
+        </div>
+      ) : errorMessage ? (
+        <div className="px-5 py-8 sm:px-7">
+          <p className="text-sm font-semibold text-red-700" role="alert">
+            {errorMessage}
+          </p>
+        </div>
+      ) : programs.length === 0 ? (
+        <div className="px-5 py-8 sm:px-7">
+          <p className="text-sm font-semibold text-[#31585F]">
+            No current or upcoming programs
+          </p>
+          <p className="mt-1 text-sm text-[#6A8589]">
+            Programs will appear here when they are scheduled.
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-[#E4ECE2] px-5 sm:px-7">
+          {previewPrograms.map((program) => (
+            <li className="py-3.5" key={program.id}>
+              <p className="truncate font-semibold text-[#173A40]" dir="auto">
+                {program.name}
+              </p>
+              <p className="mt-1 text-[13px] font-medium leading-5 text-[#607B80]">
+                {formatProgramDateRange(program)}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] leading-5 text-[#607B80]">
+                {program.location && (
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate" dir="auto">
+                      {program.location}
+                    </span>
+                  </span>
+                )}
+                {program.participantCount !== null && (
+                  <span className="inline-flex items-center gap-1">
+                    <UsersRound
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5"
+                    />
+                    {program.participantCount} participants
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <DashboardCardCta href="/programs" label="View programs" />
     </section>
   );
 }
@@ -480,7 +669,7 @@ function ClientOverviewCard({
                     >
                       {client.name}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-[#6A8589]">
+                    <p className="mt-0.5 truncate text-[13px] leading-5 text-[#607B80]">
                       {client.gaps.join(", ")}
                     </p>
                   </li>
@@ -510,6 +699,11 @@ export default function ManagerDashboardShell() {
   const [isLoadingMeetings, setIsLoadingMeetings] = useState(Boolean(db));
   const [meetingsErrorMessage, setMeetingsErrorMessage] = useState(() =>
     db ? "" : meetingsLoadError,
+  );
+  const [programs, setPrograms] = useState<DashboardProgram[]>([]);
+  const [isLoadingPrograms, setIsLoadingPrograms] = useState(Boolean(db));
+  const [programsErrorMessage, setProgramsErrorMessage] = useState(() =>
+    db ? "" : programsLoadError,
   );
   const [clientOverview, setClientOverview] =
     useState<ClientOverview>(emptyClientOverview);
@@ -726,6 +920,100 @@ export default function ManagerDashboardShell() {
     );
   }, []);
 
+  useEffect(() => {
+    if (!db) {
+      return;
+    }
+
+    const activeDb = db;
+    let shouldIgnore = false;
+
+    const fetchPrograms = async () => {
+      try {
+        const snapshot = await getDocs(collection(activeDb, "programs"));
+        const now = new Date();
+
+        const currentAndUpcomingPrograms = snapshot.docs
+          .map((programDocument) => {
+            const program = programDocument.data();
+            const startDate = parseProgramDate(program.start_date);
+            const endDate = parseProgramDate(program.end_date);
+            const participantCount =
+              typeof program.participant_count === "number" &&
+              Number.isFinite(program.participant_count) &&
+              program.participant_count >= 0
+                ? program.participant_count
+                : Array.isArray(program.participant_ids)
+                  ? program.participant_ids.length
+                  : null;
+
+            return {
+              id: programDocument.id,
+              name:
+                typeof program.name === "string" && program.name.trim()
+                  ? program.name.trim()
+                  : "Untitled program",
+              location:
+                typeof program.location === "string"
+                  ? program.location.trim()
+                  : "",
+              participantCount,
+              startDate,
+              endDate,
+            };
+          })
+          // Match the existing Statistics behavior: unknown end dates remain active.
+          .filter(
+            (program) => !program.endDate || program.endDate > now,
+          )
+          .sort((firstProgram, secondProgram) => {
+            const firstIsUpcoming =
+              Boolean(firstProgram.startDate) &&
+              firstProgram.startDate!.getTime() > now.getTime();
+            const secondIsUpcoming =
+              Boolean(secondProgram.startDate) &&
+              secondProgram.startDate!.getTime() > now.getTime();
+
+            if (firstIsUpcoming !== secondIsUpcoming) {
+              return firstIsUpcoming ? 1 : -1;
+            }
+
+            if (firstIsUpcoming && secondIsUpcoming) {
+              return (
+                firstProgram.startDate!.getTime() -
+                secondProgram.startDate!.getTime()
+              );
+            }
+
+            return (
+              (firstProgram.endDate?.getTime() ?? Number.POSITIVE_INFINITY) -
+              (secondProgram.endDate?.getTime() ?? Number.POSITIVE_INFINITY)
+            );
+          });
+
+        if (!shouldIgnore) {
+          setPrograms(currentAndUpcomingPrograms);
+          setProgramsErrorMessage("");
+        }
+      } catch {
+        if (!shouldIgnore) {
+          setPrograms([]);
+          setProgramsErrorMessage(programsLoadError);
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setIsLoadingPrograms(false);
+        }
+      }
+    };
+
+    fetchPrograms();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, []);
+
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(180deg,#E5EFE0_0%,#F3F6F0_28%,#DDEAD8_100%)] px-4 py-5 text-[#15383E] sm:px-6 sm:py-7 lg:px-8">
       <div
@@ -762,45 +1050,51 @@ export default function ManagerDashboardShell() {
             </div>
 
             {/* Reuse loaded state for orientation without introducing requests. */}
-            <div className="grid border-t border-white/15 bg-[#245C66] sm:grid-cols-3 lg:w-[27rem] lg:border-l lg:border-t-0">
-              <div className="flex items-center gap-3 px-5 py-4 sm:justify-center lg:justify-start">
+            <div className="grid border-t border-white/15 bg-[#245C66] sm:grid-cols-3 lg:w-[28rem] lg:border-l lg:border-t-0">
+              <div className="flex items-center gap-3.5 px-5 py-4 sm:justify-center lg:justify-start">
                 <UsersRound
                   aria-hidden="true"
-                  className="h-5 w-5 text-[#CDE0C9]"
+                  className="h-5 w-5 shrink-0 text-[#CDE0C9]"
                 />
                 <div>
-                  <p className="text-xl font-bold">
+                  <p className="text-2xl font-bold leading-none tracking-[-0.03em]">
                     {isLoading || errorMessage ? "..." : prospects.length}
                   </p>
-                  <p className="text-xs text-white/70">Prospects</p>
+                  <p className="mt-1.5 text-xs font-semibold text-white/75">
+                    Prospects
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
+              <div className="flex items-center gap-3.5 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
                 <CalendarDays
                   aria-hidden="true"
-                  className="h-5 w-5 text-[#CDE0C9]"
+                  className="h-5 w-5 shrink-0 text-[#CDE0C9]"
                 />
                 <div>
-                  <p className="text-xl font-bold">
+                  <p className="text-2xl font-bold leading-none tracking-[-0.03em]">
                     {isLoadingMeetings || meetingsErrorMessage
                       ? "..."
                       : meetings.length}
                   </p>
-                  <p className="text-xs text-white/70">Meetings</p>
+                  <p className="mt-1.5 text-xs font-semibold text-white/75">
+                    Meetings
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
+              <div className="flex items-center gap-3.5 border-t border-white/10 px-5 py-4 sm:border-l sm:border-t-0 sm:justify-center lg:justify-start">
                 <UserRoundCheck
                   aria-hidden="true"
-                  className="h-5 w-5 text-[#CDE0C9]"
+                  className="h-5 w-5 shrink-0 text-[#CDE0C9]"
                 />
                 <div>
-                  <p className="text-xl font-bold">
+                  <p className="text-2xl font-bold leading-none tracking-[-0.03em]">
                     {isLoadingClientOverview || clientOverviewErrorMessage
                       ? "..."
                       : clientOverview.registeredCount}
                   </p>
-                  <p className="text-xs text-white/70">Active clients</p>
+                  <p className="mt-1.5 text-xs font-semibold text-white/75">
+                    Active clients
+                  </p>
                 </div>
               </div>
             </div>
@@ -809,8 +1103,9 @@ export default function ManagerDashboardShell() {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <PlaceholderSummaryCard
-            description="Keep today's onboarding follow-ups and staff actions visible."
-            emptyState="Task integration is not connected yet."
+            description="A focused home for daily onboarding follow-ups and staff actions."
+            emptyStateHelper="Daily follow-ups will appear here once task data is connected."
+            emptyStateTitle="Task list coming soon"
             title="Today To-Do"
             variant="blue"
           />
@@ -894,7 +1189,7 @@ export default function ManagerDashboardShell() {
                           {prospect.email}
                         </p>
                       </div>
-                      <p className="shrink-0 rounded-full bg-[#EEF4EC] px-3 py-1.5 text-xs font-semibold text-[#5C7478]">
+                      <p className="shrink-0 rounded-full bg-[#EEF4EC] px-3 py-1.5 text-[13px] font-semibold text-[#5C7478]">
                         Added {formatDate(prospect.created_at)}
                       </p>
                     </li>
@@ -911,14 +1206,10 @@ export default function ManagerDashboardShell() {
             isLoading={isLoadingMeetings}
             meetings={meetings}
           />
-          {/* These cards remain presentation-only until integrations are supplied. */}
-          <PlaceholderSummaryCard
-            description="Monitor programs currently moving through onboarding."
-            emptyState="Program summary data is not connected yet."
-            href="/manage-programs"
-            linkLabel="Manage programs"
-            title="Active Programs"
-            variant="green"
+          <ProgramsSummaryCard
+            errorMessage={programsErrorMessage}
+            isLoading={isLoadingPrograms}
+            programs={programs}
           />
           <ClientOverviewCard
             errorMessage={clientOverviewErrorMessage}
