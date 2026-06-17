@@ -396,29 +396,31 @@ export default function StatisticsPage() {
               Client Demographics
             </h2>
             <p className="mb-4 text-xs text-[#6A8589]">Age distribution across all clients</p>
-            <div className="h-[250px] w-full flex-1">
+            
+            {/* שיניתי את העטיפה כאן כדי לוודא שהיא לא קורסת */}
+            <div className="flex justify-center items-center w-full min-h-[250px]">
               {demographicsData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={demographicsData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {demographicsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                // הורדנו את ה-ResponsiveContainer והגדרנו רוחב וגובה ישירות לגרף
+                <PieChart width={300} height={250}>
+                  <Pie
+                    data={demographicsData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    isAnimationActive={false}
+                    label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
+                  >
+                    {demographicsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend />
+                </PieChart>
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No data available</div>
               )}
@@ -444,7 +446,8 @@ export default function StatisticsPage() {
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ value, percent }) => `${value} (${(percent * 100).toFixed(0)}%)`}
+                      isAnimationActive={false}
+                      label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
                     >
                       {complianceData.map((entry, index) => (
                         <Cell 
@@ -482,7 +485,8 @@ export default function StatisticsPage() {
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      isAnimationActive={false}
+                      label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
                     >
                       {retentionData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
