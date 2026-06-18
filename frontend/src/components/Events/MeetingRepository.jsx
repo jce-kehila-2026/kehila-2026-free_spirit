@@ -11,12 +11,19 @@ import {
   X,
 } from "lucide-react";
 
-import { getCalendarEvents } from "@/firebase/eventsService";
+import {
+  getMeetingRepositoryEvents,
+  updateEvent,
+} from "@/firebase/eventsService";
+import useEventActions from "@/hooks/useEventActions";
+
+import ScheduleMeetingForm from "./ScheduleMeetingForm";
 
 const STATUS_STYLES = {
   scheduled: "bg-[#DCEBEF] text-[#2C6975]",
   completed: "bg-[#E5F0E2] text-[#3F7763]",
   cancelled: "bg-[#F7EED8] text-[#8A6822]",
+  deleted: "bg-[#EEE9E7] text-[#765D57]",
 };
 
 const REMINDER_LABELS = {
@@ -68,9 +75,13 @@ export default function MeetingRepository({ refreshKey = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventToEdit, setEventToEdit] = useState(null);
+  const [summaryEvent, setSummaryEvent] = useState(null);
+  const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
+  const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [dateFilter, setDateFilter] = useState("all");
   const [summaryFilter, setSummaryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -79,7 +90,7 @@ export default function MeetingRepository({ refreshKey = 0 }) {
     try {
       setLoading(true);
       setError("");
-      const data = await getCalendarEvents();
+      const data = await getMeetingRepositoryEvents();
       setEvents(data || []);
     } catch (loadError) {
       console.error("Failed to load meeting repository", loadError);
@@ -89,6 +100,123 @@ export default function MeetingRepository({ refreshKey = 0 }) {
       setLoading(false);
     }
   }, []);
+
+  const {
+    actionLoadingId,
+    handleComplete,
+    handleCancel,
+    handleDelete,
+  } = useEventActions({ onRefresh: loadEvents });
+
+  function handleOpenEdit(event) {
+    if (event.status !== "scheduled" || actionLoadingId || isSavingMeetingSummary) return;
+
+    setSelectedEvent(null);
+    setSummaryEvent(null);
+    setMeetingSummaryDraft("");
+    setEventToEdit(event);
+  }
+
+  function handleCloseEdit() {
+    setEventToEdit(null);
+  }
+
+  async function handleEditCompleted() {
+    setEventToEdit(null);
+    await loadEvents();
+  }
+
+  function handleOpenSummary(event) {
+    if (
+      !["scheduled", "completed", "cancelled"].includes(event.status) ||
+      actionLoadingId ||
+      isSavingMeetingSummary
+    ) {
+      return;
+    }
+
+    setSelectedEvent(null);
+    setEventToEdit(null);
+    setMeetingSummaryDraft(event.meetingSummary || "");
+    setSummaryEvent(event);
+  }
+
+  function handleCloseSummary() {
+    if (isSavingMeetingSummary) return;
+
+    setSummaryEvent(null);
+    setMeetingSummaryDraft("");
+  }
+
+  async function handleSaveMeetingSummary() {
+    if (!summaryEvent || isSavingMeetingSummary) return;
+
+    const trimmedValue = meetingSummaryDraft.trim();
+
+    try {
+      setIsSavingMeetingSummary(true);
+      await updateEvent(summaryEvent.id, { meetingSummary: trimmedValue });
+      setEvents((currentEvents) =>
+        currentEvents.map((event) =>
+          event.id === summaryEvent.id
+            ? { ...event, meetingSummary: trimmedValue }
+            : event,
+        ),
+      );
+      setSummaryEvent(null);
+      setMeetingSummaryDraft("");
+      await loadEvents();
+    } catch (saveError) {
+      console.error("Failed to save meeting summary", saveError);
+      alert("Failed to save meeting summary.");
+    } finally {
+      setIsSavingMeetingSummary(false);
+    }
+  }
+
+  async function handleRepositoryComplete(event) {
+    if (event.status !== "scheduled" || actionLoadingId || isSavingMeetingSummary) return;
+
+    try {
+      await handleComplete(event.id);
+      setSelectedEvent(null);
+    } catch (actionError) {
+      console.error("Failed to complete meeting", actionError);
+      alert("Failed to complete meeting.");
+    }
+  }
+
+  async function handleRepositoryCancel(event) {
+    if (event.status !== "scheduled" || actionLoadingId || isSavingMeetingSummary) return;
+
+    try {
+      await handleCancel(event);
+      setSelectedEvent(null);
+    } catch (actionError) {
+      console.error("Failed to cancel meeting", actionError);
+      alert("Failed to cancel meeting.");
+    }
+  }
+
+  async function handleRepositoryDelete(event) {
+    if (
+      !["scheduled", "completed", "cancelled"].includes(event.status) ||
+      actionLoadingId ||
+      isSavingMeetingSummary
+    ) {
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this meeting?")) return;
+
+    try {
+      await handleDelete(event);
+      setSelectedEvent(null);
+    } catch (actionError) {
+      console.error("Failed to delete meeting", actionError);
+      alert("Failed to delete meeting.");
+    }
+  }
 
   useEffect(() => {
     const initialLoadId = window.setTimeout(() => {
@@ -118,7 +246,11 @@ export default function MeetingRepository({ refreshKey = 0 }) {
     const normalizedSearch = searchQuery.trim().toLowerCase();
 
     return events.filter((event) => {
-      if (!["scheduled", "completed", "cancelled"].includes(event.status)) {
+      if (
+        !["scheduled", "completed", "cancelled", "deleted"].includes(
+          event.status,
+        )
+      ) {
         return false;
       }
 
@@ -138,7 +270,8 @@ export default function MeetingRepository({ refreshKey = 0 }) {
         if (!searchableText.includes(normalizedSearch)) return false;
       }
 
-      if (statusFilter !== "all" && event.status !== statusFilter) return false;
+      if (statusFilter === "active" && event.status === "deleted") return false;
+      if (statusFilter !== "active" && event.status !== statusFilter) return false;
 
       if (dateFilter === "upcoming" && meetingDateTime < now) return false;
       if (dateFilter === "past" && meetingDateTime >= now) return false;
@@ -182,7 +315,7 @@ export default function MeetingRepository({ refreshKey = 0 }) {
 
   function clearFilters() {
     setSearchQuery("");
-    setStatusFilter("all");
+    setStatusFilter("active");
     setDateFilter("all");
     setSummaryFilter("all");
     setPriorityFilter("all");
@@ -190,7 +323,7 @@ export default function MeetingRepository({ refreshKey = 0 }) {
 
   const hasActiveFilters =
     searchQuery.trim() ||
-    statusFilter !== "all" ||
+    statusFilter !== "active" ||
     dateFilter !== "all" ||
     summaryFilter !== "all" ||
     priorityFilter !== "all";
@@ -238,10 +371,11 @@ export default function MeetingRepository({ refreshKey = 0 }) {
               onChange={(event) => setStatusFilter(event.target.value)}
               className="w-full rounded-xl border border-[#C9D9D1] bg-white px-3 py-3 text-sm font-semibold text-[#31585F] outline-none focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4]"
             >
-              <option value="all">All statuses</option>
+              <option value="active">All active</option>
               <option value="scheduled">Scheduled</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
+              <option value="deleted">Deleted</option>
             </select>
           </label>
 
@@ -333,7 +467,11 @@ export default function MeetingRepository({ refreshKey = 0 }) {
             return (
               <article
                 key={event.id}
-                className="rounded-2xl border border-[#D7E3D5] bg-white p-4 transition hover:border-[#9FBFB4] hover:shadow-[0_8px_20px_rgba(44,105,117,0.07)] sm:p-5"
+                className={
+                  event.status === "deleted"
+                    ? "rounded-2xl border border-[#D8CFCC] bg-[#F5F2F0] p-4 text-[#6F6662] transition hover:border-[#B9AAA4] sm:p-5"
+                    : "rounded-2xl border border-[#D7E3D5] bg-white p-4 transition hover:border-[#9FBFB4] hover:shadow-[0_8px_20px_rgba(44,105,117,0.07)] sm:p-5"
+                }
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                   <div className="min-w-0 flex-1">
@@ -395,6 +533,90 @@ export default function MeetingRepository({ refreshKey = 0 }) {
               </article>
             );
           })}
+        </div>
+      )}
+
+      {eventToEdit && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/65 px-4 py-8 backdrop-blur-sm"
+          onClick={handleCloseEdit}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/60 bg-[#FFFDF8] shadow-[0_24px_60px_rgba(21,56,62,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit meeting"
+          >
+            <ScheduleMeetingForm
+              initialData={eventToEdit}
+              isEditMode={true}
+              onEditCompleted={handleEditCompleted}
+              onClose={handleCloseEdit}
+            />
+          </div>
+        </div>
+      )}
+
+      {summaryEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/65 px-4 py-8 backdrop-blur-sm"
+          onClick={handleCloseSummary}
+        >
+          <div
+            className="w-full max-w-xl rounded-[1.75rem] border border-white/60 bg-[#FFFDF8] shadow-[0_24px_60px_rgba(21,56,62,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit meeting summary"
+          >
+            <div className="flex items-start justify-between rounded-t-[1.75rem] bg-[#2C6975] px-6 py-5 text-white">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#CDE0C9]">
+                  Meeting notes
+                </p>
+                <h3 className="mt-1 text-xl font-bold">Meeting summary</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseSummary}
+                disabled={isSavingMeetingSummary}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-xl text-white ring-1 ring-white/25 transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Close meeting summary"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6">
+              <textarea
+                value={meetingSummaryDraft}
+                onChange={(event) => setMeetingSummaryDraft(event.target.value)}
+                disabled={isSavingMeetingSummary}
+                className="min-h-36 w-full resize-y rounded-xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                placeholder="Add outcomes, decisions, or follow-up details..."
+              />
+
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseSummary}
+                  disabled={isSavingMeetingSummary}
+                  className="rounded-full border border-[#BFD0CA] bg-white px-4 py-2 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveMeetingSummary()}
+                  disabled={isSavingMeetingSummary}
+                  className="rounded-full bg-[#2C6975] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSavingMeetingSummary ? "Saving..." : "Save summary"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -482,7 +704,8 @@ export default function MeetingRepository({ refreshKey = 0 }) {
                 </p>
               </div>
 
-              {selectedEvent.googleCalendarLink && (
+              {selectedEvent.status !== "deleted" &&
+                selectedEvent.googleCalendarLink && (
                 <a
                   href={selectedEvent.googleCalendarLink}
                   target="_blank"
@@ -495,11 +718,66 @@ export default function MeetingRepository({ refreshKey = 0 }) {
               )}
             </div>
 
-            <div className="flex justify-end border-t border-[#D7E3D5] px-6 py-4">
+            <div className="flex flex-col gap-3 border-t border-[#D7E3D5] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {selectedEvent.status === "scheduled" && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(selectedEvent)}
+                    disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                    className="rounded-full border border-[#BFD0CA] bg-white px-4 py-2.5 text-sm font-bold text-[#2C6975] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Edit
+                  </button>
+                )}
+                {["scheduled", "completed", "cancelled"].includes(
+                  selectedEvent.status,
+                ) && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenSummary(selectedEvent)}
+                    disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                    className="rounded-full border border-[#9FBFB4] bg-[#EEF4EC] px-4 py-2.5 text-sm font-bold text-[#3F7763] transition hover:bg-[#E2EDE0] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {selectedEvent.meetingSummary?.trim() ? "Edit summary" : "Add summary"}
+                  </button>
+                )}
+                {selectedEvent.status === "scheduled" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void handleRepositoryComplete(selectedEvent)}
+                      disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                      className="rounded-full bg-[#3F7763] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#356652] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Complete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRepositoryCancel(selectedEvent)}
+                      disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                      className="rounded-full bg-[#B98A2E] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#9A7124] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {["scheduled", "completed", "cancelled"].includes(selectedEvent.status) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRepositoryDelete(selectedEvent)}
+                    disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                    className="rounded-full bg-rose-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setSelectedEvent(null)}
-                className="rounded-full bg-[#2C6975] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#245C66]"
+                disabled={actionLoadingId === selectedEvent.id || isSavingMeetingSummary}
+                className="self-end rounded-full bg-[#2C6975] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
               >
                 Close
               </button>
