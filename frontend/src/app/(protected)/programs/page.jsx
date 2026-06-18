@@ -44,27 +44,26 @@ export default function ProgramsPage() {
     return [...new Set(years)].sort((a, b) => b - a);
   }, [programs]);
 
-  useEffect(() => {
-    if (availableYears.length > 0 && selectedYear === null) {
-      const currentYear = new Date().getFullYear();
-      if (availableYears.includes(currentYear)) {
-        setSelectedYear(currentYear);
-      } else {
-        const closest = availableYears.reduce((prev, curr) => 
-          Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
-        );
-        setSelectedYear(closest);
-      }
+ const activeYear = useMemo(() => {
+    if (selectedYear !== null) return selectedYear;
+    if (availableYears.length === 0) return null;
+    
+    const currentYear = new Date().getFullYear();
+    if (availableYears.includes(currentYear)) {
+      return currentYear;
     }
-  }, [availableYears, selectedYear]);
+    return availableYears.reduce((prev, curr) => 
+      Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
+    );
+  }, [selectedYear, availableYears]);
 
   const filteredPrograms = useMemo(() => {
-    if (!selectedYear) return programs;
+    if (!activeYear) return programs;
     return programs.filter(p => {
       const date = p.start_date?.toDate?.() ? p.start_date.toDate() : new Date(p.start_date || 0);
-      return date.getFullYear() === selectedYear;
+      return date.getFullYear() === activeYear;
     });
-  }, [programs, selectedYear]);
+  }, [programs, activeYear]);
 
   const matchingClients = useMemo(() => {
     const q = clientQuery.trim().toLowerCase();
@@ -435,7 +434,7 @@ export default function ProgramsPage() {
                     key={year}
                     onClick={() => setSelectedYear(year)}
                     className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-                      selectedYear === year
+                      activeYear === year
                         ? "bg-[#2C6975] text-white shadow-md"
                         : "bg-white text-[#2C6975] ring-1 ring-[#CDE0C9] hover:bg-[#EEF4EC]"
                     }`}
@@ -447,7 +446,7 @@ export default function ProgramsPage() {
             )}
             {filteredPrograms.length === 0 ? (
               <div className="rounded-[1.75rem] border border-dashed border-[#B9CFCA] bg-[#FFFDF8] p-10 text-center">
-                <p className="mt-4 text-lg font-bold text-[#31585F]">No programs found for {selectedYear}</p>
+                <p className="mt-4 text-lg font-bold text-[#31585F]">No programs found for {activeYear}</p>
               </div>
             ) : (
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
