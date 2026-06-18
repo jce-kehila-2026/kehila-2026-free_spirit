@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { getCalendarEvents } from "@/firebase/eventsService";
+import { getCalendarEvents, updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
 
 import ScheduleMeetingForm from "./ScheduleMeetingForm";
@@ -71,6 +71,9 @@ export default function EventCalendar({ refreshKey = 0 }) {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isEditingSelectedEvent, setIsEditingSelectedEvent] = useState(false);
+  const [isEditingMeetingSummary, setIsEditingMeetingSummary] = useState(false);
+  const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
+  const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
 
   async function load() {
     try {
@@ -94,12 +97,60 @@ export default function EventCalendar({ refreshKey = 0 }) {
 
   const isSelectedEventActionLoading =
     Boolean(selectedEvent?.id) && actionLoadingId === selectedEvent.id;
+  const isSelectedEventModalBusy =
+    isSelectedEventActionLoading || isSavingMeetingSummary;
+
+  function resetMeetingSummaryEditor() {
+    setIsEditingMeetingSummary(false);
+    setMeetingSummaryDraft("");
+  }
 
   function closeSelectedEventModal() {
-    if (isSelectedEventActionLoading) return;
+    if (isSelectedEventModalBusy) return;
 
+    resetMeetingSummaryEditor();
     setIsEditingSelectedEvent(false);
     setSelectedEvent(null);
+  }
+
+  function handleStartSelectedEventEdit() {
+    resetMeetingSummaryEditor();
+    setIsEditingSelectedEvent(true);
+  }
+
+  function handleStartMeetingSummaryEdit() {
+    setMeetingSummaryDraft(selectedEvent?.meetingSummary || "");
+    setIsEditingMeetingSummary(true);
+  }
+
+  function handleCancelMeetingSummaryEdit() {
+    if (isSavingMeetingSummary) return;
+
+    setMeetingSummaryDraft("");
+    setIsEditingMeetingSummary(false);
+  }
+
+  async function handleSaveMeetingSummary() {
+    const trimmedValue = meetingSummaryDraft.trim();
+
+    try {
+      setIsSavingMeetingSummary(true);
+      await updateEvent(selectedEvent.id, { meetingSummary: trimmedValue });
+
+      setSelectedEvent((currentEvent) =>
+        currentEvent?.id === selectedEvent.id
+          ? { ...currentEvent, meetingSummary: trimmedValue }
+          : currentEvent,
+      );
+      setMeetingSummaryDraft("");
+      setIsEditingMeetingSummary(false);
+      await load();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save meeting summary.");
+    } finally {
+      setIsSavingMeetingSummary(false);
+    }
   }
 
   async function handleSelectedEventComplete() {
@@ -140,6 +191,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
 
   async function handleSelectedEventEditCompleted() {
     await load();
+    resetMeetingSummaryEditor();
     setIsEditingSelectedEvent(false);
     setSelectedEvent(null);
   }
@@ -258,7 +310,11 @@ export default function EventCalendar({ refreshKey = 0 }) {
               clickInfo.jsEvent?.preventDefault();
 
               const original = clickInfo.event?.extendedProps?.originalEvent;
-              if (original) setSelectedEvent(original);
+              if (original) {
+                resetMeetingSummaryEditor();
+                setIsEditingSelectedEvent(false);
+                setSelectedEvent(original);
+              }
             }}
             selectable={false}
             editable={false}
@@ -301,7 +357,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
                 type="button"
                 className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/12 text-white ring-1 ring-white/25 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={closeSelectedEventModal}
-                disabled={isSelectedEventActionLoading}
+                disabled={isSelectedEventModalBusy}
                 aria-label="Close"
               >
                 <X aria-hidden="true" className="h-4 w-4" />
@@ -403,14 +459,70 @@ export default function EventCalendar({ refreshKey = 0 }) {
                   </div>
                 )}
 
+                <div className="px-6 pt-4">
+                  <div className="rounded-2xl border border-[#C9D9D1] bg-[#F3F7F1] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        Meeting summary
+                      </div>
+                      {!isEditingMeetingSummary && (
+                        <button
+                          type="button"
+                          className="rounded-full border border-[#BFD0CA] bg-white px-3 py-1.5 text-xs font-bold text-[#2C6975] transition hover:border-[#2C6975] hover:bg-[#EAF2EA] disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={handleStartMeetingSummaryEdit}
+                          disabled={isSelectedEventModalBusy}
+                        >
+                          {selectedEvent.meetingSummary?.trim()
+                            ? "Edit summary"
+                            : "Add summary"}
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditingMeetingSummary ? (
+                      <div className="mt-3 space-y-3">
+                        <textarea
+                          value={meetingSummaryDraft}
+                          onChange={(event) => setMeetingSummaryDraft(event.target.value)}
+                          disabled={isSavingMeetingSummary}
+                          className="min-h-28 w-full resize-y rounded-xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                          placeholder="Add outcomes, decisions, or follow-up details..."
+                        />
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            className="rounded-full border border-[#BFD0CA] bg-white px-4 py-2 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={handleCancelMeetingSummaryEdit}
+                            disabled={isSavingMeetingSummary}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-full bg-[#2C6975] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={handleSaveMeetingSummary}
+                            disabled={isSavingMeetingSummary}
+                          >
+                            {isSavingMeetingSummary ? "Saving..." : "Save summary"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#31585F]">
+                        {selectedEvent.meetingSummary?.trim() || "No summary added yet."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#D7E3D5] px-6 py-4">
                   {selectedEvent.status === "scheduled" && (
                     <>
                       <button
                         type="button"
                         className="inline-flex items-center gap-2 rounded-full bg-[#2C6975] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
-                        onClick={() => setIsEditingSelectedEvent(true)}
-                        disabled={isSelectedEventActionLoading}
+                        onClick={handleStartSelectedEventEdit}
+                        disabled={isSelectedEventModalBusy}
                       >
                         <Pencil aria-hidden="true" className="h-4 w-4" />
                         Edit
@@ -419,7 +531,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
                         type="button"
                         className="inline-flex items-center gap-2 rounded-full bg-[#4F8B75] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#3F7763] disabled:cursor-not-allowed disabled:opacity-60"
                         onClick={handleSelectedEventComplete}
-                        disabled={isSelectedEventActionLoading}
+                        disabled={isSelectedEventModalBusy}
                       >
                         <Check aria-hidden="true" className="h-4 w-4" />
                         Complete
@@ -428,7 +540,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
                         type="button"
                         className="inline-flex items-center gap-2 rounded-full border border-[#D6C898] bg-[#FFF8DF] px-4 py-2.5 text-sm font-bold text-[#80691B] transition hover:bg-[#F8EDC7] disabled:cursor-not-allowed disabled:opacity-60"
                         onClick={handleSelectedEventCancel}
-                        disabled={isSelectedEventActionLoading}
+                        disabled={isSelectedEventModalBusy}
                       >
                         <X aria-hidden="true" className="h-4 w-4" />
                         Cancel
@@ -441,7 +553,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
                       type="button"
                       className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={handleSelectedEventDelete}
-                      disabled={isSelectedEventActionLoading}
+                      disabled={isSelectedEventModalBusy}
                     >
                       <Trash2 aria-hidden="true" className="h-4 w-4" />
                       Delete
@@ -452,7 +564,7 @@ export default function EventCalendar({ refreshKey = 0 }) {
                     type="button"
                     className="rounded-full bg-[#2C6975] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
                     onClick={closeSelectedEventModal}
-                    disabled={isSelectedEventActionLoading}
+                    disabled={isSelectedEventModalBusy}
                   >
                     Close
                   </button>

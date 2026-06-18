@@ -26,6 +26,7 @@ export interface ClientEvent {
   date: string;
   time: string;
   notes?: string;
+  meetingSummary?: string;
   status: "scheduled" | "completed" | "cancelled" | "deleted";
   priority: "normal" | "high";
   reminderMode?: string;
