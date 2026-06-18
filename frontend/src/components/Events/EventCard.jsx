@@ -12,6 +12,7 @@ export default function EventCard({
   event,
   isActionLoading = false,
   onEdit,
+  onEditSummary,
   onComplete,
   onCancel,
   onDelete,
@@ -72,6 +73,27 @@ export default function EventCard({
         </p>
       )}
 
+      {onEditSummary && (
+        <div className="mt-4 rounded-2xl border border-[#C9D9D1] bg-[#F3F7F1] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+              Meeting summary
+            </p>
+            <button
+              type="button"
+              onClick={() => onEditSummary(event)}
+              disabled={isActionLoading}
+              className="rounded-full border border-[#BFD0CA] bg-white px-3 py-1.5 text-xs font-bold text-[#2C6975] transition hover:border-[#2C6975] hover:bg-[#EAF2EA] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {event.meetingSummary?.trim() ? "Edit summary" : "Add summary"}
+            </button>
+          </div>
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#5C7478]">
+            {event.meetingSummary?.trim() || "No summary added yet."}
+          </p>
+        </div>
+      )}
+
       <div className="mt-5 flex items-center justify-between border-t border-[#D7E3D5] pt-4">
         <p className="text-xs font-bold uppercase tracking-wide text-[#7C9194]">
           Status
@@ -102,15 +124,17 @@ export default function EventCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-       <button
-          type="button"
-          onClick={() => onEdit(event)}
-          disabled={isActionLoading}
-          className="inline-flex items-center gap-2 rounded-full bg-[#2C6975] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Pencil aria-hidden="true" className="h-4 w-4" />
-          Edit
-        </button>
+       {event.status === "scheduled" && onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(event)}
+            disabled={isActionLoading}
+            className="inline-flex items-center gap-2 rounded-full bg-[#2C6975] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Pencil aria-hidden="true" className="h-4 w-4" />
+            Edit
+          </button>
+        )}
 
         {event.status === "scheduled" && (
           <>
