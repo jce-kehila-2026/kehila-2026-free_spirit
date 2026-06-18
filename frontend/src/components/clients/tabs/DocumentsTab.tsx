@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 import { DOCUMENT_TYPE_OPTIONS, DOCUMENT_STATUS_OPTIONS, type DocumentStatus, type ClientDocument } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
@@ -175,15 +177,34 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
                   "rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors",
                   uploadState.fileError
                     ? "border-red-300 bg-red-50"
+                    : uploadState.selectedFile
+                    ? "border-indigo-300 bg-indigo-50 hover:border-indigo-400"
                     : "border-[#B9CFCA] bg-[#F7FAF5] hover:border-[#6BB2A0] hover:bg-[#EEF4EC]",
                 ].join(" ")}
               >
-                <span className="text-2xl" aria-hidden="true">📁</span>
-                <span className="text-sm font-bold text-[#31585F]">Click to choose a file</span>
-                <span className="text-xs text-[#6A8589]">or drag and drop here</span>
+                {uploadState.selectedFile ? (
+                  <>
+                    <span className="text-2xl" aria-hidden="true">📄</span>
+                    <span className="max-w-xs truncate text-sm font-bold text-indigo-700">
+                      {uploadState.selectedFile.name}
+                    </span>
+                    <span className="text-xs text-indigo-500">
+                      {(uploadState.selectedFile.size / 1024 / 1024).toFixed(2)} MB · Click to change
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl" aria-hidden="true">📁</span>
+                    <span className="text-sm font-bold text-[#31585F]">Click to choose a file</span>
+                    <span className="text-xs text-[#6A8589]">or drag and drop here</span>
+                  </>
+                )}
                 <input
                   id="doc-file-input" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" className="sr-only"
-                  onChange={() => uploadState.setFileError(null)}
+                  onChange={(e) => {
+                    uploadState.setFileError(null);
+                    uploadState.setSelectedFile(e.target.files?.[0] ?? null);
+                  }}
                 />
               </label>
 

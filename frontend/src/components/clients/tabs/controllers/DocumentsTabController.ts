@@ -35,6 +35,7 @@ export function useDocumentsTabController(client: ClientDoc) {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // 1. Initialize Form Engine
   const form = useForm<UploadDocumentFormData>({
@@ -60,9 +61,8 @@ export function useDocumentsTabController(client: ClientDoc) {
 
   // 3. Upload Handler (Bridges to Tier 4)
   const onSubmit = useCallback(async (formData: UploadDocumentFormData) => {
-    const fileInput = document.getElementById("doc-file-input") as HTMLInputElement | null;
-    const file = fileInput?.files?.[0];
-    
+    const file = selectedFile;
+
     if (!file) {
       setFileError("Please select a file to upload.");
       return;
@@ -104,8 +104,8 @@ export function useDocumentsTabController(client: ClientDoc) {
 
       // Update local state & reset UI
       setDocs(updatedDocs);
+      setSelectedFile(null);
       form.reset();
-      if (fileInput) fileInput.value = "";
       toast.success(`"${file.name}" uploaded successfully.`);
     } catch (error) {
       console.error("[DocumentsTabController] Upload failed:", error);
@@ -114,7 +114,7 @@ export function useDocumentsTabController(client: ClientDoc) {
       setIsLoading(false);
       setUploadProgress(null);
     }
-  }, [client.id, docs, form]);
+  }, [client.id, docs, form, selectedFile]);
 
   // 4. Delete Handler (Bridges to Tier 4)
   const handleDelete = useCallback(async (index: number) => {
@@ -141,6 +141,8 @@ export function useDocumentsTabController(client: ClientDoc) {
       uploadProgress,
       fileError,
       setFileError,
+      selectedFile,
+      setSelectedFile,
     },
     actions: {
       onSubmit,
