@@ -8,11 +8,17 @@ import interactionPlugin from "@fullcalendar/interaction";
 import {
   CalendarDays,
   CalendarSync,
+  Check,
   Clock3,
   ExternalLink,
+  Pencil,
+  Trash2,
   X,
 } from "lucide-react";
-import { getEvents } from "@/firebase/eventsService";
+import { getCalendarEvents } from "@/firebase/eventsService";
+import useEventActions from "@/hooks/useEventActions";
+
+import ScheduleMeetingForm from "./ScheduleMeetingForm";
 
 // Local mapping for preset reminder labels (kept minimal and stable)
 const PRESET_REMINDER_LABELS = {
@@ -64,11 +70,12 @@ export default function EventCalendar({ refreshKey = 0 }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isEditingSelectedEvent, setIsEditingSelectedEvent] = useState(false);
 
   async function load() {
     try {
       setLoading(true);
-      const ev = await getEvents();
+      const ev = await getCalendarEvents();
       setEvents(ev || []);
     } catch (err) {
       console.error("Failed to load calendar events", err);
@@ -76,6 +83,65 @@ export default function EventCalendar({ refreshKey = 0 }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  const {
+    actionLoadingId,
+    handleComplete,
+    handleCancel,
+    handleDelete,
+  } = useEventActions({ onRefresh: load });
+
+  const isSelectedEventActionLoading =
+    Boolean(selectedEvent?.id) && actionLoadingId === selectedEvent.id;
+
+  function closeSelectedEventModal() {
+    if (isSelectedEventActionLoading) return;
+
+    setIsEditingSelectedEvent(false);
+    setSelectedEvent(null);
+  }
+
+  async function handleSelectedEventComplete() {
+    try {
+      await handleComplete(selectedEvent.id);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to complete meeting.");
+    }
+  }
+
+  async function handleSelectedEventCancel() {
+    try {
+      await handleCancel(selectedEvent);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to cancel meeting.");
+    }
+  }
+
+  async function handleSelectedEventDelete() {
+    const shouldDelete = window.confirm(
+      "Are you sure you want to delete this meeting?",
+    );
+
+    if (!shouldDelete) return;
+
+    try {
+      await handleDelete(selectedEvent);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete meeting.");
+    }
+  }
+
+  async function handleSelectedEventEditCompleted() {
+    await load();
+    setIsEditingSelectedEvent(false);
+    setSelectedEvent(null);
   }
 
   useEffect(() => {
@@ -111,10 +177,12 @@ export default function EventCalendar({ refreshKey = 0 }) {
         title: e.title || "Meeting",
         start,
         end,
+        classNames: [`calendar-event--${e.status}`],
         extendedProps: {
           clientName: e.clientName,
           priority: e.priority,
           notes: e.notes,
+          status: e.status,
           originalEvent: e,
         },
       };
@@ -124,20 +192,25 @@ export default function EventCalendar({ refreshKey = 0 }) {
   function renderEventContent(arg) {
     const { event } = arg;
     const start = event.start;
+    const status = event.extendedProps.status;
     const timeText = start
       ? start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : "";
 
     return (
       <div className="fc-event-content min-w-0">
-        <div className="truncate text-xs font-bold">{timeText} — {event.title}</div>
+        <div className="fc-event-title-line truncate text-xs font-bold">{timeText} — {event.title}</div>
         {event.extendedProps.clientName && (
           <div className="truncate text-[11px] text-current opacity-75">{event.extendedProps.clientName}</div>
+        )}
+        {status !== "scheduled" && (
+          <div className="fc-event-status-label text-[10px] font-bold uppercase tracking-wide">
+            {status}
+          </div>
         )}
       </div>
     );
   }
-
   return (
     <section className="events-calendar mt-6 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
       <div className="mb-6 flex items-start gap-4 border-b border-[#D7E3D5] pb-5">
@@ -167,9 +240,20 @@ export default function EventCalendar({ refreshKey = 0 }) {
               center: "title",
               right: "dayGridMonth,timeGridWeek,timeGridDay",
             }}
+            views={{
+              dayGridMonth: {
+                dayMaxEvents: 3,
+                moreLinkClick: "timeGridDay",
+              },
+            }}
             height="auto"
             events={fcEvents}
             eventContent={renderEventContent}
+            dateClick={(clickInfo) => {
+              if (clickInfo.view.type === "dayGridMonth") {
+                clickInfo.view.calendar.changeView("timeGridDay", clickInfo.date);
+              }
+            }}
             eventClick={(clickInfo) => {
               clickInfo.jsEvent?.preventDefault();
 
@@ -187,125 +271,194 @@ export default function EventCalendar({ refreshKey = 0 }) {
       {selectedEvent && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/65 px-4 py-8 backdrop-blur-sm"
-          onClick={() => setSelectedEvent(null)}
+          onClick={closeSelectedEventModal}
         >
           <div
             className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/60 bg-[#FFFDF8] shadow-[0_24px_60px_rgba(21,56,62,0.24)]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="Event details"
+            aria-label={isEditingSelectedEvent ? "Edit meeting" : "Event details"}
           >
             <div className="flex items-start justify-between bg-[#2C6975] px-6 py-5 text-white">
               <div className="min-w-0">
                 <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#CDE0C9]">
-                  Meeting details
+                  {isEditingSelectedEvent ? "Meeting workspace" : "Meeting details"}
                 </p>
-                <h3 className="truncate text-xl font-bold">{selectedEvent.title || "Meeting"}</h3>
-                <p className="mt-1 text-sm text-white/72">{selectedEvent.clientName || ""}</p>
+                <h3 className="truncate text-xl font-bold">
+                  {isEditingSelectedEvent
+                    ? "Edit Meeting"
+                    : selectedEvent.title || "Meeting"}
+                </h3>
+                {!isEditingSelectedEvent && (
+                  <p className="mt-1 text-sm text-white/72">
+                    {selectedEvent.clientName || ""}
+                  </p>
+                )}
               </div>
 
               <button
-                className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/12 text-white ring-1 ring-white/25 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
-                onClick={() => setSelectedEvent(null)}
+                type="button"
+                className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/12 text-white ring-1 ring-white/25 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={closeSelectedEventModal}
+                disabled={isSelectedEventActionLoading}
                 aria-label="Close"
               >
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="grid gap-3 px-6 pt-6 sm:grid-cols-2">
-              {selectedEvent.date && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
-                    <CalendarDays aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
-                    Date
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.date}</div>
-                </div>
-              )}
-
-              {selectedEvent.time && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
-                    <Clock3 aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
-                    Time
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.time}</div>
-                </div>
-              )}
-
-              {selectedEvent.durationMinutes && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Duration</div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.durationMinutes} minutes</div>
-                </div>
-              )}
-
-              {selectedEvent.priority && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Priority</div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.priority}</div>
-                </div>
-              )}
-
-              {(() => {
-                const reminderDisplay = getReminderDisplay(selectedEvent);
-                return (
-                  reminderDisplay && (
-                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Reminder</div>
-                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{reminderDisplay}</div>
-                    </div>
-                  )
-                );
-              })()}
-
-              {selectedEvent.calendarSyncLabel && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
-                    <CalendarSync aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
-                    Calendar Sync
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.calendarSyncLabel}</div>
-                </div>
-              )}
-
-              {selectedEvent.googleCalendarLink && (
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Google Calendar</div>
-                  <div className="mt-1 text-sm text-[#31585F]">
-                    <a
-                      href={selectedEvent.googleCalendarLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold text-[#2C6975] hover:underline"
-                    >
-                      Open in Google Calendar
-                      <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {selectedEvent.notes && (
-              <div className="px-6 pt-4">
-                <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Notes</div>
-                <div className="mt-2 rounded-2xl border border-[#C9D9D1] bg-[#EAF2EA] p-4 text-sm leading-6 text-[#31585F]">
-                  {selectedEvent.notes}
-                </div>
+            {isEditingSelectedEvent ? (
+              <div className="p-4 sm:p-6">
+                <ScheduleMeetingForm
+                  initialData={selectedEvent}
+                  isEditMode={true}
+                  onEditCompleted={handleSelectedEventEditCompleted}
+                  onClose={closeSelectedEventModal}
+                />
               </div>
-            )}
+            ) : (
+              <>
+                <div className="grid gap-3 px-6 pt-6 sm:grid-cols-2">
+                  {selectedEvent.date && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        <CalendarDays aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
+                        Date
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.date}</div>
+                    </div>
+                  )}
 
-            <div className="mt-6 flex justify-end border-t border-[#D7E3D5] px-6 py-4">
-              <button
-                className="rounded-full bg-[#2C6975] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#245C66]"
-                onClick={() => setSelectedEvent(null)}
-              >
-                Close
-              </button>
-            </div>
+                  {selectedEvent.time && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        <Clock3 aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
+                        Time
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.time}</div>
+                    </div>
+                  )}
+
+                  {selectedEvent.durationMinutes && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Duration</div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.durationMinutes} minutes</div>
+                    </div>
+                  )}
+
+                  {selectedEvent.priority && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Priority</div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.priority}</div>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const reminderDisplay = getReminderDisplay(selectedEvent);
+                    return (
+                      reminderDisplay && (
+                        <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                          <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Reminder</div>
+                          <div className="mt-1 text-sm font-semibold text-[#31585F]">{reminderDisplay}</div>
+                        </div>
+                      )
+                    );
+                  })()}
+
+                  {selectedEvent.calendarSyncLabel && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6A8589]">
+                        <CalendarSync aria-hidden="true" className="h-4 w-4 text-[#6BB2A0]" />
+                        Calendar Sync
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-[#31585F]">{selectedEvent.calendarSyncLabel}</div>
+                    </div>
+                  )}
+
+                  {selectedEvent.googleCalendarLink && (
+                    <div className="rounded-2xl border border-[#D7E3D5] bg-[#F3F7F1] p-4">
+                      <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Google Calendar</div>
+                      <div className="mt-1 text-sm text-[#31585F]">
+                        <a
+                          href={selectedEvent.googleCalendarLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 font-semibold text-[#2C6975] hover:underline"
+                        >
+                          Open in Google Calendar
+                          <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {selectedEvent.notes && (
+                  <div className="px-6 pt-4">
+                    <div className="text-xs font-bold uppercase tracking-wide text-[#6A8589]">Notes</div>
+                    <div className="mt-2 rounded-2xl border border-[#C9D9D1] bg-[#EAF2EA] p-4 text-sm leading-6 text-[#31585F]">
+                      {selectedEvent.notes}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#D7E3D5] px-6 py-4">
+                  {selectedEvent.status === "scheduled" && (
+                    <>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#2C6975] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => setIsEditingSelectedEvent(true)}
+                        disabled={isSelectedEventActionLoading}
+                      >
+                        <Pencil aria-hidden="true" className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#4F8B75] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#3F7763] disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={handleSelectedEventComplete}
+                        disabled={isSelectedEventActionLoading}
+                      >
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                        Complete
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-[#D6C898] bg-[#FFF8DF] px-4 py-2.5 text-sm font-bold text-[#80691B] transition hover:bg-[#F8EDC7] disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={handleSelectedEventCancel}
+                        disabled={isSelectedEventActionLoading}
+                      >
+                        <X aria-hidden="true" className="h-4 w-4" />
+                        Cancel
+                      </button>
+                    </>
+                  )}
+
+                  {selectedEvent.status !== "deleted" && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={handleSelectedEventDelete}
+                      disabled={isSelectedEventActionLoading}
+                    >
+                      <Trash2 aria-hidden="true" className="h-4 w-4" />
+                      Delete
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="rounded-full bg-[#2C6975] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={closeSelectedEventModal}
+                    disabled={isSelectedEventActionLoading}
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -409,8 +562,32 @@ export default function EventCalendar({ refreshKey = 0 }) {
             transform 140ms ease;
         }
 
-        .events-calendar .fc .fc-event:hover {
-          filter: brightness(0.94);
+        .events-calendar .fc .fc-event.calendar-event--completed {
+          background-color: #7a9d8f;
+          border-color: #688b7e;
+          box-shadow: 0 2px 6px rgba(68, 105, 91, 0.12);
+          color: #f7fbf8;
+        }
+
+        .events-calendar .fc .fc-event.calendar-event--cancelled {
+          background-color: #9ba7a6;
+          border-color: #879493;
+          box-shadow: none;
+          color: #f7f8f8;
+          opacity: 0.72;
+        }
+
+        .events-calendar .fc .calendar-event--cancelled .fc-event-title-line {
+          text-decoration: line-through;
+          text-decoration-thickness: 1.5px;
+        }
+
+        .events-calendar .fc .fc-event-status-label {
+          margin-top: 0.1rem;
+          opacity: 0.85;
+        }
+
+        .events-calendar .fc .fc-event:hover {          filter: brightness(0.94);
           transform: translateY(-1px);
         }
 

@@ -53,6 +53,37 @@ import {
       });
   }
 
+  // Return all renderable calendar events while preserving historical statuses.
+  export async function getCalendarEvents() {
+    const eventsQuery = query(
+      collection(db, EVENTS_COLLECTION),
+      orderBy("date", "asc")
+    );
+
+    const snapshot = await getDocs(eventsQuery);
+    const visibleStatuses = ["scheduled", "completed", "cancelled"];
+
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((event) => {
+        if (!visibleStatuses.includes(event.status)) return false;
+        if (
+          typeof event.date !== "string" ||
+          typeof event.time !== "string" ||
+          !event.date.trim() ||
+          !event.time.trim()
+        ) {
+          return false;
+        }
+
+        const eventDateTime = new Date(`${event.date}T${event.time}`);
+        return !Number.isNaN(eventDateTime.getTime());
+      });
+  }
+
   // Return scheduled events within the next `days` days (client-side filter)
   export async function getEventsWithinDays(days) {
     const eventsQuery = query(
