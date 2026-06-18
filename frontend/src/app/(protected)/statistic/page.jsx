@@ -30,6 +30,8 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
+
+import Link from 'next/link';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
@@ -124,6 +126,7 @@ export default function StatisticsPage() {
       if (client.status === 'registered' && !client.passport_id) {
         actionItems.push({
           id: `missing_id_${client.id}`,
+          clientId: client.id,
           client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
           issue: 'Missing Passport/ID',
           program: 'N/A',
@@ -133,6 +136,7 @@ export default function StatisticsPage() {
       if (!client.dob || client.dob === "") {
         actionItems.push({
           id: `missing_dob_${client.id}`,
+          clientId: client.id,
           client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
           issue: 'Missing Date of Birth',
           program: 'N/A',
@@ -224,7 +228,7 @@ export default function StatisticsPage() {
     const topLocations = Object.entries(locationCounts)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .slice(0, 10);
 
     // Program Occupancy Data
     const programOccupancyData = programs.map(p => {
@@ -405,9 +409,9 @@ export default function StatisticsPage() {
                   <Pie
                     data={demographicsData}
                     cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="55%"
+                    innerRadius={45}
+                    outerRadius={75}
                     fill="#8884d8"
                     paddingAngle={5}
                     dataKey="value"
@@ -441,9 +445,9 @@ export default function StatisticsPage() {
                     <Pie
                       data={complianceData}
                       cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
+                      cy="55%"
+                      innerRadius={45}
+                      outerRadius={75}
                       paddingAngle={5}
                       dataKey="value"
                       isAnimationActive={false}
@@ -480,9 +484,9 @@ export default function StatisticsPage() {
                     <Pie
                       data={retentionData}
                       cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
+                      cy="55%"
+                      innerRadius={45}
+                      outerRadius={75}
                       paddingAngle={5}
                       dataKey="value"
                       isAnimationActive={false}
@@ -545,17 +549,17 @@ export default function StatisticsPage() {
               Top Locations
             </h2>
             <p className="mb-6 text-sm text-[#6A8589]">Geographic segmentation of clients</p>
-            <div className="flex-1 space-y-5">
+            <div className="flex-1 space-y-2.5">
               {topLocations.length > 0 ? (
                 topLocations.map((loc, index) => {
                   const percentage = Math.round((loc.count / totalClients) * 100);
                   return (
-                    <div key={index} className="flex flex-col gap-1.5">
+                    <div key={index} className="flex flex-col gap-1">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium text-[#15383E]">{loc.name}</span>
                         <span className="font-bold text-[#2C6975]">{loc.count} <span className="font-normal text-[#6A8589]">({percentage}%)</span></span>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#E4ECE2]">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4ECE2]">
                         <div 
                           className="h-full rounded-full bg-[#6BB2A0] transition-all duration-500 ease-in-out" 
                           style={{ width: `${percentage}%` }}
@@ -572,54 +576,7 @@ export default function StatisticsPage() {
 
         </div>
 
-        {/* Action Items List */}
-        <section className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
-          <h2 className="flex items-center gap-2 border-b border-[#D7E3D5] px-6 py-5 text-xl font-bold text-[#15383E]">
-            <FileWarning className="text-[#D2A94F]" />
-            Action Items & Alerts
-          </h2>
-          <div className="overflow-x-auto p-4 sm:p-6">
-            {actionItems.length > 0 ? (
-              <table className="w-full text-left text-sm text-[#5C7478]">
-                <thead className="border-b border-[#D7E3D5] bg-[#F7FAF5] text-[#607B80]">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Client</th>
-                    <th className="px-4 py-3 font-medium">Issue</th>
-                    <th className="px-4 py-3 font-medium">Program</th>
-                    <th className="px-4 py-3 font-medium">Severity</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {actionItems.map((item) => (
-                    <tr key={item.id} className="border-b border-[#E4ECE2] transition-colors hover:bg-[#F7FAF5]">
-                      <td className="px-4 py-4 font-semibold text-[#173A40]">{item.client}</td>
-                      <td className="px-4 py-4">{item.issue}</td>
-                      <td className="px-4 py-4 text-slate-400">{item.program}</td>
-                      <td className="px-4 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium
-                          ${item.severity === 'high' ? 'bg-red-100 text-red-700' : 
-                            item.severity === 'medium' ? 'bg-orange-100 text-orange-700' : 
-                            'bg-green-100 text-green-700'}`}>
-                          {item.severity.charAt(0).toUpperCase() + item.severity.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <button className="text-sm font-bold text-[#2C6975] hover:text-[#173A40]">
-                          Review
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] py-10 text-center text-[#607B80]">
-                No pending action items found!
-              </div>
-            )}
-          </div>
-        </section>
+    
 
       </div>
     </main>
