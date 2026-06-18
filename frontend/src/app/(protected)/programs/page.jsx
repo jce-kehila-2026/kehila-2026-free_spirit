@@ -34,6 +34,36 @@ export default function ProgramsPage() {
   const [editingValue, setEditingValue] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
+  const [selectedYear, setSelectedYear] = useState(null);
+
+  const availableYears = useMemo(() => {
+    const years = programs.map(p => {
+      const date = p.start_date?.toDate?.() ? p.start_date.toDate() : new Date(p.start_date || 0);
+      return date.getFullYear();
+    }).filter(y => !isNaN(y) && y > 1900);
+    return [...new Set(years)].sort((a, b) => b - a);
+  }, [programs]);
+
+ const activeYear = useMemo(() => {
+    if (selectedYear !== null) return selectedYear;
+    if (availableYears.length === 0) return null;
+    
+    const currentYear = new Date().getFullYear();
+    if (availableYears.includes(currentYear)) {
+      return currentYear;
+    }
+    return availableYears.reduce((prev, curr) => 
+      Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
+    );
+  }, [selectedYear, availableYears]);
+
+  const filteredPrograms = useMemo(() => {
+    if (!activeYear) return programs;
+    return programs.filter(p => {
+      const date = p.start_date?.toDate?.() ? p.start_date.toDate() : new Date(p.start_date || 0);
+      return date.getFullYear() === activeYear;
+    });
+  }, [programs, activeYear]);
 
   const matchingClients = useMemo(() => {
     const q = clientQuery.trim().toLowerCase();
@@ -396,78 +426,107 @@ export default function ProgramsPage() {
             <p className="mt-2 text-sm text-[#6A8589]">Create a program to begin building the community schedule.</p>
           </div>
         ) : (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {programs.map((program) => {
-              const now = new Date().getTime();
-              const start = program.start_date?.toDate?.() ? program.start_date.toDate() : new Date(program.start_date || 0);
-              const end = program.end_date?.toDate?.() ? program.end_date.toDate() : new Date(program.end_date || 0);
-              let statusText = "Upcoming";
-              let statusClass = "bg-[#DCEAD6] text-[#2C6975]";
-              if (now >= start.getTime() && now <= end.getTime()) {
-                statusText = "In progress";
-                statusClass = "bg-[#4F8B75] text-white";
-              } else if (now > end.getTime()) {
-                statusText = "Completed";
-                statusClass = "bg-[#EEF1EE] text-[#687B7E]";
-              }
-
-                return (
-                  <article
-                    key={program.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openProgramModal(program)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") openProgramModal(program);
-                    }}
-                    className="cursor-pointer rounded-[24px] bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-sm ring-1 ring-blue-200 transition hover:-translate-y-1 hover:shadow-lg relative group"
+          <>
+            {availableYears.length > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {availableYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedYear(year)}
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                      activeYear === year
+                        ? "bg-[#2C6975] text-white shadow-md"
+                        : "bg-white text-[#2C6975] ring-1 ring-[#CDE0C9] hover:bg-[#EEF4EC]"
+                    }`}
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProgramToRemove(program);
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredPrograms.length === 0 ? (
+              <div className="rounded-[1.75rem] border border-dashed border-[#B9CFCA] bg-[#FFFDF8] p-10 text-center">
+                <p className="mt-4 text-lg font-bold text-[#31585F]">No programs found for {activeYear}</p>
+              </div>
+            ) : (
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredPrograms.map((program) => {
+                  const now = new Date().getTime();
+                  const start = program.start_date?.toDate?.() ? program.start_date.toDate() : new Date(program.start_date || 0);
+                  const end = program.end_date?.toDate?.() ? program.end_date.toDate() : new Date(program.end_date || 0);
+                  let statusText = "Upcoming";
+                  let statusClass = "bg-cyan-100 text-cyan-800";
+                  let borderClass = "ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] bg-gradient-to-br from-cyan-50/50 to-white";
+                  
+                  if (now >= start.getTime() && now <= end.getTime()) {
+                    statusText = "In progress";
+                    statusClass = "bg-[#4F8B75] text-white";
+                    borderClass = "ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] bg-gradient-to-br from-emerald-50/50 to-white";
+                  } else if (now > end.getTime()) {
+                    statusText = "Completed";
+                    statusClass = "bg-[#EEF1EE] text-[#687B7E]";
+                    borderClass = "border border-slate-200 bg-slate-50 opacity-90 shadow-sm hover:shadow-md";
+                  }
+
+                  return (
+                    <article
+                      key={program.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openProgramModal(program)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") openProgramModal(program);
                       }}
-                      className="absolute top-4 right-4 z-10 p-2 bg-white/50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete Program"
+                      className={`cursor-pointer rounded-[24px] p-6 transition hover:-translate-y-1 relative group ${borderClass}`}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                    </button>
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h2 className="text-3xl font-bold text-blue-950">🌟 {program.name || "Untitled Program"}</h2>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProgramToRemove(program);
+                        }}
+                        className="absolute top-4 right-4 z-10 p-2 bg-white/50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete Program"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
+                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h2 className="text-3xl font-bold text-blue-950">🌟 {program.name || "Untitled Program"}</h2>
+                        </div>
+                        <div className="flex flex-col items-start sm:items-end gap-2">
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-[0.1em] ${statusClass}`}>
+                            {statusText}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-white/60 px-3 py-1 text-base font-bold text-blue-800 ring-1 ring-blue-200 backdrop-blur-sm">
+                            📍 {program.location || "Unknown location"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-start sm:items-end gap-2">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-[0.1em] ${statusClass}`}>
-                          {statusText}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-white/60 px-3 py-1 text-base font-bold text-blue-800 ring-1 ring-blue-200 backdrop-blur-sm">
-                          📍 {program.location || "Unknown location"}
-                        </span>
+                      
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-[#EEF4EC] p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Starts</p>
+                          <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
+                        </div>
+                        <div className="rounded-xl bg-[#E4F0EC] p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Ends</p>
+                          <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-[#EEF4EC] p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Starts</p>
-                        <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
-                      </div>
-                      <div className="rounded-xl bg-[#E4F0EC] p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Ends</p>
-                        <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
-                      </div>
-                    </div>
-                  </article>
-                );
-            })}
-          </section>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+          </>
         )}
       </div>
 
       {selectedProgram && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#15383E]/70 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[1.75rem] border border-white/50 bg-[#F3F6F0] shadow-[0_24px_60px_rgba(21,56,62,0.24)]" role="dialog" aria-modal="true" aria-label="Program details">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-[#15383E]/70 p-4 pt-24 backdrop-blur-sm">
+          <div className="relative max-h-[calc(100vh-7rem)] w-full max-w-4xl overflow-y-auto rounded-[1.75rem] border border-white/50 bg-[#F3F6F0] shadow-[0_24px_60px_rgba(21,56,62,0.24)]" role="dialog" aria-modal="true" aria-label="Program details">
             {clientAddSuccess && (
               <div className="absolute left-1/2 top-5 z-50 w-full max-w-md -translate-x-1/2 px-4">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50/95 px-5 py-3 text-sm text-emerald-900 shadow-lg backdrop-blur-sm">
@@ -752,8 +811,8 @@ export default function ProgramsPage() {
       )}
 
       {isManageModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#15383E]/70 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/50 bg-[#FFFDF8] shadow-[0_24px_60px_rgba(21,56,62,0.24)]" role="dialog" aria-modal="true" aria-label="Manage program">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-[#15383E]/70 p-4 pt-24 backdrop-blur-sm">
+          <div className="relative max-h-[calc(100vh-7rem)] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/50 bg-[#FFFDF8] shadow-[0_24px_60px_rgba(21,56,62,0.24)]" role="dialog" aria-modal="true" aria-label="Manage program">
             <div className="sticky top-0 z-20 flex items-center justify-between bg-[#2C6975] px-6 py-4 text-white">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#CDE0C9]">Program workspace</p>
@@ -776,7 +835,7 @@ export default function ProgramsPage() {
       )}
 
       {participantToRemove && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4 pt-24">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl">
             <h3 className="mb-4 text-2xl font-bold text-slate-950">Confirm Removal</h3>
             <p className="mb-6 text-base text-slate-600">
@@ -805,7 +864,7 @@ export default function ProgramsPage() {
         </div>
       )}
       {programToRemove && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4 pt-24">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl">
             <h3 className="mb-4 text-2xl font-bold text-slate-950">Confirm Delete Program</h3>
             <p className="mb-6 text-base text-slate-600">
