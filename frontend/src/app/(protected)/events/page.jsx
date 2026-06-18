@@ -5,10 +5,12 @@ import Script from "next/script";
 
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import EventCalendar from "@/components/Events/EventCalendar";
+import MeetingRepository from "@/components/Events/MeetingRepository";
 
 export default function EventsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCreateMeetingModal, setShowCreateMeetingModal] = useState(false);
+  const [activeView, setActiveView] = useState("calendar");
 
   const handleMeetingCreated = () => {
     setRefreshKey((current) => current + 1);
@@ -69,9 +71,51 @@ export default function EventsPage() {
             </div>
           </div>
         </section>
-        <section className="mt-6">
+        <nav
+          aria-label="Events views"
+          className="mt-6 rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]"
+        >
+          <div role="tablist" className="grid grid-cols-2 gap-2 sm:inline-grid sm:min-w-80">
+            {[
+              { id: "calendar", label: "Calendar" },
+              { id: "meetings", label: "Meetings" },
+            ].map((view) => {
+              const isActive = activeView === view.id;
+
+              return (
+                <button
+                  key={view.id}
+                  id={`events-tab-${view.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="events-view-panel"
+                  onClick={() => setActiveView(view.id)}
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] ${
+                    isActive
+                      ? "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]"
+                      : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]"
+                  }`}
+                >
+                  {view.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        <section
+          id="events-view-panel"
+          role="tabpanel"
+          aria-labelledby={`events-tab-${activeView}`}
+          className="mt-4"
+        >
           <div className="rounded-[1.25rem] bg-white/0 p-2">
-            <EventCalendar refreshKey={refreshKey} />
+            {activeView === "calendar" ? (
+              <EventCalendar refreshKey={refreshKey} />
+            ) : (
+              <MeetingRepository refreshKey={refreshKey} />
+            )}
           </div>
         </section>
 

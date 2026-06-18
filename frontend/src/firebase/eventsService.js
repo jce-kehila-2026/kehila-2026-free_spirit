@@ -84,6 +84,42 @@ import {
       });
   }
 
+  // Return all renderable repository events, including soft-deleted history.
+  export async function getMeetingRepositoryEvents() {
+    const eventsQuery = query(
+      collection(db, EVENTS_COLLECTION),
+      orderBy("date", "asc")
+    );
+
+    const snapshot = await getDocs(eventsQuery);
+    const repositoryStatuses = [
+      "scheduled",
+      "completed",
+      "cancelled",
+      "deleted",
+    ];
+
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((event) => {
+        if (!repositoryStatuses.includes(event.status)) return false;
+        if (
+          typeof event.date !== "string" ||
+          typeof event.time !== "string" ||
+          !event.date.trim() ||
+          !event.time.trim()
+        ) {
+          return false;
+        }
+
+        const eventDateTime = new Date(event.date + "T" + event.time);
+        return !Number.isNaN(eventDateTime.getTime());
+      });
+  }
+
   // Return scheduled events within the next `days` days (client-side filter)
   export async function getEventsWithinDays(days) {
     const eventsQuery = query(
