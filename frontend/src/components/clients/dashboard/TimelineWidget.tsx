@@ -14,6 +14,11 @@ interface TimelineTabProps {
   /** Forwarded from ClientProfileDashboard — not used for editing, kept for
    *  API-shape consistency with the other tab components. */
   isEditable?: boolean;
+  /**
+   * Increment this number from a parent to trigger a data refresh without
+   * unmounting the widget. Used by ProfileSummaryDashboard after saving a note.
+   */
+  refreshTrigger?: number;
 }
 
 // ─── Status badge styling ─────────────────────────────────────────────────────
@@ -37,7 +42,7 @@ const STATUS_STYLES: Record<string, string> = {
  * Ready to be registered in ClientProfileDashboard.tsx TABS array and
  * TAB_COMPONENTS map without touching any existing logic.
  */
-export default function TimelineWidget({ clientId }: TimelineTabProps) {
+export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTabProps) {
   const [events, setEvents]   = useState<ClientEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -110,7 +115,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
     return () => {
       isCancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, refreshTrigger]);
 
   // Wire shared actions and refresh hook
   const { actionLoadingId, handleComplete, handleCancel, handleDelete } = useEventActions({ onRefresh: fetchData });
@@ -231,6 +236,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
         {visibleEvents.map((event) => {
           const isExpanded = expandedIds.has(event.id);
           const isHighPriority = event.priority === "high";
+          const hasValidTitle = event.title && event.title.trim() !== "" && event.title !== "Timeline Note";
 
           return (
             <li key={event.id} className="relative">
@@ -243,22 +249,39 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
               />
 
               {/* Date stamp above card */}
-              {event.date && (
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
-                  {new Date(`${event.date}T${event.time ?? "00:00"}`).toLocaleDateString(
-                    undefined,
-                    { weekday: "short", year: "numeric", month: "short", day: "numeric" }
-                  )}
-                  {" · "}
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                      STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
-                    }`}
-                  >
-                    {statusLabel(event.status)}
-                  </span>
-                </p>
-              )}
+              {(() => {
+                let eventDateObj: Date | null = null;
+                if (event.date) {
+                  eventDateObj = new Date(`${event.date}T${event.time ?? "00:00"}`);
+                } else if (event.createdAt) {
+                  // Cast safely through unknown to check for Firestore Timestamp structure
+                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
+                  
+                  if (typeof createdAtObj.toDate === "function") {
+                    eventDateObj = createdAtObj.toDate();
+                  } else if (typeof createdAtObj.seconds === "number") {
+                    eventDateObj = new Date(createdAtObj.seconds * 1000);
+                  }
+                }
+                if (!eventDateObj) return null;
+
+                return (
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
+                    {eventDateObj.toLocaleDateString(
+                      undefined,
+                      { weekday: "short", year: "numeric", month: "short", day: "numeric" }
+                    )}
+                    {" · "}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                        STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+                      }`}
+                    >
+                      {statusLabel(event.status)}
+                    </span>
+                  </p>
+                );
+              })()}
 
               {/* ── Collapsible card shell ── */}
               <div className="overflow-hidden rounded-2xl border border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] transition hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]">
@@ -270,13 +293,27 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
                   aria-expanded={isExpanded}
                   className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
                 >
-                  <div className="flex min-w-0 flex-col gap-0.5">
+                  <div className="flex min-w-0 flex-col gap-0.5 w-full">
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6BB2A0]">
-                      Scheduled Meeting
+                      {event.type === "note" || event.status === "note" ? "Timeline Note" : "Scheduled Meeting"}
                     </p>
-                    <h3 className="mt-1 truncate text-base font-bold text-[#15383E]">
-                      {event.title}
-                    </h3>
+                    {event.type === "note" ? (
+                      hasValidTitle ? (
+                        <h3 className={`mt-1 text-base font-bold text-[#15383E] ${isExpanded ? "whitespace-normal" : "truncate"}`}>
+                          {event.title}
+                        </h3>
+                      ) : (
+                        !isExpanded ? (
+                          <h3 className="mt-1 truncate text-base font-normal text-slate-600">
+                            {event.content}
+                          </h3>
+                        ) : null
+                      )
+                    ) : (
+                      <h3 className={`mt-1 text-base font-bold text-[#15383E] ${isExpanded ? "whitespace-normal" : "truncate"}`}>
+                        {event.title}
+                      </h3>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
@@ -316,11 +353,16 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
                   </div>
                 </button>
 
-                {/* ── Collapsible body — full EventCard ── */}
+                {/* ── Collapsible body — full EventCard or Note ── */}
                 {isExpanded && (
-                  <div className="border-t border-[#D7E3D5] [&_article]:border-0 [&_article]:rounded-none [&_article>div:first-child]:hidden">
-                    <EventCard
-                      event={event}
+                  <div className={`border-t border-[#D7E3D5] ${event.type === "note" || event.status === "note" ? "" : "[&_article]:border-0 [&_article]:rounded-none [&_article>div:first-child]:hidden"}`}>
+                    {event.type === "note" || event.status === "note" ? (
+                      <p className="whitespace-pre-wrap p-5 text-sm leading-relaxed text-slate-700">
+                        {event.content}
+                      </p>
+                    ) : (
+                      <EventCard
+                        event={event}
                       isActionLoading={
                         actionLoadingId === event.id || isSavingMeetingSummary
                       }
@@ -350,6 +392,7 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
                         }
                       }}
                     />
+                    )}
                   </div>
                 )}
               </div>

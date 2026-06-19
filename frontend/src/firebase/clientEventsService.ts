@@ -1,8 +1,10 @@
 import {
+  addDoc,
   collection,
   getDocs,
   orderBy,
   query,
+  serverTimestamp,
   where,
 } from "firebase/firestore";
 
@@ -20,14 +22,18 @@ const EVENTS_COLLECTION = "events";
  */
 export interface ClientEvent {
   id: string;
+  /** Discriminates between a structured meeting and a freeform note. */
+  type?: "meeting" | "note";
   clientId: string | null;
   clientName?: string;
   title: string;
   date: string;
   time: string;
   notes?: string;
+  /** Body text for type:"note" events. */
+  content?: string;
   meetingSummary?: string;
-  status: "scheduled" | "completed" | "cancelled" | "deleted";
+  status: "scheduled" | "completed" | "cancelled" | "deleted" | "note";
   priority: "normal" | "high";
   reminderMode?: string;
   reminderOption?: string;
@@ -66,4 +72,36 @@ export async function getEventsByClientId(
     id: d.id,
     ...(d.data() as Omit<ClientEvent, "id">),
   }));
+}
+
+// ─── Note Ingestion (Tier 4) ──────────────────────────────────────────────────
+
+/**
+ * Writes a freeform text note to the "events" collection.
+ *
+ * Tier 4 responsibility: knows only about DB paths and raw payloads.
+ * Uses status:"note" so the document is naturally excluded from all
+ * meeting-specific read paths (getCalendarEvents, getMeetingRepositoryEvents,
+ * getEvents) while still appearing in getEventsByClientId used by TimelineWidget.
+ */
+export async function createNoteEvent(
+  clientId: string,
+  clientName: string,
+  content: string,
+  title?: string
+): Promise<string> {
+  const db = getFirestoreDb();
+
+  const docRef = await addDoc(collection(db, EVENTS_COLLECTION), {
+    type: "note",
+    clientId,
+    clientName,
+    title: title || "",   // default to empty string if not provided
+    content,
+    status: "note",            // bypasses all calendar/meeting filter endpoints
+    priority: "normal",
+    createdAt: serverTimestamp(),
+  });
+
+  return docRef.id;
 }
