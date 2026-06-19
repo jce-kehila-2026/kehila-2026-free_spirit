@@ -238,12 +238,9 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   if (visibleEvents.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-6 py-12 text-center">
-        <span className="text-4xl" role="img" aria-label="No activity">
-          🗂️
-        </span>
         <p className="text-base font-bold text-[#31585F]">No activity found</p>
         <p className="max-w-sm text-sm leading-6 text-[#607B80]">
-          Meetings and events scheduled for this client will appear here.
+          Notes and meetings scheduled for this client will appear here.
         </p>
       </div>
     );
@@ -254,7 +251,6 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
     <>
       <section aria-label="Client activity timeline">
       <header className="mb-5 flex items-baseline justify-between">
-        <h2 className="text-lg font-bold text-[#15383E]">Activity timeline</h2>
         <span className="rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#607B80]">
           {events.length} event{events.length !== 1 ? "s" : ""}
         </span>
