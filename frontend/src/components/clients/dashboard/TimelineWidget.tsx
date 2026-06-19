@@ -252,7 +252,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
       <section aria-label="Client activity timeline">
       <header className="mb-5 flex items-baseline justify-between">
         <span className="rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#607B80]">
-          {events.length} event{events.length !== 1 ? "s" : ""}
+          {visibleEvents.length} item{visibleEvents.length !== 1 ? "s" : ""}
         </span>
       </header>
 
@@ -296,16 +296,6 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                       undefined,
                       { weekday: "short", year: "numeric", month: "short", day: "numeric" }
                     )}
-                    {" · "}
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                        event.type === "note" || event.status === "note"
-                          ? "bg-[#DCEBEF] text-[#2C6975]"
-                          : (STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled)
-                      }`}
-                    >
-                      {event.type === "note" || event.status === "note" ? "Note" : "Meeting"}
-                    </span>
                   </p>
                 );
               })()}
@@ -321,8 +311,8 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                   className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
                 >
                   <div className="flex min-w-0 flex-col gap-0.5 w-full">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6BB2A0]">
-                      {event.type === "note" || event.status === "note" ? "Timeline Note" : "Scheduled Meeting"}
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#6BB2A0]">
+                      {event.type === "note" || event.status === "note" ? "Note" : "Scheduled Meeting"}
                     </p>
                     {event.type === "note" ? (
                       hasValidTitle ? (
