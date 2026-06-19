@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import EventCard from "@/components/Events/EventCard";
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
-import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, type ClientEvent } from "@/firebase/clientEventsService";
+import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, getEventSortKey, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
 import { IconPencil, IconArchive, IconRefresh } from "@/components/ui/Icons";
+import { getTodayString, resolveFirestoreDate, toLocalDateString, toLocalTimeString } from "@/utils/dateUtils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -52,10 +53,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
   const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
 
-  const todayStr = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  })();
+  const todayStr = getTodayString();
 
   // ── Note inline edit state ────────────────────────────────────────────────
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -213,27 +211,10 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
     );
   }
 
-  // Filter out deleted events from the main timeline view
+  // Filter out deleted events (also filtered in service; kept as a client-side guard)
   const visibleEvents = events.filter((e) => e.status !== "deleted");
 
-  const getEventTime = (e: ClientEvent) => {
-    if (e.date) {
-      return new Date(`${e.date}T${e.time || "00:00"}`).getTime();
-    }
-    if (e.createdAt) {
-      // Cast through unknown to verify properties explicitly
-      const createdAtObj = e.createdAt as unknown as { toDate?: () => Date; seconds?: number };
-      
-      if (typeof createdAtObj.toDate === "function") {
-        return createdAtObj.toDate().getTime();
-      } else if (typeof createdAtObj.seconds === "number") {
-        return createdAtObj.seconds * 1000;
-      }
-    }
-    return 0;
-  };
-
-  const sortedEvents = [...visibleEvents].sort((a, b) => getEventTime(b) - getEventTime(a));
+  const sortedEvents = [...visibleEvents].sort((a, b) => getEventSortKey(b) - getEventSortKey(a));
 
   if (visibleEvents.length === 0) {
     return (
@@ -290,15 +271,8 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                 let eventDateObj: Date | null = null;
                 if (event.date) {
                   eventDateObj = new Date(`${event.date}T${event.time ?? "00:00"}`);
-                } else if (event.createdAt) {
-                  // Cast safely through unknown to check for Firestore Timestamp structure
-                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
-                  
-                  if (typeof createdAtObj.toDate === "function") {
-                    eventDateObj = createdAtObj.toDate();
-                  } else if (typeof createdAtObj.seconds === "number") {
-                    eventDateObj = new Date(createdAtObj.seconds * 1000);
-                  }
+                } else {
+                  eventDateObj = resolveFirestoreDate(event.createdAt);
                 }
                 if (!eventDateObj) return null;
 
@@ -512,49 +486,20 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                                 setEditingNoteId(event.id);
                                 setEditNoteTitle(event.title || "");
                                 setEditNoteContent(event.content || "");
-                                
-                                let dateVal = "";
-                                if (event.date) {
-                                  dateVal = event.date;
-                                } else if (event.createdAt) {
-                                  let dateObj: Date | null = null;
-                                  // Cast through unknown to verify properties explicitly
-                                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
 
-                                  if (typeof createdAtObj.toDate === "function") {
-                                    dateObj = createdAtObj.toDate();
-                                  } else if (typeof createdAtObj.seconds === "number") {
-                                    dateObj = new Date(createdAtObj.seconds * 1000);
-                                  }
-                                  
-                                  if (dateObj) {
-                                    const offset = dateObj.getTimezoneOffset();
-                                    const localDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
-                                    dateVal = localDate.toISOString().split("T")[0];
-                                  }
-                                }
+                                // Resolve the note's date for the edit form
+                                let dateVal = event.date || "";
                                 if (!dateVal) {
-                                  const d = new Date();
-                                  const offset = d.getTimezoneOffset();
-                                  const localDate = new Date(d.getTime() - (offset * 60 * 1000));
-                                  dateVal = localDate.toISOString().split("T")[0];
+                                  const resolved = resolveFirestoreDate(event.createdAt);
+                                  dateVal = resolved ? toLocalDateString(resolved) : getTodayString();
                                 }
                                 setEditNoteDate(dateVal);
 
+                                // Resolve the note's time for the edit form
                                 let timeVal = event.time || "";
-                                if (!timeVal && event.createdAt) {
-                                  let dateObj: Date | null = null;
-                                  // Cast through unknown to verify properties explicitly
-                                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
-
-                                  if (typeof createdAtObj.toDate === "function") {
-                                    dateObj = createdAtObj.toDate();
-                                  } else if (typeof createdAtObj.seconds === "number") {
-                                    dateObj = new Date(createdAtObj.seconds * 1000);
-                                  }
-                                  if (dateObj) {
-                                    timeVal = `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
-                                  }
+                                if (!timeVal) {
+                                  const resolved = resolveFirestoreDate(event.createdAt);
+                                  timeVal = resolved ? toLocalTimeString(resolved) : "";
                                 }
                                 setEditNoteTime(timeVal);
                               }}

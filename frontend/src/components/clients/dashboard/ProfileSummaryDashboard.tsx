@@ -6,6 +6,7 @@ import { IconCheck } from "@/components/ui/Icons";
 import TimelineWidget from "@/components/clients/dashboard/TimelineWidget";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { createNoteEvent } from "@/firebase/clientEventsService";
+import { getTodayString, getCurrentTimeString } from "@/utils/dateUtils";
 
 // Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
@@ -23,15 +24,8 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
-  const todayStr = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  })();
-
-  const currentTimeStr = (() => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  })();
+  const todayStr = getTodayString();
+  const currentTimeStr = getCurrentTimeString();
 
   // ── Note entry state ─────────────────────────────────────────────────────
   const [noteTitle, setNoteTitle] = useState("");

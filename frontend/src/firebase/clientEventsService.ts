@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { getFirestoreDb } from "@/firebase/clientDbService";
+import { resolveFirestoreDate } from "@/utils/dateUtils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -77,8 +78,27 @@ export async function getEventsByClientId(
       id: d.id,
       ...(d.data() as Omit<ClientEvent, "id">),
     }))
-    // Filter out archived notes locally to avoid needing a composite Firestore index
-    .filter((e) => e.archived !== true);
+    // Filter out archived and deleted records locally to avoid needing
+    // additional composite Firestore indexes.
+    .filter((e) => e.archived !== true && e.status !== "deleted");
+}
+
+// ─── Sort Key (Tier 4 utility) ───────────────────────────────────────────────
+
+/**
+ * Returns a Unix timestamp (ms) for chronological sorting of a ClientEvent.
+ *
+ * Priority order:
+ *  1. event.date + event.time fields (set explicitly by the manager)
+ *  2. createdAt Firestore timestamp (fallback for legacy records)
+ *  3. 0 — floats undatable records to the bottom
+ */
+export function getEventSortKey(event: ClientEvent): number {
+  if (event.date) {
+    return new Date(`${event.date}T${event.time || "00:00"}`).getTime();
+  }
+  const resolved = resolveFirestoreDate(event.createdAt);
+  return resolved ? resolved.getTime() : 0;
 }
 
 // ─── Note Ingestion (Tier 4) ──────────────────────────────────────────────────
