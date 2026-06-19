@@ -182,7 +182,10 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
               <ScheduleMeetingForm
                 clientId={client.id}
                 clientName={`${client.first_name} ${client.last_name}`}
-                onClose={() => setIsMeetingModalOpen(false)}
+                onClose={() => {
+                  setIsMeetingModalOpen(false);
+                  setTimelineRefreshKey((k) => k + 1);
+                }}
               />
             </div>
           </div>

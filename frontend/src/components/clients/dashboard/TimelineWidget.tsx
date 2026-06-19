@@ -6,7 +6,7 @@ import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
-import { IconPencil, IconArchive } from "@/components/ui/Icons";
+import { IconPencil, IconArchive, IconRefresh } from "@/components/ui/Icons";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -250,10 +250,22 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   return (
     <>
       <section aria-label="Client activity timeline">
-      <header className="mb-5 flex items-baseline justify-between">
+      <header className="mb-5 flex items-center justify-between">
         <span className="rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#607B80]">
           {visibleEvents.length} item{visibleEvents.length !== 1 ? "s" : ""}
         </span>
+        <button
+          type="button"
+          onClick={() => { void fetchData(); }}
+          disabled={loading}
+          aria-label="Refresh timeline"
+          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold text-[#6A8589] transition hover:bg-[#EEF4EC] hover:text-[#2C6975] disabled:cursor-not-allowed disabled:opacity-50 ${
+            loading ? "animate-pulse" : ""
+          }`}
+        >
+          <IconRefresh className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          {loading ? "Refreshing..." : "Refresh"}
+        </button>
       </header>
 
       {/* Timeline spine */}
