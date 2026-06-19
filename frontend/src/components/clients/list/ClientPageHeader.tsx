@@ -22,9 +22,6 @@ export default function ClientPageHeader({
     <header className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] px-5 py-6 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-8 sm:py-8">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">
-            Participant operations
-          </p>
           <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
             {view === "list"
               ? "Client management"
@@ -32,11 +29,6 @@ export default function ClientPageHeader({
                 ? "Edit client"
                 : "New client"}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-            {view === "list"
-              ? "Review participant records, follow onboarding progress, and open the details that need attention."
-              : "Keep core participant information accurate and ready for the onboarding team."}
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
