@@ -7,6 +7,41 @@ import {
 } from "@/firebase/notificationsService";
 import { getEventById } from "@/firebase/eventsService";
 
+function cleanReminderMessage(message) {
+  if (typeof message !== "string") return "";
+
+  return message.replace(/^Reminder:\s*/i, "").trim();
+}
+
+function formatDateTime(value) {
+  if (!value) return null;
+
+  const dateTime = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dateTime.getTime())) return null;
+
+  const date = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(dateTime);
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(dateTime);
+
+  return date + " at " + time;
+}
+
+function formatMeetingSchedule(value) {
+  const formattedDateTime = formatDateTime(value);
+  return formattedDateTime ? "Scheduled for " + formattedDateTime : null;
+}
+
+function formatReminderTime(value) {
+  const formattedDateTime = formatDateTime(value);
+  return formattedDateTime ? "Reminder time: " + formattedDateTime : null;
+}
+
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -33,22 +68,36 @@ export default function NotificationBell() {
 
       const now = new Date();
 
-      const actionable = due.filter((notification) => {
+      const actionable = due.flatMap((notification) => {
         const ev = eventsById[notification.eventId];
 
-        if (!ev) return false;
-        if (ev.status !== "scheduled") return false;
-        if (!ev.date || !ev.time) return false;
+        if (!ev) return [];
+        if (ev.status !== "scheduled") return [];
+        if (!ev.date || !ev.time) return [];
 
-        const eventDateTime = new Date(`${ev.date}T${ev.time}`);
-        if (Number.isNaN(eventDateTime.getTime())) return false;
+        const eventDateTime = new Date(ev.date + "T" + ev.time);
+        if (Number.isNaN(eventDateTime.getTime())) return [];
 
         // only show reminders for meetings that have not yet passed
-        if (eventDateTime < now) return false;
+        if (eventDateTime < now) return [];
 
-        return true;
+        const displayClientName =
+          ev.clientName?.trim() || notification.clientName?.trim() || "";
+        const displayTitle =
+          ev.title?.trim() ||
+          displayClientName ||
+          cleanReminderMessage(notification.message) ||
+          "Meeting";
+
+        return [
+          {
+            ...notification,
+            displayTitle,
+            displayClientName,
+            displayMeetingDateTime: eventDateTime,
+          },
+        ];
       });
-
       setNotifications(actionable);
     } catch (error) {
       console.error("Failed to load reminders:", error);
@@ -111,7 +160,7 @@ export default function NotificationBell() {
       {isOpen && (
         <div className="absolute right-0 z-50 mt-3 w-80 rounded-3xl bg-white p-4 shadow-xl ring-1 ring-slate-200">
           <h3 className="mb-3 text-sm font-black text-slate-900">
-            Upcoming Reminders
+            Meeting reminders
           </h3>
 
           {notifications.length === 0 ? (
@@ -123,16 +172,26 @@ export default function NotificationBell() {
                   key={notification.id}
                   className="rounded-2xl bg-slate-50 p-3"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">
-                        {notification.message || "Meeting reminder"}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                        Meeting reminder
+                      </p>
+                      <p className="mt-1 break-words text-sm font-bold text-slate-900">
+                        {notification.displayTitle}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {notification.scheduledFor
-                          ? new Date(notification.scheduledFor).toLocaleString()
-                          : "No time set"}
+                      {notification.displayClientName &&
+                        notification.displayClientName !== notification.displayTitle && (
+                          <p className="mt-0.5 truncate text-xs text-slate-600">
+                            {notification.displayClientName}
+                          </p>
+                        )}
+
+                      <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                        {formatMeetingSchedule(notification.displayMeetingDateTime) ||
+                          formatReminderTime(notification.scheduledFor) ||
+                          "Meeting time unavailable"}
                       </p>
                     </div>
 
