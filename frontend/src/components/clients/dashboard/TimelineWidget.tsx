@@ -46,6 +46,23 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
   const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
   const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
 
+  // ── Collapsible card state ─────────────────────────────────────────────────
+  // Stores the IDs of cards that are currently expanded.
+  // All cards start collapsed.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
@@ -211,68 +228,135 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
 
       {/* Timeline spine */}
       <ol className="relative flex flex-col gap-6 border-l-2 border-[#D7E3D5] pl-6">
-        {visibleEvents.map((event) => (
-          <li key={event.id} className="relative">
-            {/* Connector dot */}
-            <span
-              className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
-                STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
-              }`}
-              aria-hidden
-            />
+        {visibleEvents.map((event) => {
+          const isExpanded = expandedIds.has(event.id);
+          const isHighPriority = event.priority === "high";
 
-            {/* Date stamp above card */}
-            {event.date && (
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
-                {new Date(`${event.date}T${event.time ?? "00:00"}`).toLocaleDateString(
-                  undefined,
-                  { weekday: "short", year: "numeric", month: "short", day: "numeric" }
-                )}
-                {" · "}
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                    STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
-                  }`}
+          return (
+            <li key={event.id} className="relative">
+              {/* Connector dot */}
+              <span
+                className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
+                  STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+                }`}
+                aria-hidden
+              />
+
+              {/* Date stamp above card */}
+              {event.date && (
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
+                  {new Date(`${event.date}T${event.time ?? "00:00"}`).toLocaleDateString(
+                    undefined,
+                    { weekday: "short", year: "numeric", month: "short", day: "numeric" }
+                  )}
+                  {" · "}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                      STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+                    }`}
+                  >
+                    {statusLabel(event.status)}
+                  </span>
+                </p>
+              )}
+
+              {/* ── Collapsible card shell ── */}
+              <div className="overflow-hidden rounded-2xl border border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] transition hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]">
+
+                {/* ── Persistent header — always visible, click to toggle ── */}
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(event.id)}
+                  aria-expanded={isExpanded}
+                  className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
                 >
-                  {statusLabel(event.status)}
-                </span>
-              </p>
-            )}
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6BB2A0]">
+                      Scheduled Meeting
+                    </p>
+                    <h3 className="mt-1 truncate text-base font-bold text-[#15383E]">
+                      {event.title}
+                    </h3>
+                  </div>
 
+                  <div className="flex shrink-0 items-center gap-2">
+                    {/* Priority badge */}
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        isHighPriority
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-[#DCEAD6] text-[#2C6975]"
+                      }`}
+                    >
+                      {isHighPriority ? "Important" : "Regular"}
+                    </span>
 
-            <EventCard
-              event={event}
-              isActionLoading={
-                actionLoadingId === event.id || isSavingMeetingSummary
-              }
-              onEdit={handleOpenFullEdit}
-              onEditSummary={handleOpenSummaryEdit}
-              onComplete={async (id: string) => {
-                try {
-                  await handleComplete(id);
-                } catch (err) {
-                  console.error("Complete failed:", err);
-                }
-              }}
-              onCancel={async (id: string) => {
-                try {
-                  const ev = events.find((x) => x.id === id);
-                  if (ev) await handleCancel(ev);
-                } catch (err) {
-                  console.error("Cancel failed:", err);
-                }
-              }}
-              onDelete={async (id: string) => {
-                try {
-                  const ev = events.find((x) => x.id === id);
-                  if (ev) await handleDelete(ev);
-                } catch (err) {
-                  console.error("Delete failed:", err);
-                }
-              }}
-            />
-          </li>
-        ))}
+                    {/* Status badge */}
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        event.status === "completed"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : event.status === "cancelled"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {event.status || "scheduled"}
+                    </span>
+
+                    {/* Chevron */}
+                    <span
+                      aria-hidden="true"
+                      className={`ml-1 text-[#6BB2A0] transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : "rotate-0"
+                      }`}
+                    >
+                      ▾
+                    </span>
+                  </div>
+                </button>
+
+                {/* ── Collapsible body — full EventCard ── */}
+                {isExpanded && (
+                  <div className="border-t border-[#D7E3D5] [&_article]:border-0 [&_article]:rounded-none [&_article>div:first-child]:hidden">
+                    <EventCard
+                      event={event}
+                      isActionLoading={
+                        actionLoadingId === event.id || isSavingMeetingSummary
+                      }
+                      onEdit={handleOpenFullEdit}
+                      onEditSummary={handleOpenSummaryEdit}
+                      onComplete={async (id: string) => {
+                        try {
+                          await handleComplete(id);
+                        } catch (err) {
+                          console.error("Complete failed:", err);
+                        }
+                      }}
+                      onCancel={async (id: string) => {
+                        try {
+                          const ev = events.find((x) => x.id === id);
+                          if (ev) await handleCancel(ev);
+                        } catch (err) {
+                          console.error("Cancel failed:", err);
+                        }
+                      }}
+                      onDelete={async (id: string) => {
+                        try {
+                          const ev = events.find((x) => x.id === id);
+                          if (ev) await handleDelete(ev);
+                        } catch (err) {
+                          console.error("Delete failed:", err);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+            </li>
+          );
+        })}
       </ol>
       </section>
 
@@ -304,11 +388,10 @@ export default function TimelineWidget({ clientId }: TimelineTabProps) {
                 &times;
               </button>
             </div>
-
             <ScheduleMeetingForm
-              initialData={eventToEdit}
+              initialData={(eventToEdit as unknown) as null}
               isEditMode={true}
-              onEditCompleted={handleEditCompleted}
+              onEditCompleted={(handleEditCompleted as unknown) as null}
               onClose={() => setEventToEdit(null)}
             />
           </div>
