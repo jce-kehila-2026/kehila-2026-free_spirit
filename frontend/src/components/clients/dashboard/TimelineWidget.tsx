@@ -51,10 +51,17 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
   const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
 
+  const todayStr = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  })();
+
   // ── Note inline edit state ────────────────────────────────────────────────
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editNoteTitle, setEditNoteTitle] = useState("");
   const [editNoteContent, setEditNoteContent] = useState("");
+  const [editNoteDate, setEditNoteDate] = useState("");
+  const [editNoteTime, setEditNoteTime] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
 
   // ── Collapsible card state ─────────────────────────────────────────────────
@@ -207,6 +214,25 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   // Filter out deleted events from the main timeline view
   const visibleEvents = events.filter((e) => e.status !== "deleted");
 
+  const getEventTime = (e: ClientEvent) => {
+    if (e.date) {
+      return new Date(`${e.date}T${e.time || "00:00"}`).getTime();
+    }
+    if (e.createdAt) {
+      // Cast through unknown to verify properties explicitly
+      const createdAtObj = e.createdAt as unknown as { toDate?: () => Date; seconds?: number };
+      
+      if (typeof createdAtObj.toDate === "function") {
+        return createdAtObj.toDate().getTime();
+      } else if (typeof createdAtObj.seconds === "number") {
+        return createdAtObj.seconds * 1000;
+      }
+    }
+    return 0;
+  };
+
+  const sortedEvents = [...visibleEvents].sort((a, b) => getEventTime(b) - getEventTime(a));
+
   if (visibleEvents.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-6 py-12 text-center">
@@ -234,7 +260,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
 
       {/* Timeline spine */}
       <ol className="relative flex flex-col gap-6 border-l-2 border-[#D7E3D5] pl-6">
-        {visibleEvents.map((event) => {
+        {sortedEvents.map((event) => {
           const isExpanded = expandedIds.has(event.id);
           const isHighPriority = event.priority === "high";
           const hasValidTitle = event.title && event.title.trim() !== "" && event.title !== "Timeline Note";
@@ -366,18 +392,45 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                     {event.type === "note" || event.status === "note" ? (
                       editingNoteId === event.id ? (
                         <div className="p-5 flex flex-col gap-3 bg-[#F8FAF6]">
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-[#527078]">
-                              Title (Optional)
-                            </label>
-                            <input
-                              type="text"
-                              value={editNoteTitle}
-                              onChange={(e) => setEditNoteTitle(e.target.value)}
-                              disabled={isSavingNote}
-                              className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                              placeholder="e.g. Call notes..."
-                            />
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="mb-1 block text-xs font-bold text-[#527078]">
+                                Title (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={editNoteTitle}
+                                onChange={(e) => setEditNoteTitle(e.target.value)}
+                                disabled={isSavingNote}
+                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                                placeholder="e.g. Call notes..."
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-bold text-[#527078]">
+                                Date
+                              </label>
+                              <input
+                                type="date"
+                                value={editNoteDate}
+                                onChange={(e) => setEditNoteDate(e.target.value)}
+                                max={todayStr}
+                                disabled={isSavingNote}
+                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-bold text-[#527078]">
+                                Time
+                              </label>
+                              <input
+                                type="time"
+                                value={editNoteTime}
+                                onChange={(e) => setEditNoteTime(e.target.value)}
+                                disabled={isSavingNote}
+                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                              />
+                            </div>
                           </div>
                           <div>
                             <label className="mb-1 block text-xs font-bold text-[#527078]">
@@ -405,9 +458,13 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                               type="button"
                               onClick={async () => {
                                 if (!editNoteContent.trim() || isSavingNote) return;
+                                if (editNoteDate > todayStr) {
+                                  alert("You cannot log a note for a future date.");
+                                  return;
+                                }
                                 try {
                                   setIsSavingNote(true);
-                                  await updateNoteEvent(event.id, editNoteTitle.trim(), editNoteContent.trim());
+                                  await updateNoteEvent(event.id, editNoteTitle.trim(), editNoteContent.trim(), editNoteDate, editNoteTime);
                                   setEditingNoteId(null);
                                   await fetchData();
                                 } catch (err) {
@@ -435,6 +492,51 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                                 setEditingNoteId(event.id);
                                 setEditNoteTitle(event.title || "");
                                 setEditNoteContent(event.content || "");
+                                
+                                let dateVal = "";
+                                if (event.date) {
+                                  dateVal = event.date;
+                                } else if (event.createdAt) {
+                                  let dateObj: Date | null = null;
+                                  // Cast through unknown to verify properties explicitly
+                                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
+
+                                  if (typeof createdAtObj.toDate === "function") {
+                                    dateObj = createdAtObj.toDate();
+                                  } else if (typeof createdAtObj.seconds === "number") {
+                                    dateObj = new Date(createdAtObj.seconds * 1000);
+                                  }
+                                  
+                                  if (dateObj) {
+                                    const offset = dateObj.getTimezoneOffset();
+                                    const localDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
+                                    dateVal = localDate.toISOString().split("T")[0];
+                                  }
+                                }
+                                if (!dateVal) {
+                                  const d = new Date();
+                                  const offset = d.getTimezoneOffset();
+                                  const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+                                  dateVal = localDate.toISOString().split("T")[0];
+                                }
+                                setEditNoteDate(dateVal);
+
+                                let timeVal = event.time || "";
+                                if (!timeVal && event.createdAt) {
+                                  let dateObj: Date | null = null;
+                                  // Cast through unknown to verify properties explicitly
+                                  const createdAtObj = event.createdAt as unknown as { toDate?: () => Date; seconds?: number };
+
+                                  if (typeof createdAtObj.toDate === "function") {
+                                    dateObj = createdAtObj.toDate();
+                                  } else if (typeof createdAtObj.seconds === "number") {
+                                    dateObj = new Date(createdAtObj.seconds * 1000);
+                                  }
+                                  if (dateObj) {
+                                    timeVal = `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+                                  }
+                                }
+                                setEditNoteTime(timeVal);
                               }}
                               className="text-xs font-bold text-[#2C6975] hover:text-[#1F4E56] transition"
                             >

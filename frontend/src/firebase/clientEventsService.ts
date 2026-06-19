@@ -90,7 +90,9 @@ export async function createNoteEvent(
   clientId: string,
   clientName: string,
   content: string,
-  title?: string
+  title?: string,
+  customDate?: string,
+  customTime?: string
 ): Promise<string> {
   const db = getFirestoreDb();
 
@@ -100,6 +102,8 @@ export async function createNoteEvent(
     clientName,
     title: title || "",   // default to empty string if not provided
     content,
+    date: customDate || "",
+    time: customTime || "",
     status: "note",            // bypasses all calendar/meeting filter endpoints
     priority: "normal",
     createdAt: serverTimestamp(),
@@ -116,13 +120,17 @@ export async function createNoteEvent(
 export async function updateNoteEvent(
   eventId: string,
   title: string,
-  content: string
+  content: string,
+  customDate?: string,
+  customTime?: string
 ): Promise<void> {
   const db = getFirestoreDb();
   const docRef = doc(db, EVENTS_COLLECTION, eventId);
   await updateDoc(docRef, {
     title,
     content,
+    date: customDate || "",
+    time: customTime || "",
     updatedAt: serverTimestamp(),
   });
 }

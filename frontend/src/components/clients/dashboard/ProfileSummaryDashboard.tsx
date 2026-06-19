@@ -22,10 +22,22 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
   // ── UI State (Tier 1) ────────────────────────────────────────────────────────
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 
+  const todayStr = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  })();
+
+  const currentTimeStr = (() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  })();
+
   // ── Note entry state ─────────────────────────────────────────────────────
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [noteDate, setNoteDate] = useState(todayStr);
+  const [noteTime, setNoteTime] = useState(currentTimeStr);
   const [isSavingNote, setIsSavingNote] = useState(false);
 
   // Incrementing this prop triggers a data refetch in TimelineWidget
@@ -37,13 +49,20 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
     const trimmedContent = noteContent.trim();
     if (!trimmedContent) return;
 
+    if (noteDate > todayStr) {
+      alert("You cannot log a note for a future date.");
+      return;
+    }
+
     setIsSavingNote(true);
     try {
       const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
-      await createNoteEvent(client.id, clientName, trimmedContent, noteTitle.trim());
+      await createNoteEvent(client.id, clientName, trimmedContent, noteTitle.trim(), noteDate, noteTime);
       // Close the form and clear draft
       setNoteContent("");
       setNoteTitle("");
+      setNoteDate(todayStr);
+      setNoteTime(currentTimeStr);
       setIsAddingNote(false);
       // Trigger TimelineWidget refetch
       setTimelineRefreshKey((k) => k + 1);
@@ -58,6 +77,8 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
     setIsAddingNote(false);
     setNoteContent("");
     setNoteTitle("");
+    setNoteDate(todayStr);
+    setNoteTime(currentTimeStr);
   }
 
   if (!client) return null;
@@ -102,18 +123,45 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
               <p className="mb-2.5 text-xs font-bold uppercase tracking-[0.15em] text-[#6A8589]">
                 New Note
               </p>
-              <div className="mb-3">
-                <label className="mb-1 block text-xs font-bold text-[#527078]">
-                  Title (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={noteTitle}
-                  onChange={(e) => setNoteTitle(e.target.value)}
-                  placeholder="e.g. Follow-up notes, Call notes..."
-                  disabled={isSavingNote}
-                  className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#527078]">
+                    Title (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    placeholder="e.g. Follow-up notes, Call notes..."
+                    disabled={isSavingNote}
+                    className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#527078]">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={noteDate}
+                    onChange={(e) => setNoteDate(e.target.value)}
+                    max={todayStr}
+                    disabled={isSavingNote}
+                    className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#527078]">
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    value={noteTime}
+                    onChange={(e) => setNoteTime(e.target.value)}
+                    disabled={isSavingNote}
+                    className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                  />
+                </div>
               </div>
               <textarea
                 value={noteContent}
