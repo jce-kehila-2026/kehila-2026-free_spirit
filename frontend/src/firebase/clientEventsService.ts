@@ -1,10 +1,12 @@
 import {
   addDoc,
   collection,
+  doc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 
@@ -104,4 +106,23 @@ export async function createNoteEvent(
   });
 
   return docRef.id;
+}
+
+/**
+ * Updates an existing freeform text note in the "events" collection.
+ *
+ * Tier 4 responsibility: knows only about DB paths and raw payloads.
+ */
+export async function updateNoteEvent(
+  eventId: string,
+  title: string,
+  content: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, EVENTS_COLLECTION, eventId);
+  await updateDoc(docRef, {
+    title,
+    content,
+    updatedAt: serverTimestamp(),
+  });
 }

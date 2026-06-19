@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import EventCard from "@/components/Events/EventCard";
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
-import { getEventsByClientId, type ClientEvent } from "@/firebase/clientEventsService";
+import { getEventsByClientId, updateNoteEvent, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
 
@@ -50,6 +50,12 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   const [summaryEvent, setSummaryEvent] = useState<ClientEvent | null>(null);
   const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
   const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
+
+  // ── Note inline edit state ────────────────────────────────────────────────
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteTitle, setEditNoteTitle] = useState("");
+  const [editNoteContent, setEditNoteContent] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   // ── Collapsible card state ─────────────────────────────────────────────────
   // Stores the IDs of cards that are currently expanded.
@@ -216,11 +222,6 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   }
 
   // ── Main timeline list ─────────────────────────────────────────────────────
-
-  // Visible statuses to show in the header strip above each card.
-  const statusLabel = (status: string) =>
-    STATUS_STYLES[status] ? status : "scheduled";
-
   return (
     <>
       <section aria-label="Client activity timeline">
@@ -274,10 +275,12 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                     {" · "}
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                        STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+                        event.type === "note" || event.status === "note"
+                          ? "bg-[#DCEBEF] text-[#2C6975]"
+                          : (STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled)
                       }`}
                     >
-                      {statusLabel(event.status)}
+                      {event.type === "note" || event.status === "note" ? "Note" : "Meeting"}
                     </span>
                   </p>
                 );
@@ -317,29 +320,33 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    {/* Priority badge */}
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        isHighPriority
-                          ? "bg-rose-100 text-rose-700"
-                          : "bg-[#DCEAD6] text-[#2C6975]"
-                      }`}
-                    >
-                      {isHighPriority ? "Important" : "Regular"}
-                    </span>
+                    {event.type !== "note" && event.status !== "note" && (
+                      <>
+                        {/* Priority badge */}
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            isHighPriority
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-[#DCEAD6] text-[#2C6975]"
+                          }`}
+                        >
+                          {isHighPriority ? "Important" : "Regular"}
+                        </span>
 
-                    {/* Status badge */}
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        event.status === "completed"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : event.status === "cancelled"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {event.status || "scheduled"}
-                    </span>
+                        {/* Status badge */}
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            event.status === "completed"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : event.status === "cancelled"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {event.status || "scheduled"}
+                        </span>
+                      </>
+                    )}
 
                     {/* Chevron */}
                     <span
@@ -357,9 +364,85 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                 {isExpanded && (
                   <div className={`border-t border-[#D7E3D5] ${event.type === "note" || event.status === "note" ? "" : "[&_article]:border-0 [&_article]:rounded-none [&_article>div:first-child]:hidden"}`}>
                     {event.type === "note" || event.status === "note" ? (
-                      <p className="whitespace-pre-wrap p-5 text-sm leading-relaxed text-slate-700">
-                        {event.content}
-                      </p>
+                      editingNoteId === event.id ? (
+                        <div className="p-5 flex flex-col gap-3 bg-[#F8FAF6]">
+                          <div>
+                            <label className="mb-1 block text-xs font-bold text-[#527078]">
+                              Title (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={editNoteTitle}
+                              onChange={(e) => setEditNoteTitle(e.target.value)}
+                              disabled={isSavingNote}
+                              className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                              placeholder="e.g. Call notes..."
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-bold text-[#527078]">
+                              Content
+                            </label>
+                            <textarea
+                              value={editNoteContent}
+                              onChange={(e) => setEditNoteContent(e.target.value)}
+                              disabled={isSavingNote}
+                              rows={4}
+                              className="w-full resize-y rounded-xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+                              placeholder="Paste a message or write a client update here..."
+                            />
+                          </div>
+                          <div className="flex items-center justify-end gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingNoteId(null)}
+                              disabled={isSavingNote}
+                              className="rounded-full border border-[#BFD0CA] bg-white px-4 py-1.5 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!editNoteContent.trim() || isSavingNote) return;
+                                try {
+                                  setIsSavingNote(true);
+                                  await updateNoteEvent(event.id, editNoteTitle.trim(), editNoteContent.trim());
+                                  setEditingNoteId(null);
+                                  await fetchData();
+                                } catch (err) {
+                                  console.error("Failed to update note event:", err);
+                                } finally {
+                                  setIsSavingNote(false);
+                                }
+                              }}
+                              disabled={!editNoteContent.trim() || isSavingNote}
+                              className="rounded-full bg-[#2C6975] px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isSavingNote ? "Saving..." : "Save"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-5">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                            {event.content}
+                          </p>
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingNoteId(event.id);
+                                setEditNoteTitle(event.title || "");
+                                setEditNoteContent(event.content || "");
+                              }}
+                              className="text-xs font-bold text-[#2C6975] hover:text-[#1F4E56] transition"
+                            >
+                              ✎ Edit Note
+                            </button>
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <EventCard
                         event={event}
