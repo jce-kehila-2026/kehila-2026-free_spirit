@@ -8,7 +8,6 @@ interface AdvancedSettingsProps {
 export default function AdvancedSettings({ isArchived, onArchiveTrigger }: AdvancedSettingsProps) {
   return (
     <section className="mt-6 border-t border-[#D7E3D5] pt-6">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8A6822]">Record controls</p>
       <h2 className="mt-1 text-lg font-bold text-[#15383E]">Advanced settings</h2>
       <div className="mt-4 flex flex-col gap-4 rounded-[1.5rem] border border-[#E8D6D1] bg-[#FFF9F7] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
