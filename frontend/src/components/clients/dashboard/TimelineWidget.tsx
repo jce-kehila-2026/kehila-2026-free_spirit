@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import EventCard from "@/components/Events/EventCard";
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
-import { getEventsByClientId, updateNoteEvent, type ClientEvent } from "@/firebase/clientEventsService";
+import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
+import { IconPencil, IconArchive } from "@/components/ui/Icons";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   const [editNoteDate, setEditNoteDate] = useState("");
   const [editNoteTime, setEditNoteTime] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [archivingNoteId, setArchivingNoteId] = useState<string | null>(null);
 
   // ── Collapsible card state ─────────────────────────────────────────────────
   // Stores the IDs of cards that are currently expanded.
@@ -485,7 +487,27 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
                             {event.content}
                           </p>
-                          <div className="mt-3 flex justify-end">
+                          <div className="mt-3 flex items-center justify-end gap-4">
+                            <button
+                              type="button"
+                              disabled={archivingNoteId === event.id}
+                              onClick={async () => {
+                                if (!window.confirm("Are you sure you want to archive this note?")) return;
+                                try {
+                                  setArchivingNoteId(event.id);
+                                  await archiveNoteEvent(event.id);
+                                  await fetchData();
+                                } catch (err) {
+                                  console.error("Failed to archive note:", err);
+                                } finally {
+                                  setArchivingNoteId(null);
+                                }
+                              }}
+                              className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <IconArchive className="h-3.5 w-3.5" />
+                              {archivingNoteId === event.id ? "Archiving..." : "Archive"}
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -538,9 +560,10 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                                 }
                                 setEditNoteTime(timeVal);
                               }}
-                              className="text-xs font-bold text-[#2C6975] hover:text-[#1F4E56] transition"
+                              className="flex items-center gap-1 text-xs font-medium text-[#2C6975] hover:text-[#1F4E56] transition"
                             >
-                              ✎ Edit Note
+                              <IconPencil className="h-3.5 w-3.5" />
+                              Edit
                             </button>
                           </div>
                         </div>

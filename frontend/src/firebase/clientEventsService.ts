@@ -43,6 +43,8 @@ export interface ClientEvent {
   calendarSyncLabel?: string;
   createdAt?: { seconds: number; nanoseconds: number } | null;
   updatedAt?: { seconds: number; nanoseconds: number } | null;
+  /** When true, the note has been soft-deleted and should not appear in the timeline. */
+  archived?: boolean;
 }
 
 // ─── Query ────────────────────────────────────────────────────────────────────
@@ -70,10 +72,13 @@ export async function getEventsByClientId(
 
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<ClientEvent, "id">),
-  }));
+  return snapshot.docs
+    .map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<ClientEvent, "id">),
+    }))
+    // Filter out archived notes locally to avoid needing a composite Firestore index
+    .filter((e) => e.archived !== true);
 }
 
 // ─── Note Ingestion (Tier 4) ──────────────────────────────────────────────────
@@ -131,6 +136,22 @@ export async function updateNoteEvent(
     content,
     date: customDate || "",
     time: customTime || "",
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Soft-deletes a freeform text note by setting archived:true.
+ *
+ * Tier 4 responsibility: knows only about DB paths and raw payloads.
+ * Archived notes are filtered out by getEventsByClientId so they
+ * disappear from the timeline without destroying historical data.
+ */
+export async function archiveNoteEvent(eventId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, EVENTS_COLLECTION, eventId);
+  await updateDoc(docRef, {
+    archived: true,
     updatedAt: serverTimestamp(),
   });
 }
