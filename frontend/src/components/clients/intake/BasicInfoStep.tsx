@@ -3,25 +3,18 @@
 import { useFormContext } from "react-hook-form";
 import type { ClientFormInput } from "@/schema/clientSchema";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
-interface BasicInfoStepProps {
-  /** Called when the user clicks "Save as Interested". */
-  onSaveAsInterested: () => Promise<void>;
-  /** Called when the user clicks "Continue Registration". */
-  onContinueRegistration: () => Promise<void>;
-}
-
 // ─── Reusable field wrapper ───────────────────────────────────────────────────
 
 function FieldWrapper({
   label,
   htmlFor,
+  required = false,
   error,
   children,
 }: {
   label: string;
   htmlFor: string;
+  required?: boolean;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -32,9 +25,11 @@ function FieldWrapper({
         className="text-sm font-semibold text-slate-700"
       >
         {label}
-        <span className="ml-1 text-red-500" aria-hidden="true">
-          *
-        </span>
+        {required && (
+          <span className="ml-1 text-red-500" aria-hidden="true">
+            *
+          </span>
+        )}
       </label>
       {children}
       {error && (
@@ -63,41 +58,27 @@ function inputCls(hasError: boolean) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
- * Step 1 — Basic Information
+ * Basic Information section — collects name, email, and phone.
  *
- * Collects the four fields that are mandatory for ALL client statuses:
- *   first_name, last_name, email, phone.
- *
- * Presents two branching CTAs so the Manager can choose the client's path
- * without changing a separate status dropdown.
+ * All fields are optional; the intake form permits saving with partial data.
+ * No action buttons live here — the single "Save as Interested" button is
+ * rendered by the parent ClientIntakeForm.
  */
-export default function BasicInfoStep({
-  onSaveAsInterested,
-  onContinueRegistration,
-}: BasicInfoStepProps) {
+export default function BasicInfoStep() {
   const {
     register,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useFormContext<ClientFormInput>();
 
   return (
     <div>
-      {/* ── Section heading ── */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-slate-800">
-          Basic Information
-        </h2>
-        <p className="mt-0.5 text-sm text-slate-500">
-          These four fields are required for all records.
-        </p>
-      </div>
-
       {/* ── Fields grid ── */}
       <div className="grid gap-5 sm:grid-cols-2">
         {/* First name */}
         <FieldWrapper
           label="First Name"
           htmlFor="first_name"
+          required
           error={errors.first_name?.message}
         >
           <input
@@ -114,6 +95,7 @@ export default function BasicInfoStep({
         <FieldWrapper
           label="Last Name"
           htmlFor="last_name"
+          required
           error={errors.last_name?.message}
         >
           <input
@@ -131,6 +113,7 @@ export default function BasicInfoStep({
           <FieldWrapper
             label="Email Address"
             htmlFor="email"
+            required
             error={errors.email?.message}
           >
             <input
@@ -149,6 +132,7 @@ export default function BasicInfoStep({
           <FieldWrapper
             label="Phone Number"
             htmlFor="phone"
+            required
             error={errors.phone?.message}
           >
             <input
@@ -160,54 +144,6 @@ export default function BasicInfoStep({
               {...register("phone")}
             />
           </FieldWrapper>
-        </div>
-      </div>
-
-      {/* ── Divider ── */}
-      <hr className="my-7 border-slate-100" />
-
-      {/* ── Branching CTAs ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-        {/* Option A: partial save */}
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            id="btn-save-interested"
-            disabled={isSubmitting}
-            onClick={onSaveAsInterested}
-            className={[
-              "rounded-lg border border-slate-300 bg-white px-5 py-2.5",
-              "text-sm font-semibold text-slate-700 shadow-sm",
-              "transition-colors hover:bg-slate-50 hover:border-slate-400",
-              "disabled:cursor-not-allowed disabled:opacity-60",
-            ].join(" ")}
-          >
-            💾 Save as Interested
-          </button>
-          <p className="text-xs text-slate-400 sm:text-center">
-            Saves a partial contact record
-          </p>
-        </div>
-
-        {/* Option B: full registration */}
-        <div className="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            id="btn-continue-registration"
-            disabled={isSubmitting}
-            onClick={onContinueRegistration}
-            className={[
-              "rounded-lg bg-indigo-600 px-6 py-2.5",
-              "text-sm font-semibold text-white shadow-sm",
-              "transition-colors hover:bg-indigo-700",
-              "disabled:cursor-not-allowed disabled:opacity-60",
-            ].join(" ")}
-          >
-            Continue Registration →
-          </button>
-          <p className="text-xs text-slate-400">
-            Proceed to full registration (Steps 2–4)
-          </p>
         </div>
       </div>
     </div>
