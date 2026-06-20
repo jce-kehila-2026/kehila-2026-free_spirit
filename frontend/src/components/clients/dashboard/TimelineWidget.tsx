@@ -23,14 +23,41 @@ interface TimelineTabProps {
   refreshTrigger?: number;
 }
 
-// ─── Status badge styling ─────────────────────────────────────────────────────
 
-const STATUS_STYLES: Record<string, string> = {
-  scheduled:  "bg-[#DCEBEF] text-[#2C6975]",
-  completed:  "bg-[#E5F0E2] text-[#3F7763]",
-  cancelled:  "bg-[#F7EED8] text-[#8A6822]",
-  deleted:    "bg-[#EEF4EC] text-[#607B80]",
-};
+function getInitials(name?: string): string {
+  if (!name || name.trim() === "") return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderSystemContent(content?: string) {
+  if (!content) return null;
+  const cleanContent = content.replace(/\s+by\s+[^.]+/, "");
+  
+  const regPhrase = " was officially registered in the system";
+  const revPhrase = "'s status was reverted to Interested";
+  
+  if (cleanContent.includes(regPhrase)) {
+    const name = cleanContent.split(regPhrase)[0];
+    return (
+      <span className="text-sm text-slate-600">
+        {name} was <span className="font-semibold text-slate-800">registered</span> in the system.
+      </span>
+    );
+  }
+  
+  if (cleanContent.includes(revPhrase)) {
+    const name = cleanContent.split(revPhrase)[0];
+    return (
+      <span className="text-sm text-slate-600">
+        {name}&apos;s status was reverted to <span className="font-semibold text-slate-800">Interested</span>.
+      </span>
+    );
+  }
+  
+  return <span className="text-sm text-slate-600">{cleanContent}</span>;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -258,19 +285,19 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
 
           return (
             <li key={event.id} className="relative">
-              {/* Connector dot — hollow for system events, filled for notes/meetings */}
+              {/* Connector dot — avatar for system/notes, filled for meetings */}
               {event.type === "system" ? (
-                <div
-                  className="absolute -left-[1.45rem] top-[0.35rem] h-3 w-3 rounded-full border-2 border-gray-300 bg-white"
-                  aria-hidden
-                />
+                <div className="absolute -left-[1.8rem] top-4 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
+                  {getInitials(event.authorName)}
+                </div>
+              ) : event.type === "note" ? (
+                <div className="absolute -left-[1.8rem] top-4 flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
+                  {getInitials(event.authorName)}
+                </div>
               ) : (
-                <span
-                  className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
-                    STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
-                  }`}
-                  aria-hidden
-                />
+                <div className="absolute -left-[1.8rem] top-4 flex items-center justify-center w-8 h-8 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-xs font-bold shadow-sm">
+                  {getInitials(event.authorName)}
+                </div>
               )}
 
               {/* Date stamp above card */}
@@ -295,12 +322,9 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
 
               {/* ── System event: git-commit-style inline row ── */}
               {event.type === "system" ? (
-                <div className="flex items-baseline justify-between gap-3 py-0.5">
+                <div className="flex items-baseline justify-between gap-4 px-5 py-4 bg-slate-100/80 rounded-xl border border-slate-200/60">
                   <p className="text-sm leading-relaxed">
-                    <span className="font-semibold text-gray-700">{event.title}</span>
-                    {event.content && (
-                      <span className="text-gray-500"> &mdash; {event.content}</span>
-                    )}
+                    {renderSystemContent(event.content)}
                   </p>
                   {/* Archive (delete) — minimal icon button, no Edit */}
                   <button

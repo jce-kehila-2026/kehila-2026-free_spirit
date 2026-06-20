@@ -106,16 +106,16 @@ type UpdatableStatus = "registered" | "interested";
 
 const STATUS_COPY: Record<
   UpdatableStatus,
-  { eventTitle: string; eventBody: (name: string) => string; successToast: (name: string) => string }
+  { eventTitle: string; eventBody: (name: string, managerName: string) => string; successToast: (name: string) => string }
 > = {
   registered: {
     eventTitle: "Client Registered",
-    eventBody: (name) => `${name} was officially registered in the system.`,
+    eventBody: (name, managerName) => `${name} was officially registered in the system by ${managerName}.`,
     successToast: (name) => `${name} has been successfully registered.`,
   },
   interested: {
     eventTitle: "Status Reverted to Interested",
-    eventBody: (name) => `${name}'s status was reverted to Interested.`,
+    eventBody: (name, managerName) => `${name}'s status was reverted to Interested by ${managerName}.`,
     successToast: (name) => `${name} has been reverted to Interested.`,
   },
 };
@@ -132,11 +132,13 @@ const STATUS_COPY: Record<
  * @param clientId    - Firestore document ID of the client.
  * @param clientName  - Display name used in the timeline event body.
  * @param newStatus   - The target status to transition the client to.
+ * @param managerName - The name of the manager performing the action.
  */
 export async function updateClientStatus(
   clientId: string,
   clientName: string,
-  newStatus: UpdatableStatus
+  newStatus: UpdatableStatus,
+  managerName: string
 ): Promise<void> {
   const copy = STATUS_COPY[newStatus];
   try {
@@ -151,7 +153,8 @@ export async function updateClientStatus(
         clientId,
         clientName,
         copy.eventTitle,
-        copy.eventBody(clientName)
+        copy.eventBody(clientName, managerName),
+        managerName
       ),
     ]);
 
@@ -172,5 +175,5 @@ export async function registerClient(
   clientId: string,
   clientName: string
 ): Promise<void> {
-  return updateClientStatus(clientId, clientName, "registered");
+  return updateClientStatus(clientId, clientName, "registered", "System");
 }

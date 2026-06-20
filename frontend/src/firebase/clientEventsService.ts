@@ -46,6 +46,8 @@ export interface ClientEvent {
   updatedAt?: { seconds: number; nanoseconds: number } | null;
   /** When true, the note has been soft-deleted and should not appear in the timeline. */
   archived?: boolean;
+  /** The author of the note */
+  authorName?: string;
 }
 
 // ─── Query ────────────────────────────────────────────────────────────────────
@@ -117,7 +119,8 @@ export async function createNoteEvent(
   content: string,
   title?: string,
   customDate?: string,
-  customTime?: string
+  customTime?: string,
+  authorName?: string
 ): Promise<string> {
   const db = getFirestoreDb();
 
@@ -132,6 +135,7 @@ export async function createNoteEvent(
     status: "note",            // bypasses all calendar/meeting filter endpoints
     priority: "normal",
     createdAt: serverTimestamp(),
+    authorName: authorName || "Unknown Author",
   });
 
   return docRef.id;
@@ -152,7 +156,8 @@ export async function createSystemEvent(
   clientId: string,
   clientName: string,
   title: string,
-  content: string
+  content: string,
+  authorName?: string
 ): Promise<string> {
   const db = getFirestoreDb();
   const now = new Date();
@@ -170,6 +175,7 @@ export async function createSystemEvent(
     status: "note",       // keeps it visible in timeline, hidden from calendar views
     priority: "normal",
     createdAt: serverTimestamp(),
+    authorName: authorName || "Unknown Author",
   });
 
   return docRef.id;

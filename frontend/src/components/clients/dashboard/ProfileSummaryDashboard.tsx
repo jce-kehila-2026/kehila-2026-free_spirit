@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { IconCheck } from "@/components/ui/Icons";
+import { auth } from "@/firebase/firebase";
 
 import TimelineWidget from "@/components/clients/dashboard/TimelineWidget";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
@@ -52,7 +53,16 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
     setIsSavingNote(true);
     try {
       const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
-      await createNoteEvent(client.id, clientName, trimmedContent, noteTitle.trim(), noteDate, noteTime);
+      
+      const user = auth?.currentUser as any;
+      let authorName = "Unknown";
+      if (user?.first_name && user?.last_name) {
+        authorName = `${user.first_name} ${user.last_name}`;
+      } else if (user?.email) {
+        authorName = user.email.charAt(0).toUpperCase();
+      }
+
+      await createNoteEvent(client.id, clientName, trimmedContent, noteTitle.trim(), noteDate, noteTime, authorName);
       // Close the modal and clear draft
       closeNoteModal();
       // Trigger TimelineWidget refetch
