@@ -326,8 +326,11 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                 </div>
               ) : (
               <>
-              {/* ── Collapsible card shell ── */}
-              <div className="overflow-hidden rounded-2xl border border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] transition hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]">
+              <div className={`overflow-hidden rounded-2xl border transition ${
+                event.type === "note"
+                  ? "border-yellow-200 bg-yellow-50/60 hover:border-yellow-300 hover:shadow-[0_10px_24px_rgba(234,179,8,0.08)]"
+                  : "border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]"
+              }`}>
 
                 {/* ── Persistent header — always visible, click to toggle ── */}
                 <button
