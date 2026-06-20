@@ -4,7 +4,8 @@ import { type ClientDoc } from "@/components/clients/list/ClientList";
 import type { ClientFormInput } from "@/schema/clientSchema";
 
 // Import purely from our Tier 4 Data Layer!
-import { subscribeToClients, restoreClientInDb, createClientDoc } from "@/firebase/clientDbService";
+import { subscribeToClients, restoreClientInDb, createClientDoc, updateClientDoc } from "@/firebase/clientDbService";
+import { createSystemEvent } from "@/firebase/clientEventsService";
 
 /**
  * Application Layer (Tier 2) — Client Management Service.
@@ -94,3 +95,82 @@ export const useClientManagementService = () => {
     isSavingNewClient,
   };
 };
+
+// ─── Standalone Orchestration Functions (Tier 2) ───────────────────────────────
+// These are plain async functions rather than hook-internal methods because they
+// are called from individual profile pages and do not need shared hook state.
+
+// Copy map (Tier 3 business rule): all human-readable strings derived from the
+// target status so the orchestration function stays data-driven and DRY.
+type UpdatableStatus = "registered" | "interested";
+
+const STATUS_COPY: Record<
+  UpdatableStatus,
+  { eventTitle: string; eventBody: (name: string) => string; successToast: (name: string) => string }
+> = {
+  registered: {
+    eventTitle: "Client Registered",
+    eventBody: (name) => `${name} was officially registered in the system.`,
+    successToast: (name) => `${name} has been successfully registered.`,
+  },
+  interested: {
+    eventTitle: "Status Reverted to Interested",
+    eventBody: (name) => `${name}'s status was reverted to Interested.`,
+    successToast: (name) => `${name} has been reverted to Interested.`,
+  },
+};
+
+/**
+ * Updates a client's journey status and writes a system timeline milestone.
+ *
+ * Handles both forward (interested → registered) and backward
+ * (registered → interested) transitions from a single function.
+ *
+ * Tier 2 responsibility: orchestrates two concurrent Tier 4 writes, owns
+ * toast feedback, and re-throws on failure so the caller can react.
+ *
+ * @param clientId    - Firestore document ID of the client.
+ * @param clientName  - Display name used in the timeline event body.
+ * @param newStatus   - The target status to transition the client to.
+ */
+export async function updateClientStatus(
+  clientId: string,
+  clientName: string,
+  newStatus: UpdatableStatus
+): Promise<void> {
+  const copy = STATUS_COPY[newStatus];
+  try {
+    // Run the status update and the timeline event write concurrently.
+    // Either can fail independently — Promise.all will throw if either rejects.
+    await Promise.all([
+      // Tier 4: update the status field on the client document
+      updateClientDoc(clientId, { status: newStatus }),
+
+      // Tier 4: add a lifecycle milestone entry to the activity timeline
+      createSystemEvent(
+        clientId,
+        clientName,
+        copy.eventTitle,
+        copy.eventBody(clientName)
+      ),
+    ]);
+
+    toast.success(copy.successToast(clientName));
+  } catch (err) {
+    console.error("[ClientManagementService] updateClientStatus failed:", err);
+    toast.error("Status update failed. Please check your connection and try again.");
+    // Re-throw so the caller (Tier 1) can reset its loading state for retry.
+    throw err;
+  }
+}
+
+/**
+ * Backward-compatible alias — existing callers of registerClient() continue
+ * to work without modification while new code uses updateClientStatus directly.
+ */
+export async function registerClient(
+  clientId: string,
+  clientName: string
+): Promise<void> {
+  return updateClientStatus(clientId, clientName, "registered");
+}

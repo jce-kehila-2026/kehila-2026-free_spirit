@@ -11,7 +11,7 @@ import { getTodayString, getCurrentTimeString } from "@/utils/dateUtils";
 // Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import TodoListWidget from "@/components/todos/TodoListWidget";
-import ClientProgramsWidget from "@/components/clients/dashboard/ClientProgramsWidget";
+import ProgramAssignmentModal from "@/components/clients/dashboard/ProgramAssignmentModal";
 
 interface ProfileSummaryDashboardProps {
   client: ClientDoc;
@@ -23,6 +23,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
   // ── UI State (Tier 1) ────────────────────────────────────────────────────────
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
 
   const todayStr = getTodayString();
   const currentTimeStr = getCurrentTimeString();
@@ -137,6 +138,14 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
               >
                 Add Note
               </button>
+              <button
+                type="button"
+                disabled={isArchived}
+                onClick={() => setIsProgramModalOpen(true)}
+                className="w-full rounded-full border border-[#D7E3D5] bg-white px-4 py-2.5 text-sm font-bold text-[#31585F] transition-colors hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:bg-[#F7FAF5] disabled:text-[#8BA0A3]"
+              >
+                Assign Program
+              </button>
             </div>
           </div>
 
@@ -144,12 +153,6 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
           <TodoListWidget
             clientId={client.id}
             title="Client Tasks"
-          />
-
-          {/* Client's Programs Widget */}
-          <ClientProgramsWidget
-            clientId={client.id}
-            programIds={client.program_ids ?? []}
           />
 
         </div>
@@ -277,6 +280,15 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
             </div>
           </div>
         </div>
+      )}
+
+      {/* Program Assignment Modal */}
+      {isProgramModalOpen && (
+        <ProgramAssignmentModal
+          clientId={client.id}
+          programIds={client.program_ids ?? []}
+          onClose={() => setIsProgramModalOpen(false)}
+        />
       )}
     </>
   );

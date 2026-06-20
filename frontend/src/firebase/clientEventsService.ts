@@ -25,8 +25,8 @@ const EVENTS_COLLECTION = "events";
  */
 export interface ClientEvent {
   id: string;
-  /** Discriminates between a structured meeting and a freeform note. */
-  type?: "meeting" | "note";
+  /** Discriminates between a structured meeting, a freeform note, and a system lifecycle event. */
+  type?: "meeting" | "note" | "system";
   clientId: string | null;
   clientName?: string;
   title: string;
@@ -130,6 +130,44 @@ export async function createNoteEvent(
     date: customDate || "",
     time: customTime || "",
     status: "note",            // bypasses all calendar/meeting filter endpoints
+    priority: "normal",
+    createdAt: serverTimestamp(),
+  });
+
+  return docRef.id;
+}
+
+/**
+ * Writes an automated system event to the "events" collection.
+ *
+ * Tier 4 responsibility: knows only about DB paths and raw payloads.
+ * System events represent lifecycle milestones (e.g. "Client Registered")
+ * triggered by the application layer — not authored manually by a user.
+ *
+ * Uses type:"system" to allow the UI to style them differently in future,
+ * and status:"note" so they appear in the timeline via getEventsByClientId
+ * without bleeding into meeting/calendar query paths.
+ */
+export async function createSystemEvent(
+  clientId: string,
+  clientName: string,
+  title: string,
+  content: string
+): Promise<string> {
+  const db = getFirestoreDb();
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0]; // "YYYY-MM-DD"
+  const timeStr = now.toTimeString().slice(0, 5);   // "HH:MM"
+
+  const docRef = await addDoc(collection(db, EVENTS_COLLECTION), {
+    type: "system",
+    clientId,
+    clientName,
+    title,
+    content,
+    date: dateStr,
+    time: timeStr,
+    status: "note",       // keeps it visible in timeline, hidden from calendar views
     priority: "normal",
     createdAt: serverTimestamp(),
   });

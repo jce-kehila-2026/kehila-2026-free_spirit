@@ -258,13 +258,20 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
 
           return (
             <li key={event.id} className="relative">
-              {/* Connector dot */}
-              <span
-                className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
-                  STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
-                }`}
-                aria-hidden
-              />
+              {/* Connector dot — hollow for system events, filled for notes/meetings */}
+              {event.type === "system" ? (
+                <div
+                  className="absolute -left-[1.45rem] top-[0.35rem] h-3 w-3 rounded-full border-2 border-gray-300 bg-white"
+                  aria-hidden
+                />
+              ) : (
+                <span
+                  className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
+                    STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+                  }`}
+                  aria-hidden
+                />
+              )}
 
               {/* Date stamp above card */}
               {(() => {
@@ -286,6 +293,39 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                 );
               })()}
 
+              {/* ── System event: git-commit-style inline row ── */}
+              {event.type === "system" ? (
+                <div className="flex items-baseline justify-between gap-3 py-0.5">
+                  <p className="text-sm leading-relaxed">
+                    <span className="font-semibold text-gray-700">{event.title}</span>
+                    {event.content && (
+                      <span className="text-gray-500"> &mdash; {event.content}</span>
+                    )}
+                  </p>
+                  {/* Archive (delete) — minimal icon button, no Edit */}
+                  <button
+                    type="button"
+                    disabled={archivingNoteId === event.id}
+                    onClick={async () => {
+                      if (!window.confirm("Remove this system event from the timeline?")) return;
+                      try {
+                        setArchivingNoteId(event.id);
+                        await archiveNoteEvent(event.id);
+                        await fetchData();
+                      } catch (err) {
+                        console.error("Failed to archive system event:", err);
+                      } finally {
+                        setArchivingNoteId(null);
+                      }
+                    }}
+                    aria-label="Remove system event"
+                    className="shrink-0 rounded p-1 text-gray-300 transition hover:bg-red-50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <IconArchive className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+              <>
               {/* ── Collapsible card shell ── */}
               <div className="overflow-hidden rounded-2xl border border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] transition hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]">
 
@@ -547,6 +587,8 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                   </div>
                 )}
               </div>
+              </>
+              )}
 
             </li>
           );

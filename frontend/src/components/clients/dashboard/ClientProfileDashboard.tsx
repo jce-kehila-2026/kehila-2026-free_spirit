@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
@@ -15,7 +16,9 @@ import { IconPencil, IconLock, IconEye } from "@/components/ui/Icons";
 import ProfileSummaryDashboard from "./ProfileSummaryDashboard";
 import AdvancedSettings from "./AdvancedSettings";
 import ProfileArchiveModal from "./ProfileArchiveModal";
+import StatusConfirmationModal from "./StatusConfirmationModal";
 import { useProfileDashboard } from "./useProfileDashboard"; // Our new orchestrator hook
+import { updateClientStatus } from "@/application/ClientManagementService";
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
@@ -58,7 +61,13 @@ interface ClientProfileDashboardProps {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClientProfileDashboard({ client, onBack }: ClientProfileDashboardProps) {
+export default function ClientProfileDashboard({ client: initialClient, onBack }: ClientProfileDashboardProps) {
+  const [client, setClient] = useState<ClientDoc>(initialClient);
+
+  useEffect(() => {
+    setClient(initialClient);
+  }, [initialClient]);
+
   // Consume all Tier 2 side effects, async operations, and state variables via the hook
   const {
     activeTab,
@@ -76,6 +85,26 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
     handleRestore,
     handleArchive,
   } = useProfileDashboard(client);
+
+  // ── Status badge state ───────────────────────────────────────────────────
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  async function handleStatusChange() {
+    const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
+    // Toggle: registered → interested, anything else → registered
+    const newStatus = client.status === "registered" ? "interested" : "registered";
+    setIsUpdatingStatus(true);
+    try {
+      await updateClientStatus(client.id, clientName, newStatus);
+      setClient((prev) => ({ ...prev, status: newStatus }));
+    } catch {
+      // Toast already fired by the service layer
+    } finally {
+      setIsUpdatingStatus(false);
+      setIsStatusModalOpen(false);
+    }
+  }
 
   const router = useRouter();
   const handleCreateMeetingNavigation = () => {
@@ -128,9 +157,6 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#CDE0C9]">
-                Client profile
-              </p>
               <h1 className="mt-1 truncate text-3xl font-bold leading-tight tracking-[-0.04em]">
                 {client.first_name} {client.last_name}
               </h1>
@@ -151,6 +177,25 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
             </div>
 
             <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+              {/* ── Status badge (active clients only) ── */}
+              {!isArchived && (
+                <button
+                  type="button"
+                  id="btn-status-badge"
+                  onClick={() => setIsStatusModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
+                  aria-label="Change client status"
+                >
+                  <span className={[
+                    "h-1.5 w-1.5 rounded-full",
+                    client.status === "registered" ? "bg-emerald-400" : "bg-amber-400",
+                  ].join(" ")} />
+                  Status: {client.status
+                    ? client.status.charAt(0).toUpperCase() + client.status.slice(1)
+                    : "Unknown"}
+                </button>
+              )}
+
               {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
               {!isArchived && (
                 <button
@@ -284,6 +329,19 @@ export default function ClientProfileDashboard({ client, onBack }: ClientProfile
         onClose={() => setShowArchiveModal(false)}
         onConfirm={handleArchive}
       />
+
+      {/* ── Status Confirmation Modal ── */}
+      {isStatusModalOpen && (
+        <StatusConfirmationModal
+          currentStatus={client.status === "registered" ? "registered" : "interested"}
+          clientName={`${client.first_name} ${client.last_name}`}
+          isLoading={isUpdatingStatus}
+          onConfirm={handleStatusChange}
+          onClose={() => {
+            if (!isUpdatingStatus) setIsStatusModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
