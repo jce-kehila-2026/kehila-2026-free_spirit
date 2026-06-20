@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { auth } from "@/firebase/firebase";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
@@ -96,7 +97,15 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     const newStatus = client.status === "registered" ? "interested" : "registered";
     setIsUpdatingStatus(true);
     try {
-      await updateClientStatus(client.id, clientName, newStatus);
+      const user = auth?.currentUser as any;
+      let managerName = "Unknown";
+      if (user?.first_name && user?.last_name) {
+        managerName = `${user.first_name} ${user.last_name}`;
+      } else if (user?.email) {
+        managerName = user.email.charAt(0).toUpperCase();
+      }
+
+      await updateClientStatus(client.id, clientName, newStatus, managerName);
       setClient((prev) => ({ ...prev, status: newStatus }));
     } catch {
       // Toast already fired by the service layer
