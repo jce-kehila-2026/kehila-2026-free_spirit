@@ -9,8 +9,7 @@ import { buildReminderSchedule } from "@/firebase/reminderScheduleService";
 import { updateEvent } from "@/firebase/eventsService";
 import { deleteNotificationsByEventId } from "@/firebase/notificationsService";
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent } from "@/firebase/googleCalendarService";
-
-
+import { auth } from "@/firebase/firebase";
 export default function ScheduleMeetingForm({
   clientId = "", // Changed from null to "" so typescript knows it can be a string
   clientName = "",
@@ -153,6 +152,16 @@ export default function ScheduleMeetingForm({
         }
       }
 
+      const user = auth.currentUser;
+      let authorName = "Unknown";
+      if (user) {
+        if (user.first_name && user.last_name) {
+          authorName = `${user.first_name} ${user.last_name}`;
+        } else if (user.email) {
+          authorName = user.email.charAt(0).toUpperCase();
+        }
+      }
+
       const eventPayload = {
         title: formData.title,
         notes: formData.notes,
@@ -175,6 +184,7 @@ export default function ScheduleMeetingForm({
   
         googleCalendarEventId: initialData?.googleCalendarEventId || null,
         status: "scheduled",
+        authorName: initialData?.authorName || authorName,
       };
   
       if (isEditMode && initialData?.id) {
