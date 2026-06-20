@@ -3,11 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import EventCard from "@/components/Events/EventCard";
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
-import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, getEventSortKey, type ClientEvent } from "@/firebase/clientEventsService";
+import { getEventsByClientId, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
-import { IconPencil, IconArchive, IconRefresh } from "@/components/ui/Icons";
-import { getTodayString, resolveFirestoreDate, toLocalDateString, toLocalTimeString } from "@/utils/dateUtils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -16,11 +14,6 @@ interface TimelineTabProps {
   /** Forwarded from ClientProfileDashboard — not used for editing, kept for
    *  API-shape consistency with the other tab components. */
   isEditable?: boolean;
-  /**
-   * Increment this number from a parent to trigger a data refresh without
-   * unmounting the widget. Used by ProfileSummaryDashboard after saving a note.
-   */
-  refreshTrigger?: number;
 }
 
 // ─── Status badge styling ─────────────────────────────────────────────────────
@@ -44,7 +37,7 @@ const STATUS_STYLES: Record<string, string> = {
  * Ready to be registered in ClientProfileDashboard.tsx TABS array and
  * TAB_COMPONENTS map without touching any existing logic.
  */
-export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTabProps) {
+export default function TimelineWidget({ clientId }: TimelineTabProps) {
   const [events, setEvents]   = useState<ClientEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -52,34 +45,6 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
   const [summaryEvent, setSummaryEvent] = useState<ClientEvent | null>(null);
   const [meetingSummaryDraft, setMeetingSummaryDraft] = useState("");
   const [isSavingMeetingSummary, setIsSavingMeetingSummary] = useState(false);
-
-  const todayStr = getTodayString();
-
-  // ── Note inline edit state ────────────────────────────────────────────────
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editNoteTitle, setEditNoteTitle] = useState("");
-  const [editNoteContent, setEditNoteContent] = useState("");
-  const [editNoteDate, setEditNoteDate] = useState("");
-  const [editNoteTime, setEditNoteTime] = useState("");
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [archivingNoteId, setArchivingNoteId] = useState<string | null>(null);
-
-  // ── Collapsible card state ─────────────────────────────────────────────────
-  // Stores the IDs of cards that are currently expanded.
-  // All cards start collapsed.
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-
-  function toggleExpand(id: string) {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -128,7 +93,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
     return () => {
       isCancelled = true;
     };
-  }, [clientId, refreshTrigger]);
+  }, [clientId]);
 
   // Wire shared actions and refresh hook
   const { actionLoadingId, handleComplete, handleCancel, handleDelete } = useEventActions({ onRefresh: fetchData });
@@ -211,391 +176,103 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
     );
   }
 
-  // Filter out deleted events (also filtered in service; kept as a client-side guard)
+  // Filter out deleted events from the main timeline view
   const visibleEvents = events.filter((e) => e.status !== "deleted");
-
-  const sortedEvents = [...visibleEvents].sort((a, b) => getEventSortKey(b) - getEventSortKey(a));
 
   if (visibleEvents.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#B9CFCA] bg-[#EEF4EC] px-6 py-12 text-center">
+        <span className="text-4xl" role="img" aria-label="No activity">
+          🗂️
+        </span>
         <p className="text-base font-bold text-[#31585F]">No activity found</p>
         <p className="max-w-sm text-sm leading-6 text-[#607B80]">
-          Notes and meetings scheduled for this client will appear here.
+          Meetings and events scheduled for this client will appear here.
         </p>
       </div>
     );
   }
 
   // ── Main timeline list ─────────────────────────────────────────────────────
+
+  // Visible statuses to show in the header strip above each card.
+  const statusLabel = (status: string) =>
+    STATUS_STYLES[status] ? status : "scheduled";
+
   return (
     <>
       <section aria-label="Client activity timeline">
-      <header className="mb-5 flex items-center justify-between">
+      <header className="mb-5 flex items-baseline justify-between">
+        <h2 className="text-lg font-bold text-[#15383E]">Activity timeline</h2>
         <span className="rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#607B80]">
-          {visibleEvents.length} item{visibleEvents.length !== 1 ? "s" : ""}
+          {events.length} event{events.length !== 1 ? "s" : ""}
         </span>
-        <button
-          type="button"
-          onClick={() => { void fetchData(); }}
-          disabled={loading}
-          aria-label="Refresh timeline"
-          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold text-[#6A8589] transition hover:bg-[#EEF4EC] hover:text-[#2C6975] disabled:cursor-not-allowed disabled:opacity-50 ${
-            loading ? "animate-pulse" : ""
-          }`}
-        >
-          <IconRefresh className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "Refreshing..." : "Refresh"}
-        </button>
       </header>
 
       {/* Timeline spine */}
       <ol className="relative flex flex-col gap-6 border-l-2 border-[#D7E3D5] pl-6">
-        {sortedEvents.map((event) => {
-          const isExpanded = expandedIds.has(event.id);
-          const isHighPriority = event.priority === "high";
-          const hasValidTitle = event.title && event.title.trim() !== "" && event.title !== "Timeline Note";
+        {visibleEvents.map((event) => (
+          <li key={event.id} className="relative">
+            {/* Connector dot */}
+            <span
+              className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
+                STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
+              }`}
+              aria-hidden
+            />
 
-          return (
-            <li key={event.id} className="relative">
-              {/* Connector dot — hollow for system events, filled for notes/meetings */}
-              {event.type === "system" ? (
-                <div
-                  className="absolute -left-[1.45rem] top-[0.35rem] h-3 w-3 rounded-full border-2 border-gray-300 bg-white"
-                  aria-hidden
-                />
-              ) : (
+            {/* Date stamp above card */}
+            {event.date && (
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
+                {new Date(`${event.date}T${event.time ?? "00:00"}`).toLocaleDateString(
+                  undefined,
+                  { weekday: "short", year: "numeric", month: "short", day: "numeric" }
+                )}
+                {" · "}
                 <span
-                  className={`absolute -left-[1.3rem] top-5 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-[#FFFDF8] ${
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
                     STATUS_STYLES[event.status] ?? STATUS_STYLES.scheduled
                   }`}
-                  aria-hidden
-                />
-              )}
-
-              {/* Date stamp above card */}
-              {(() => {
-                let eventDateObj: Date | null = null;
-                if (event.date) {
-                  eventDateObj = new Date(`${event.date}T${event.time ?? "00:00"}`);
-                } else {
-                  eventDateObj = resolveFirestoreDate(event.createdAt);
-                }
-                if (!eventDateObj) return null;
-
-                return (
-                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#6A8589]">
-                    {eventDateObj.toLocaleDateString(
-                      undefined,
-                      { weekday: "short", year: "numeric", month: "short", day: "numeric" }
-                    )}
-                  </p>
-                );
-              })()}
-
-              {/* ── System event: git-commit-style inline row ── */}
-              {event.type === "system" ? (
-                <div className="flex items-baseline justify-between gap-3 py-0.5">
-                  <p className="text-sm leading-relaxed">
-                    <span className="font-semibold text-gray-700">{event.title}</span>
-                    {event.content && (
-                      <span className="text-gray-500"> &mdash; {event.content}</span>
-                    )}
-                  </p>
-                  {/* Archive (delete) — minimal icon button, no Edit */}
-                  <button
-                    type="button"
-                    disabled={archivingNoteId === event.id}
-                    onClick={async () => {
-                      if (!window.confirm("Remove this system event from the timeline?")) return;
-                      try {
-                        setArchivingNoteId(event.id);
-                        await archiveNoteEvent(event.id);
-                        await fetchData();
-                      } catch (err) {
-                        console.error("Failed to archive system event:", err);
-                      } finally {
-                        setArchivingNoteId(null);
-                      }
-                    }}
-                    aria-label="Remove system event"
-                    className="shrink-0 rounded p-1 text-gray-300 transition hover:bg-red-50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <IconArchive className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-              <>
-              <div className={`overflow-hidden rounded-2xl border transition ${
-                event.type === "note"
-                  ? "border-yellow-200 bg-yellow-50/60 hover:border-yellow-300 hover:shadow-[0_10px_24px_rgba(234,179,8,0.08)]"
-                  : "border-[#D7E3D5] bg-[linear-gradient(145deg,#FFFFFF_0%,#F5F9F3_100%)] hover:border-[#9FBFB4] hover:shadow-[0_10px_24px_rgba(44,105,117,0.07)]"
-              }`}>
-
-                {/* ── Persistent header — always visible, click to toggle ── */}
-                <button
-                  type="button"
-                  onClick={() => toggleExpand(event.id)}
-                  aria-expanded={isExpanded}
-                  className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
                 >
-                  <div className="flex min-w-0 flex-col gap-0.5 w-full">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#6BB2A0]">
-                      {event.type === "note" || event.status === "note" ? "Note" : "Scheduled Meeting"}
-                    </p>
-                    {event.type === "note" ? (
-                      hasValidTitle ? (
-                        <h3 className={`mt-1 text-base font-bold text-[#15383E] ${isExpanded ? "whitespace-normal" : "truncate"}`}>
-                          {event.title}
-                        </h3>
-                      ) : (
-                        !isExpanded ? (
-                          <h3 className="mt-1 truncate text-base font-normal text-slate-600">
-                            {event.content}
-                          </h3>
-                        ) : null
-                      )
-                    ) : (
-                      <h3 className={`mt-1 text-base font-bold text-[#15383E] ${isExpanded ? "whitespace-normal" : "truncate"}`}>
-                        {event.title}
-                      </h3>
-                    )}
-                  </div>
+                  {statusLabel(event.status)}
+                </span>
+              </p>
+            )}
 
-                  <div className="flex shrink-0 items-center gap-2">
-                    {event.type !== "note" && event.status !== "note" && (
-                      <>
-                        {/* Priority badge */}
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                            isHighPriority
-                              ? "bg-rose-100 text-rose-700"
-                              : "bg-[#DCEAD6] text-[#2C6975]"
-                          }`}
-                        >
-                          {isHighPriority ? "Important" : "Regular"}
-                        </span>
 
-                        {/* Status badge */}
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                            event.status === "completed"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : event.status === "cancelled"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-blue-100 text-blue-700"
-                          }`}
-                        >
-                          {event.status || "scheduled"}
-                        </span>
-                      </>
-                    )}
-
-                    {/* Chevron */}
-                    <span
-                      aria-hidden="true"
-                      className={`ml-1 text-[#6BB2A0] transition-transform duration-200 ${
-                        isExpanded ? "rotate-180" : "rotate-0"
-                      }`}
-                    >
-                      ▾
-                    </span>
-                  </div>
-                </button>
-
-                {/* ── Collapsible body — full EventCard or Note ── */}
-                {isExpanded && (
-                  <div className={`border-t border-[#D7E3D5] ${event.type === "note" || event.status === "note" ? "" : "[&_article]:border-0 [&_article]:rounded-none [&_article>div:first-child]:hidden"}`}>
-                    {event.type === "note" || event.status === "note" ? (
-                      editingNoteId === event.id ? (
-                        <div className="p-5 flex flex-col gap-3 bg-[#F8FAF6]">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="mb-1 block text-xs font-bold text-[#527078]">
-                                Title (Optional)
-                              </label>
-                              <input
-                                type="text"
-                                value={editNoteTitle}
-                                onChange={(e) => setEditNoteTitle(e.target.value)}
-                                disabled={isSavingNote}
-                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                                placeholder="e.g. Call notes..."
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-bold text-[#527078]">
-                                Date
-                              </label>
-                              <input
-                                type="date"
-                                value={editNoteDate}
-                                onChange={(e) => setEditNoteDate(e.target.value)}
-                                max={todayStr}
-                                disabled={isSavingNote}
-                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-bold text-[#527078]">
-                                Time
-                              </label>
-                              <input
-                                type="time"
-                                value={editNoteTime}
-                                onChange={(e) => setEditNoteTime(e.target.value)}
-                                disabled={isSavingNote}
-                                className="w-full rounded-xl border border-[#BFD0CA] bg-white px-4 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-[#527078]">
-                              Content
-                            </label>
-                            <textarea
-                              value={editNoteContent}
-                              onChange={(e) => setEditNoteContent(e.target.value)}
-                              disabled={isSavingNote}
-                              rows={4}
-                              className="w-full resize-y rounded-xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none transition placeholder:text-[#829497] focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
-                              placeholder="Paste a message or write a client update here..."
-                            />
-                          </div>
-                          <div className="flex items-center justify-end gap-2 mt-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditingNoteId(null)}
-                              disabled={isSavingNote}
-                              className="rounded-full border border-[#BFD0CA] bg-white px-4 py-1.5 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!editNoteContent.trim() || isSavingNote) return;
-                                if (editNoteDate > todayStr) {
-                                  alert("You cannot log a note for a future date.");
-                                  return;
-                                }
-                                try {
-                                  setIsSavingNote(true);
-                                  await updateNoteEvent(event.id, editNoteTitle.trim(), editNoteContent.trim(), editNoteDate, editNoteTime);
-                                  setEditingNoteId(null);
-                                  await fetchData();
-                                } catch (err) {
-                                  console.error("Failed to update note event:", err);
-                                } finally {
-                                  setIsSavingNote(false);
-                                }
-                              }}
-                              disabled={!editNoteContent.trim() || isSavingNote}
-                              className="rounded-full bg-[#2C6975] px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isSavingNote ? "Saving..." : "Save"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-5">
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                            {event.content}
-                          </p>
-                          <div className="mt-3 flex items-center justify-end gap-4">
-                            <button
-                              type="button"
-                              disabled={archivingNoteId === event.id}
-                              onClick={async () => {
-                                if (!window.confirm("Are you sure you want to archive this note?")) return;
-                                try {
-                                  setArchivingNoteId(event.id);
-                                  await archiveNoteEvent(event.id);
-                                  await fetchData();
-                                } catch (err) {
-                                  console.error("Failed to archive note:", err);
-                                } finally {
-                                  setArchivingNoteId(null);
-                                }
-                              }}
-                              className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-700 transition disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <IconArchive className="h-3.5 w-3.5" />
-                              {archivingNoteId === event.id ? "Archiving..." : "Archive"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingNoteId(event.id);
-                                setEditNoteTitle(event.title || "");
-                                setEditNoteContent(event.content || "");
-
-                                // Resolve the note's date for the edit form
-                                let dateVal = event.date || "";
-                                if (!dateVal) {
-                                  const resolved = resolveFirestoreDate(event.createdAt);
-                                  dateVal = resolved ? toLocalDateString(resolved) : getTodayString();
-                                }
-                                setEditNoteDate(dateVal);
-
-                                // Resolve the note's time for the edit form
-                                let timeVal = event.time || "";
-                                if (!timeVal) {
-                                  const resolved = resolveFirestoreDate(event.createdAt);
-                                  timeVal = resolved ? toLocalTimeString(resolved) : "";
-                                }
-                                setEditNoteTime(timeVal);
-                              }}
-                              className="flex items-center gap-1 text-xs font-medium text-[#2C6975] hover:text-[#1F4E56] transition"
-                            >
-                              <IconPencil className="h-3.5 w-3.5" />
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <EventCard
-                        event={event}
-                      isActionLoading={
-                        actionLoadingId === event.id || isSavingMeetingSummary
-                      }
-                      onEdit={handleOpenFullEdit}
-                      onEditSummary={handleOpenSummaryEdit}
-                      onComplete={async (id: string) => {
-                        try {
-                          await handleComplete(id);
-                        } catch (err) {
-                          console.error("Complete failed:", err);
-                        }
-                      }}
-                      onCancel={async (id: string) => {
-                        try {
-                          const ev = events.find((x) => x.id === id);
-                          if (ev) await handleCancel(ev);
-                        } catch (err) {
-                          console.error("Cancel failed:", err);
-                        }
-                      }}
-                      onDelete={async (id: string) => {
-                        try {
-                          const ev = events.find((x) => x.id === id);
-                          if (ev) await handleDelete(ev);
-                        } catch (err) {
-                          console.error("Delete failed:", err);
-                        }
-                      }}
-                    />
-                    )}
-                  </div>
-                )}
-              </div>
-              </>
-              )}
-
-            </li>
-          );
-        })}
+            <EventCard
+              event={event}
+              isActionLoading={
+                actionLoadingId === event.id || isSavingMeetingSummary
+              }
+              onEdit={handleOpenFullEdit}
+              onEditSummary={handleOpenSummaryEdit}
+              onComplete={async (id: string) => {
+                try {
+                  await handleComplete(id);
+                } catch (err) {
+                  console.error("Complete failed:", err);
+                }
+              }}
+              onCancel={async (id: string) => {
+                try {
+                  const ev = events.find((x) => x.id === id);
+                  if (ev) await handleCancel(ev);
+                } catch (err) {
+                  console.error("Cancel failed:", err);
+                }
+              }}
+              onDelete={async (id: string) => {
+                try {
+                  const ev = events.find((x) => x.id === id);
+                  if (ev) await handleDelete(ev);
+                } catch (err) {
+                  console.error("Delete failed:", err);
+                }
+              }}
+            />
+          </li>
+        ))}
       </ol>
       </section>
 
@@ -627,10 +304,11 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                 &times;
               </button>
             </div>
+
             <ScheduleMeetingForm
-              initialData={(eventToEdit as unknown) as null}
+              initialData={eventToEdit}
               isEditMode={true}
-              onEditCompleted={(handleEditCompleted as unknown) as null}
+              onEditCompleted={handleEditCompleted}
               onClose={() => setEventToEdit(null)}
             />
           </div>

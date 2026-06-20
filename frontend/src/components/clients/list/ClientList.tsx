@@ -102,6 +102,7 @@ export default function ClientList({
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">Client records</h2>
+            <p className="mt-1 text-sm text-[#6A8589]">Open a record to review onboarding and participant details.</p>
           </div>
           <span className="hidden rounded-full bg-[#EEF4EC] px-3 py-1 text-xs font-bold text-[#527078] sm:inline-flex">
             {countText}

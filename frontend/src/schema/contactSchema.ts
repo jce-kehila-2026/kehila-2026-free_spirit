@@ -1,35 +1,28 @@
 import { z } from "zod";
 import { CONTACT_RELATIONSHIP } from "./constants"
-
 /**
  * Contact — one entry in the contacts[] array.
- *
- * All fields are optional at the base schema level.
- * The clientSchema superRefine enforces that if a contact card is present,
- * contact_name and phone must be filled in.
+ * All fields are optional at the base level; conditional validation
+ * enforces required fields when status === "registered".
  */
 export const contactSchema = z.object({
   contact_name: z
     .string()
     .trim()
+    .min(2, "Contact name must be at least 2 characters")
     .max(100, "Contact name is too long")
-    .regex(/^[\p{L}\s'\-.]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^[\p{L}\s'\-.]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes"),
 
   relationship: z.enum(CONTACT_RELATIONSHIP, {
     errorMap: () => ({ message: "Please select a relationship" }),
-  }).optional().or(z.literal("")),
+  }),
 
   phone: z
     .string()
     .trim()
     .regex(/^\+?[0-9\s\-()]{7,20}$/, {
       message: "Enter a valid phone number (e.g., +1 555-0198 or 050-1234567)",
-    })
-    .optional()
-    .or(z.literal("")),
-
+    }),
   email: z
     .string()
     .trim()
@@ -46,7 +39,7 @@ export type Contact = z.infer<typeof contactSchema>;
 
 
 /**
- * Contacts step schema — wraps the array for profile-tab use.
+ * Step 3 — Contacts.
  */
 export const contactsStepSchema = z.object({
   contacts: z.array(contactSchema).default([]),

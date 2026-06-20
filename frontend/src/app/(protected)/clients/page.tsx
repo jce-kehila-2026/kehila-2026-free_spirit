@@ -5,7 +5,7 @@ import { exportToCSV } from "@/components/clients/list/csvExport";
 
 // TIER 1 - PRESENTATION LAYER WIDGETS
 import ClientList, { type ClientDoc } from "@/components/clients/list/ClientList";
-import ClientIntakeForm from "@/components/clients/intake/ClientIntakeForm";
+import WizardController from "@/components/clients/wizard/WizardController";
 import ClientProfileDashboard from "@/components/clients/dashboard/ClientProfileDashboard";
 import ClientPageHeader from "@/components/clients/list/ClientPageHeader";
 import ClientFilterBar from "@/components/clients/list/ClientFilterBar";
@@ -134,9 +134,9 @@ export default function ClientsPage() {
         )}
 
         {view === "form" && (
-          <ClientIntakeForm
+          <WizardController
+            initialData={editingClient}
             onSaveSuccess={handleBackToList}
-            onCancel={handleBackToList}
           />
         )}
 

@@ -1,4 +1,4 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
@@ -35,21 +35,6 @@ export function sanitizeFirestorePayload(obj: Record<string, any>): Record<strin
 }
 
 // ─── Database Operations (Tier 4) ─────────────────────────────────────────────
-
-/**
- * Creates a new client document in Firestore.
- * Tier 4: knows only about DB paths and raw payloads.
- * Called by the Tier 2 application service; never called directly from UI.
- */
-export async function createClientDoc(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: Record<string, any>
-): Promise<void> {
-  await addDoc(collection(getFirestoreDb(), "clients"), {
-    ...sanitizeFirestorePayload(payload),
-    created_at: serverTimestamp(),
-  });
-}
 
 /**
  * Updates an existing client document in Firestore.

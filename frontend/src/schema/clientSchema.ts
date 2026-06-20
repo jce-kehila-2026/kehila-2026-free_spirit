@@ -10,11 +10,11 @@ import { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSch
 // ============================================================================
 
 const clientBaseSchema = z.object({
-  // Core identity — required for all records to avoid "ghost" entries.
+  // Core identity
   first_name: z
     .string()
     .trim()
-    .min(1, "First name is required")
+    .min(2, "First name must be at least 2 characters")
     .max(50, "First name is too long")
     .regex(/^[\p{L}\s'-]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes")
     .regex(/[\p{L}]/u, "Name must contain at least one letter")
@@ -22,7 +22,7 @@ const clientBaseSchema = z.object({
   last_name: z
     .string()
     .trim()
-    .min(1, "Last name is required")
+    .min(2, "Last name must be at least 2 characters")
     .max(50, "Last name is too long")
     .regex(/^[\p{L}\s'-]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes")
     .regex(/[\p{L}]/u, "Name must contain at least one letter")
@@ -31,13 +31,11 @@ const clientBaseSchema = z.object({
     .string()
     .trim()
     .toLowerCase() // Automatically standardizes the email for the database
-    .min(1, "Email address is required")
     .email("Enter a valid email address")
     .max(254, "Email is too long"),
   phone: z
     .string()
     .trim()
-    .min(1, "Phone number is required")
     .regex(/^\+?[0-9\s\-()]{7,20}$/, {
       message: "Enter a valid phone number (e.g., +1 555-0198 or 050-1234567)",
     }),
@@ -89,37 +87,71 @@ const clientBaseSchema = z.object({
 // ============================================================================
 
 export const clientSchema = clientBaseSchema.superRefine((data, ctx) => {
-  // If a contact card was added, its name and phone are required.
-  // Adding a contact card at all is optional.
-  data.contacts.forEach((contact, index) => {
-    const name = typeof contact.contact_name === "string" ? contact.contact_name.trim() : "";
-    const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
+  if (data.status !== "registered") return;
 
-    if (!name) {
+  // passport_id is strictly mandatory for a registered client
+  if (!data.passport_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Passport / ID number is required for registered clients",
+      path: ["passport_id"],
+    });
+  }
+
+  // DOB is strictly mandatory for a registered client
+  if (!data.dob) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Date of birth is required (or the entered date is invalid)",
+      path: ["dob"],
+    });
+  } else {
+    // Validate age range and valid date
+    const dobDate = new Date(data.dob);
+    const now = new Date();
+    const minDate = new Date();
+    minDate.setFullYear(now.getFullYear() - 120); // Max age 120
+
+    // Check if it's an actual valid date on the calendar
+    if (isNaN(dobDate.getTime())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Contact name is required",
-        path: ["contacts", index, "contact_name"],
+        message: "Please enter a valid date of birth",
+        path: ["dob"],
       });
-    }
-    if (!phone) {
+    } else if (dobDate > now) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Phone number is required",
-        path: ["contacts", index, "phone"],
+        message: "Date of birth cannot be in the future",
+        path: ["dob"],
+      });
+    } else if (dobDate < minDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please enter a valid date of birth",
+        path: ["dob"],
       });
     }
-  });
+  }
+
+  // Contacts are mandatory for registered clients
+  if (data.contacts.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one contact is required to complete registration",
+      path: ["contacts"], // This exact path targets your arrayError variable in the UI
+    });
+  }
 });
 
 export type Client = z.infer<typeof clientSchema>;
 export type ClientFormInput = z.input<typeof clientSchema>;
 
 // ============================================================================
-// Step-level Schemas (kept for backward compatibility with profile tabs)
+// Step-level Schemas (for wizard validation per step )
 // ============================================================================
 
-// Basic Info fields (used by profile tabs that edit existing clients)
+// Step 1 - Basic Info (used before the user advances)
 export const basicInfoSchema = clientBaseSchema.pick({
   first_name: true, last_name: true, email: true, phone: true, status: true,
   passport_id: true, gender: true, address: true, dob: true, referrer: true,
