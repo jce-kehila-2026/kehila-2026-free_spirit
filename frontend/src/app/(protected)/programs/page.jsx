@@ -35,6 +35,7 @@ export default function ProgramsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [selectedYear, setSelectedYear] = useState(null);
+  
 
   const availableYears = useMemo(() => {
     const years = programs.map(p => {
@@ -235,32 +236,39 @@ export default function ProgramsPage() {
 
     try {
       const updatedParticipantIds = [...currentParticipantIds, selectedClient.id];
+      
+      // 1. עדכון התוכנית במסד הנתונים
       const programRef = doc(db, "programs", selectedProgram.id);
       await updateDoc(programRef, {
         participant_ids: updatedParticipantIds,
         participant_count: updatedParticipantIds.length,
       });
 
+      // 2. עדכון הלקוח במסד הנתונים (כדי שהסטטיסטיקות יתעדכנו!)
+      const clientRef = doc(db, "clients", selectedClient.id);
+      const currentClientProgramIds = Array.isArray(selectedClient.program_ids) ? selectedClient.program_ids : [];
+      const updatedClientProgramIds = [...currentClientProgramIds, selectedProgram.id];
+      await updateDoc(clientRef, {
+        program_ids: updatedClientProgramIds
+      });
+
+      // 3. עדכון הזיכרון המקומי (State) של התוכניות והלקוחות
       setPrograms((prev) =>
         prev.map((program) =>
           program.id === selectedProgram.id
-            ? {
-                ...program,
-                participant_ids: updatedParticipantIds,
-                participant_count: updatedParticipantIds.length,
-              }
+            ? { ...program, participant_ids: updatedParticipantIds, participant_count: updatedParticipantIds.length }
             : program
         )
       );
 
       setSelectedProgram((prev) =>
-        prev
-          ? {
-              ...prev,
-              participant_ids: updatedParticipantIds,
-              participant_count: updatedParticipantIds.length,
-            }
-          : prev
+        prev ? { ...prev, participant_ids: updatedParticipantIds, participant_count: updatedParticipantIds.length } : prev
+      );
+
+      setAllClients((prev) => 
+        prev.map((client) => 
+          client.id === selectedClient.id ? { ...client, program_ids: updatedClientProgramIds } : client
+        )
       );
 
       setClientAddSuccess("Client added to program successfully.");
@@ -284,32 +292,42 @@ export default function ProgramsPage() {
       
       const updatedParticipantIds = currentParticipantIds.filter(id => id !== clientIdToRemove);
 
+      // 1. עדכון התוכנית
       const programRef = doc(db, "programs", selectedProgram.id);
       await updateDoc(programRef, {
         participant_ids: updatedParticipantIds,
         participant_count: updatedParticipantIds.length,
       });
 
+      // 2. עדכון הלקוח (הסרת התוכנית ממנו)
+      const clientToUpdate = allClients.find(c => c.id === clientIdToRemove);
+      if (clientToUpdate) {
+        const clientRef = doc(db, "clients", clientIdToRemove);
+        const currentClientProgramIds = Array.isArray(clientToUpdate.program_ids) ? clientToUpdate.program_ids : [];
+        const updatedClientProgramIds = currentClientProgramIds.filter(id => id !== selectedProgram.id);
+        
+        await updateDoc(clientRef, {
+          program_ids: updatedClientProgramIds
+        });
+
+        setAllClients((prev) => 
+          prev.map((client) => 
+            client.id === clientIdToRemove ? { ...client, program_ids: updatedClientProgramIds } : client
+          )
+        );
+      }
+
+      // 3. עדכון ה-State המקומי
       setPrograms((prev) =>
         prev.map((program) =>
           program.id === selectedProgram.id
-            ? {
-                ...program,
-                participant_ids: updatedParticipantIds,
-                participant_count: updatedParticipantIds.length,
-              }
+            ? { ...program, participant_ids: updatedParticipantIds, participant_count: updatedParticipantIds.length }
             : program
         )
       );
 
       setSelectedProgram((prev) =>
-        prev
-          ? {
-              ...prev,
-              participant_ids: updatedParticipantIds,
-              participant_count: updatedParticipantIds.length,
-            }
-          : prev
+        prev ? { ...prev, participant_ids: updatedParticipantIds, participant_count: updatedParticipantIds.length } : prev
       );
 
     } catch (err) {
@@ -385,6 +403,28 @@ export default function ProgramsPage() {
     return () => clearTimeout(timer);
   }, [clientAddSuccess]);
 
+  useEffect(() => {
+    // בודקים אם יש "פתק" ב-URL שאומר לנו לפתוח תוכנית מסוימת
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('openId');
+
+    // אם מצאנו ID ויש לנו כבר רשימת תוכניות טעונה
+    if (openId && programs.length > 0) {
+      const programToOpen = programs.find(p => p.id === openId);
+      
+      if (programToOpen) {
+        // עוטפים ב-setTimeout כדי למנוע את שגיאת ה-cascading renders של React
+        // זה דוחה את פתיחת המודל לסוף תור האירועים (Event Loop)
+        setTimeout(() => {
+          openProgramModal(programToOpen);
+        }, 0);
+        
+        // מנקים את ה-URL בשקט מאחורי הקלעים
+        window.history.replaceState(null, '', '/programs');
+      }
+    }
+  }, [programs]);
+  
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(180deg,#E5EFE0_0%,#F3F6F0_30%,#DDEAD8_100%)] px-4 py-5 text-[#15383E] sm:px-6 sm:py-7 lg:px-8">
       <div aria-hidden="true" className="absolute -right-36 top-24 -z-10 h-96 w-96 rounded-full border-[70px] border-[#BFD9C1]/60" />

@@ -28,7 +28,8 @@ import {
   Legend, 
   LineChart, 
   Line,
-  ResponsiveContainer 
+  ResponsiveContainer ,
+  Tooltip
 } from 'recharts';
 
 
@@ -43,6 +44,9 @@ export default function StatisticsPage() {
   const [clients, setClients] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [activeAlertRules, setActiveAlertRules] = useState(['passport_id', 'dob']);
+  const [isAlertMenuOpen, setIsAlertMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,6 +98,8 @@ export default function StatisticsPage() {
     const unassignedClientsList = [];
     let fullyCompliant = 0;
     let missingForms = 0;
+    let statusCounts = { draft: 0, interested: 0, registered: 0 };
+    let genderCounts = { male: 0, female: 0, other: 0, unknown: 0 };
     
     const sourceCounts = {};
     const locationCounts = {};
@@ -125,25 +131,43 @@ export default function StatisticsPage() {
       }
 
       // Action Items Checks
-      if (client.status === 'registered' && !client.passport_id) {
-        actionItems.push({
-          id: `missing_id_${client.id}`,
-          clientId: client.id,
-          client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
-          issue: 'Missing Passport/ID',
-          program: 'N/A',
-          severity: 'high'
-        });
+      // 3. Action Items Logic (Dynamic Rules)
+      const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown Client';
+
+      // תעודת זהות / דרכון
+      if (activeAlertRules.includes('passport_id') && client.status === 'registered' && !client.passport_id) {
+        actionItems.push({ id: `${client.id}-id`, client: name, issue: 'Missing ID/Passport', severity: 'high' });
       }
-      if (!client.dob || client.dob === "") {
-        actionItems.push({
-          id: `missing_dob_${client.id}`,
-          clientId: client.id,
-          client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
-          issue: 'Missing Date of Birth',
-          program: 'N/A',
-          severity: 'medium'
-        });
+      
+      // תאריך לידה
+      if (activeAlertRules.includes('dob') && !client.dob) {
+        actionItems.push({ id: `${client.id}-dob`, client: name, issue: 'Missing Date of Birth', severity: 'medium' });
+      }
+      
+      // טלפון
+      if (activeAlertRules.includes('phone') && !client.phone) {
+        actionItems.push({ id: `${client.id}-phone`, client: name, issue: 'Missing Phone Number', severity: 'medium' });
+      }
+
+      // אימייל
+      if (activeAlertRules.includes('email') && !client.email) {
+        actionItems.push({ id: `${client.id}-email`, client: name, issue: 'Missing Email Address', severity: 'medium' });
+      }
+
+      // כתובת מגורים
+      if (activeAlertRules.includes('address') && !client.address) {
+        actionItems.push({ id: `${client.id}-address`, client: name, issue: 'Missing Home Address', severity: 'low' });
+      }
+
+      // אנשי קשר (מוודא שהמערך לא ריק)
+      if (activeAlertRules.includes('contacts') && (!client.contacts || client.contacts.length === 0)) {
+        actionItems.push({ id: `${client.id}-contacts`, client: name, issue: 'No Emergency Contacts', severity: 'high' });
+      }
+
+      // אישור רפואי (בודק בתוך אובייקט medical_profile)
+      if (activeAlertRules.includes('medical') && 
+         (!client.medical_profile || client.medical_profile.medical_clearance_status === 'Missing')) {
+        actionItems.push({ id: `${client.id}-med`, client: name, issue: 'Missing Medical Clearance', severity: 'high' });
       }
 
       // Growth Calculation
@@ -205,7 +229,30 @@ export default function StatisticsPage() {
           locationCounts[cityPart] = (locationCounts[cityPart] || 0) + 1;
         }
       }
+
+// 5. Funnel Status Logic
+      if (client.status) {
+        const s = client.status.toLowerCase();
+        if (statusCounts[s] !== undefined) {
+          statusCounts[s]++;
+        }
+      }
+
+      // 6. Gender Logic
+      if (client.gender) {
+        const g = client.gender.toLowerCase();
+        if (g === 'male') genderCounts.male++;
+        else if (g === 'female') genderCounts.female++;
+        else genderCounts.other++;
+      } else {
+        genderCounts.unknown++;
+      }
+
     });
+
+
+    
+    
 
     const demographicsData = Object.entries(ageGroups)
       .filter(([_, value]) => value > 0)
@@ -215,6 +262,20 @@ export default function StatisticsPage() {
       month,
       signups
     }));
+
+    // Funnel Data (מסודר לפי שלבי ההרשמה)
+    const statusFunnelData = [
+      { name: 'Draft', value: statusCounts.draft },
+      { name: 'Interested', value: statusCounts.interested },
+      { name: 'Registered', value: statusCounts.registered }
+    ];
+
+    // Gender Data (מסנן החוצה קבוצות ריקות)
+    const genderData = [
+      { name: 'Male', value: genderCounts.male },
+      { name: 'Female', value: genderCounts.female },
+      { name: 'Other/Unknown', value: genderCounts.other + genderCounts.unknown }
+    ].filter(g => g.value > 0);
 
     const complianceData = [
       { name: 'Fully Compliant', value: fullyCompliant },
@@ -278,9 +339,11 @@ export default function StatisticsPage() {
       topLocations,
       activeProgramsList,
       unassignedClientsList,
-      totalClients: clients.length
+      totalClients: clients.length,
+      statusFunnelData, // <--- הוספנו
+      genderData
     };
-  }, [clients, programs]);
+  }, [clients, programs, activeAlertRules]);
 
   const {
     kpiData = [],
@@ -295,6 +358,8 @@ export default function StatisticsPage() {
     activeProgramsList = [],
     unassignedClientsList = [],
     totalClients = 1,
+    statusFunnelData = [], // <--- הוספנו
+    genderData = [],
   } = stats || {};
 
   if (loading) {
@@ -448,10 +513,20 @@ const exportToCSV = () => {
                     <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Currently Active Programs:</p>
                       <ul className="space-y-2 mt-2">
-                        {activeProgramsList.map((prog) => (
-                          <li key={prog.id} className="flex flex-col">
-                            <span className="font-medium truncate">• {prog.name || 'Untitled Program'}</span>
-                            {prog.location && <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">📍 {prog.location}</span>}
+                       {activeProgramsList.map((prog) => (
+                          <li 
+                            key={prog.id} 
+                            onClick={() => setSelectedProgram(prog)}
+                            className="flex flex-col p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/item"
+                          >
+                            <span className="font-medium truncate group-hover/item:text-cyan-300 transition-colors">
+                              🔍 {prog.name || 'Untitled Program'}
+                            </span>
+                            {prog.location && (
+                              <span className="text-[11px] text-[#8CA5A8] ml-5 truncate">
+                                📍 {prog.location}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -465,8 +540,14 @@ const exportToCSV = () => {
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Clients Without Programs:</p>
                       <ul className="space-y-1.5 mt-2">
                         {unassignedClientsList.map((client) => (
-                          <li key={client.id} className="flex items-center text-slate-200">
-                            <span className="font-medium truncate">• {client.name}</span>
+                          <li 
+                            key={client.id} 
+                            onClick={() => window.location.href = `/clients?openClientId=${client.id}`}
+                            className="flex items-center p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/client text-slate-200"
+                          >
+                            <span className="font-medium truncate group-hover/client:text-cyan-300 transition-colors">
+                              👤 {client.name}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -474,17 +555,77 @@ const exportToCSV = () => {
                   </div>
                 )}
                 {/* חלונית צפה (Tooltip) שמופיעה רק בריחוף על "Pending Actions" */}
+              {/* כפתור הגדרות התראות שמופיע רק בכרטיסיית Pending Actions */}
+                {isPendingActions && (
+                  <div className="absolute top-4 right-4 z-50">
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsAlertMenuOpen(!isAlertMenuOpen); }}
+                      className="p-1.5 bg-black/10 hover:bg-black/20 rounded-md transition-colors text-white/80 hover:text-white"
+                      title="Alert Settings"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    
+                    {/* תפריט נפתח לבחירת התראות */}
+                    {isAlertMenuOpen && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-100 text-slate-700 text-sm font-medium z-[60]"
+                      >
+                        <p className="text-xs text-slate-400 mb-2 pb-1.5 border-b border-slate-100 uppercase tracking-wider">Alert Rules</p>
+                        {[
+                          { id: 'passport_id', label: 'Missing ID / Passport' },
+                          { id: 'dob', label: 'Missing Date of Birth' },
+                          { id: 'phone', label: 'Missing Phone Number' },
+                          { id: 'email', label: 'Missing Email Address' },
+                          { id: 'address', label: 'Missing Home Address' },
+                          { id: 'contacts', label: 'Missing Emergency Contacts' },
+                          { id: 'medical', label: 'Missing Medical Clearance' }
+                        ].map(rule => (
+                          <label key={rule.id} className="flex items-center gap-2.5 py-2 cursor-pointer hover:bg-slate-50 rounded-lg px-2 -mx-1 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={activeAlertRules.includes(rule.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setActiveAlertRules([...activeAlertRules, rule.id]);
+                                } else {
+                                  setActiveAlertRules(activeAlertRules.filter(r => r !== rule.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#2C6975] focus:ring-[#2C6975]"
+                            />
+                            <span className="text-[13px]">{rule.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {isPendingActions && actionItems.length > 0 && (
                   <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
                     <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Action Items & Alerts:</p>
-                      <ul className="space-y-2 mt-2">
-                        {actionItems.map((item) => (
-                          <li key={item.id} className="flex flex-col">
-                            <span className="font-medium text-slate-200 truncate">• {item.client}</span>
-                            <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">{item.issue}</span>
-                          </li>
-                        ))}
+                     <ul className="space-y-1.5 mt-2">
+                        {actionItems.map((item) => {
+                          // מחלצים את ה-ID המקורי של הלקוח מתוך ה-ID של ההתראה
+                          const realClientId = item.id.split('-')[0];
+
+                          return (
+                            <li 
+                              key={item.id} 
+                              onClick={() => window.location.href = `/clients?openClientId=${realClientId}`}
+                              className="flex flex-col p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/action"
+                            >
+                              <span className="font-medium text-slate-200 truncate group-hover/action:text-orange-300 transition-colors">
+                                • {item.client}
+                              </span>
+                              <span className="text-[11px] text-[#8CA5A8] ml-3 truncate group-hover/action:text-orange-200/70">
+                                {item.issue}
+                              </span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   </div>
@@ -711,6 +852,8 @@ const exportToCSV = () => {
             </div>
           </section>
 
+
+              
           {/* Top Locations - Custom List with Progress Bars */}
           <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
             <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
@@ -743,11 +886,136 @@ const exportToCSV = () => {
             </div>
           </section>
 
+
+
         </div>
 
-    
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          
+          {/* גרף פילוח מגדרי (Gender Distribution) */}
+          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+              Gender Distribution
+            </h2>
+            <div className="flex-1 min-h-[250px]">
+              {genderData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={genderData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {genderData.map((entry, index) => {
+                        const colors = ['#2C6975', '#E5C97D', '#8CA5A8'];
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                      })}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                      itemStyle={{ color: '#15383E', fontWeight: 'bold' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No gender data available</div>
+              )}
+            </div>
+          </section>
+
+          {/* משפך סטטוס לקוחות (Intake Funnel) */}
+          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+              Intake Status Pipeline
+            </h2>
+            <div className="flex-1 min-h-[250px]">
+              {statusFunnelData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statusFunnelData} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#5C7478', fontSize: 13, fontWeight: 500 }} />
+                    <RechartsTooltip 
+                      cursor={{ fill: '#f8fafc' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={32}>
+                      {statusFunnelData.map((entry, index) => {
+                        const colors = ['#C9DDE1', '#E5C97D', '#C5DDC0']; 
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No status data available</div>
+              )}
+            </div>
+          </section>
+
+        </div>
 
       </div>
+      
+      {/* חלון תצוגה מהירה לתוכנית */}
+      {selectedProgram && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0a191c]/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[24px] p-6 sm:p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* כפתור סגירה */}
+            <button 
+              onClick={() => setSelectedProgram(null)}
+              className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-red-50 hover:text-red-500 rounded-full text-slate-400 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
+            <div className="mb-6 pr-8">
+              <h2 className="text-2xl font-bold text-[#15383E]">🌟 {selectedProgram.name}</h2>
+              <p className="text-[#5C7478] mt-1.5 text-sm font-medium">📍 {selectedProgram.location || "Unknown location"}</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-[#EEF4EC] p-3.5 rounded-2xl">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#7C9194]">Starts</p>
+                <p className="mt-1 font-bold text-[#15383E]">
+                  {selectedProgram.start_date ? (selectedProgram.start_date.toDate ? selectedProgram.start_date.toDate() : new Date(selectedProgram.start_date)).toLocaleDateString('he-IL') : "N/A"}
+                </p>
+              </div>
+              <div className="bg-[#E4F0EC] p-3.5 rounded-2xl">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#7C9194]">Ends</p>
+                <p className="mt-1 font-bold text-[#15383E]">
+                  {selectedProgram.end_date ? (selectedProgram.end_date.toDate ? selectedProgram.end_date.toDate() : new Date(selectedProgram.end_date)).toLocaleDateString('he-IL') : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#15383E]">Enrolled Participants</p>
+                <p className="text-xs text-slate-500 mt-0.5">Current program capacity</p>
+              </div>
+              <div className="text-3xl font-black text-[#2C6975]">
+                {selectedProgram.participant_count || 0}
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => window.location.href = `/programs?openId=${selectedProgram.id}`} 
+              className="w-full py-3.5 bg-[#2C6975] text-white font-bold rounded-xl hover:bg-[#1f4a53] transition-all shadow-lg shadow-[#2C6975]/20 hover:shadow-[#2C6975]/40 hover:-translate-y-0.5"
+            >
+              Manage in Programs Page ➔
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
