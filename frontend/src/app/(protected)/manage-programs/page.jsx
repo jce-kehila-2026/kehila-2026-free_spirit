@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, setDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc,addDoc, Timestamp } from "firebase/firestore";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import styles from "./ManagePrograms.module.css";
 
@@ -218,61 +218,43 @@ export default function ManagePrograms({ onSuccess }) {
     try {
       let finalTemplateId = selectedTemplate;
 
-      // Logic: Handle cases where no template is selected
       if (!finalTemplateId) {
-        if (isScratch) {
-          // Generate a safe template ID based on the typed name
-          finalTemplateId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-          
-          // WRITE: Save new document to 'program_templates'
-          const newTemplateRef = doc(db, "program_templates", finalTemplateId);
-          await setDoc(newTemplateRef, {
-            template_name: name,
-            category: "Custom",
-            base_description: description
-          });
-        } else {
-          // No template selected and not in scratch mode - create a custom template
-          finalTemplateId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-          
-          // WRITE: Save new document to 'program_templates'
-          const newTemplateRef = doc(db, "program_templates", finalTemplateId);
-          await setDoc(newTemplateRef, {
-            template_name: name,
-            category: "Custom",
-            base_description: description
-          });
-        }
+        // תיקון 1: תמיכה מלאה בעברית - מאפשר גם אותיות עבריות ולא מוחק אותן
+        finalTemplateId = name.trim().replace(/[^a-zA-Z0-9א-ת]+/g, '_');
+        if (!finalTemplateId) finalTemplateId = `custom_${Date.now()}`; // גיבוי למקרה חירום
+        
+        const newTemplateRef = doc(db, "program_templates", finalTemplateId);
+        await setDoc(newTemplateRef, {
+          template_name: name,
+          category: "Custom",
+          base_description: description
+        });
       }
 
-          // המרה לפורמט של פיירבייס
-          const startTimestamp = Timestamp.fromDate(new Date(startDate));
-          const endTimestamp = Timestamp.fromDate(new Date(endDate));
+      const startTimestamp = Timestamp.fromDate(new Date(startDate));
+      const endTimestamp = Timestamp.fromDate(new Date(endDate));
 
-          // יצירת מזהה תוכנית: [template]_[YYYY]_[MM]_[batch]
-          const dateObj = new Date(startDate);
-          const yearVal = dateObj.getFullYear();
-          const monthVal = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const programId = `${finalTemplateId}_${yearVal}_${monthVal}_${DEFAULT_BATCH}`;
-        // Build the final program payload
       const programData = {
         template_id: finalTemplateId,
         name: name,
         batch: DEFAULT_BATCH,
-        description: description, // Storing edited description specific to this instance
+        description: description,
         start_date: startTimestamp,
         end_date: endTimestamp,
         location: location,
         min_members: parseInt(minMembers, 10) || 0,
         max_members: parseInt(maxMembers, 10) || 0,
-        participant_count: 0,
+        
+        participant_count: 0, 
         participant_ids: [],
+        
         status: "Upcoming"
       };
 
-      // WRITE: Save specific instance to 'programs' collection
-      const programRef = doc(db, "programs", programId);
-      await setDoc(programRef, programData);
+      // תיקון 2: שימוש ב-addDoc כדי לתת לכל תוכנית ID ייחודי לעולם! 
+      // (ככה תוכניות מאותו חודש או באותו שם לא ידרסו אחת את השנייה)
+      const programsCol = collection(db, "programs");
+      await addDoc(programsCol, programData);
 
       const trimmedLocation = location.trim();
       if (trimmedLocation) {
@@ -281,8 +263,9 @@ export default function ManagePrograms({ onSuccess }) {
         );
 
         if (!locationExists) {
-          const locationId = trimmedLocation.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-          const locationRef = doc(db, "locations", locationId);
+          // תמיכה בעברית גם במיקומים
+          const locationId = trimmedLocation.toLowerCase().replace(/[^a-z0-9א-ת]+/g, "_");
+          const locationRef = doc(db, "locations", locationId || `loc_${Date.now()}`);
           await setDoc(locationRef, { name: trimmedLocation });
           setSavedLocations((prev) => [...prev, trimmedLocation]);
         }
@@ -293,10 +276,6 @@ export default function ManagePrograms({ onSuccess }) {
       if (onSuccess) {
         setTimeout(() => onSuccess(), 2000);
       }
-
-      
-
-      // Optional: Reset form fields here if desired
 
     } catch (err) {
       console.error("Error creating program:", err);
@@ -405,10 +384,10 @@ export default function ManagePrograms({ onSuccess }) {
             { (suggestions.length > 0 || isSuggestLoading) && (
               <div className={styles.suggestions}>
                 {isSuggestLoading && <div className={styles.suggestionLoading}>Loading...</div>}
-                {suggestions.map((s) => (
+               {suggestions.map((s, index) => (
                   <button
                     type="button"
-                    key={s}
+                    key={`${s}-${index}`}
                     className={styles.suggestionItem}
                     onClick={() => { setLocation(s); setSuggestions([]); setFieldErrors(prev => { const c = { ...prev }; delete c.location; return c; }); }}
                   >

@@ -35,7 +35,7 @@ export default function ProgramsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [selectedYear, setSelectedYear] = useState(null);
-  
+  const [showProgramAddSuccess, setShowProgramAddSuccess] = useState(false);
 
   const availableYears = useMemo(() => {
     const years = programs.map(p => {
@@ -477,6 +477,39 @@ export default function ProgramsPage() {
 
     return () => clearTimeout(timer);
   }, [clientAddSuccess]);
+
+
+const handleProgramCreated = async () => {
+    setIsManageModalOpen(false);
+    setShowProgramAddSuccess(true);
+    
+    try {
+      const programsCol = collection(db, "programs");
+      const snapshot = await getDocs(programsCol);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      
+      const now = new Date().getTime();
+      list.sort((a, b) => {
+        const startA = (a.start_date?.toDate?.() || new Date(a.start_date || 0)).getTime();
+        const endA = (a.end_date?.toDate?.() || new Date(a.end_date || 0)).getTime();
+        const startB = (b.start_date?.toDate?.() || new Date(b.start_date || 0)).getTime();
+        const endB = (b.end_date?.toDate?.() || new Date(b.end_date || 0)).getTime();
+        const isPastA = endA < now;
+        const isPastB = endB < now;
+        if (isPastA !== isPastB) return isPastA ? 1 : -1;
+        if (isPastA) return endB - endA;
+        else return startA - startB;
+      });
+      setPrograms(list);
+    } catch (err) {
+      console.error("Error refreshing programs:", err);
+    }
+
+    setTimeout(() => {
+      setShowProgramAddSuccess(false);
+    }, 3000);
+  };
+
 
   // --- פונקציה לייצוא רשימת המשתתפים והאזהרות הרפואיות ל-CSV ---
   const exportProgramParticipantsCSV = () => {
@@ -1007,6 +1040,7 @@ export default function ProgramsPage() {
                       borderColor = 'border-slate-600';
                     }
                     
+
                     return (
                       <div className="relative pt-6 pb-6 w-full">
                         <div className="h-3 w-full bg-slate-100 rounded-full relative">
@@ -1212,7 +1246,7 @@ export default function ProgramsPage() {
             </button>
             </div>
             <div className="p-5 sm:p-6">
-              <ManagePrograms onSuccess={() => setIsManageModalOpen(false)} />
+              <ManagePrograms onSuccess={handleProgramCreated} />
             </div>
           </div>
         </div>
@@ -1271,6 +1305,14 @@ export default function ProgramsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* בועת הצלחה שקופצת למטה */}
+      {showProgramAddSuccess && (
+        <div className="fixed bottom-10 left-1/2 z-[100] flex -translate-x-1/2 transform items-center gap-3 rounded-full bg-[#4F8B75] px-6 py-3 text-white shadow-[0_10px_40px_rgba(79,139,117,0.4)] transition-all animate-in slide-in-from-bottom-5 fade-in duration-500">
+          <CheckCircle2 size={22} className="text-white" />
+          <span className="text-sm font-semibold tracking-wide">התוכנית נוספה בהצלחה!</span>
         </div>
       )}
     </main>
