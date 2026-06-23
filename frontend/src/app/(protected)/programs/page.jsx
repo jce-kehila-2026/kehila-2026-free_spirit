@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { Plus, CalendarDays, MapPin, UsersRound, CheckCircle2, X } from "lucide-react";
+import { Plus, CalendarDays, MapPin, UsersRound, CheckCircle2, X, Download } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import ManagePrograms from "../manage-programs/page";
 
@@ -92,6 +92,42 @@ export default function ProgramsPage() {
       }));
   }, [allClients, selectedProgram]);
 
+  // --- 3. חישוב התראות רפואיות מפורטות ---
+  const programMedicalAlerts = useMemo(() => {
+    if (!selectedProgram || !Array.isArray(selectedProgram.participant_ids)) return [];
+    
+    const detailedAlerts = [];
+
+    // עוברים רק על הלקוחות שמשובצים לתוכנית הזו
+    selectedProgram.participant_ids.forEach(participantId => {
+      const client = allClients.find(c => c.id === participantId);
+      if (client && client.medical_profile) {
+        // מחלצים את השם המלא של הלקוח
+        const clientName = `${client.first_name || ""} ${client.last_name || ""}`.trim() || "Unknown Client";
+        const med = client.medical_profile;
+
+        // פונקציית עזר חכמה: מטפלת גם במערכים וגם בטקסט רגיל כדי למנוע קריסות
+        const formatDesc = (data) => Array.isArray(data) ? data.join(', ') : String(data);
+
+        // בודקים כל סעיף ומשתמשים בפונקציה הבטוחה שלנו
+        if (med.allergies && med.allergies.length > 0) {
+          detailedAlerts.push({ id: `${client.id}-alg`, name: clientName, issue: 'Allergies', desc: formatDesc(med.allergies) });
+        }
+        if (med.dietary_restrictions && med.dietary_restrictions.length > 0) {
+          detailedAlerts.push({ id: `${client.id}-diet`, name: clientName, issue: 'Dietary', desc: formatDesc(med.dietary_restrictions) });
+        }
+        if (med.medications && med.medications.length > 0) {
+          detailedAlerts.push({ id: `${client.id}-meds`, name: clientName, issue: 'Medications', desc: formatDesc(med.medications) });
+        }
+        if (med.medical_conditions_checklist && med.medical_conditions_checklist.length > 0) {
+          detailedAlerts.push({ id: `${client.id}-cond`, name: clientName, issue: 'Conditions', desc: formatDesc(med.medical_conditions_checklist) });
+        }
+      }
+    });
+
+    return detailedAlerts;
+  }, [allClients, selectedProgram]);
+
   useEffect(() => {
     const fetchClients = async () => {
       try {
@@ -120,7 +156,7 @@ export default function ProgramsPage() {
       } else {
         setEditingValue('');
       }
-    } else if (field === 'min_members') {
+    } else if (field === 'min_members' || field === 'max_members' || field === 'capacity') {
       setEditingValue(value !== undefined && value !== null ? String(value) : '');
     } else {
       setEditingValue(value);
@@ -146,14 +182,45 @@ export default function ProgramsPage() {
     if (editingField === 'start_date' || editingField === 'end_date') {
       newValue = new Date(editingValue);
       if (isNaN(newValue.getTime())) {
-        setUpdateError(`Invalid date for ${editingField.replace('_', ' ')}. Please use YYYY-MM-DD format.`);
+        setUpdateError(`Invalid date. Please use YYYY-MM-DD format.`);
         setIsUpdating(false);
         return;
       }
-    } else if (editingField === 'min_members') {
+
+      // איפוס שעות כדי להשוות תאריכים נטו (בלי השפעת שעות היום)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const newDateToCompare = new Date(newValue);
+      newDateToCompare.setHours(0, 0, 0, 0);
+
+      // 1. בדיקה שהתאריך אינו בעבר
+      if (newDateToCompare < today) {
+        setUpdateError(`The date cannot be in the past.`);
+        setIsUpdating(false);
+        return;
+      }
+
+      // 2. קבלת תאריך ההתחלה ותאריך הסיום לצורך השוואה
+      let start = editingField === 'start_date' ? newDateToCompare : 
+                  (selectedProgram.start_date?.toDate ? selectedProgram.start_date.toDate() : new Date(selectedProgram.start_date));
+      let end = editingField === 'end_date' ? newDateToCompare : 
+                (selectedProgram.end_date?.toDate ? selectedProgram.end_date.toDate() : new Date(selectedProgram.end_date));
+
+      // איפוס השעות של שני התאריכים
+      if (start && !isNaN(start.getTime())) { start = new Date(start); start.setHours(0, 0, 0, 0); }
+      if (end && !isNaN(end.getTime())) { end = new Date(end); end.setHours(0, 0, 0, 0); }
+
+      // 3. בדיקה שההתחלה לפני הסוף
+      if (start && end && start > end) {
+        setUpdateError(`Start date cannot be after end date.`);
+        setIsUpdating(false);
+        return;
+      }
+
+    } else if (editingField === 'min_members' || editingField === 'max_members' || editingField === 'capacity') {
       newValue = parseInt(editingValue, 10);
-      if (isNaN(newValue) || newValue < 0) { // Assuming min_members cannot be negative
-        setUpdateError(`Invalid number for minimum members. Please enter a non-negative number.`);
+      if (isNaN(newValue) || newValue < 0) {
+        setUpdateError(`Invalid number. Please enter a valid, non-negative number.`);
         setIsUpdating(false);
         return;
       }
@@ -228,8 +295,16 @@ export default function ProgramsPage() {
       ? selectedProgram.participant_ids
       : [];
 
-    if (currentParticipantIds.includes(selectedClient.id)) {
+   if (currentParticipantIds.includes(selectedClient.id)) {
       setClientSearchError("This client is already registered for the program.");
+      setClientAddLoading(false);
+      return;
+    }
+
+    // ---> חסימת הרשמה מעל המקסימום <---
+    const maxCapacity = selectedProgram.max_members || selectedProgram.capacity || 0;
+    if (maxCapacity > 0 && currentParticipantIds.length >= maxCapacity) {
+      setClientSearchError(`Cannot add client: Program has reached its maximum capacity of ${maxCapacity}.`);
       setClientAddLoading(false);
       return;
     }
@@ -402,6 +477,56 @@ export default function ProgramsPage() {
 
     return () => clearTimeout(timer);
   }, [clientAddSuccess]);
+
+  // --- פונקציה לייצוא רשימת המשתתפים והאזהרות הרפואיות ל-CSV ---
+  const exportProgramParticipantsCSV = () => {
+    if (!selectedProgram || !allClients.length) return;
+
+    // הגדרת עמודות הקובץ
+    const headers = ["First Name", "Last Name", "Phone", "Allergies", "Dietary Restrictions", "Medications", "Medical Conditions"];
+    
+    // תו מיוחד שגורם לאקסל לזהות עברית בצורה תקינה (BOM)
+    let csvContent = "\uFEFF" + headers.join(",") + "\n";
+
+    // סינון רק של החניכים שרשומים לתוכנית הספציפית הזו
+    const participants = allClients.filter(c => 
+      selectedProgram.participant_ids?.includes(c.id)
+    );
+
+    participants.forEach(client => {
+      const med = client.medical_profile || {};
+      
+      // פונקציית עזר לסידור הטקסט (כדי שפסיקים בתוך הרשימות לא ישברו את האקסל)
+      const formatCSVField = (text) => {
+        if (!text) return '""';
+        const str = Array.isArray(text) ? text.join("; ") : String(text);
+        return `"${str.replace(/"/g, '""')}"`;
+      };
+
+      const row = [
+        formatCSVField(client.first_name),
+        formatCSVField(client.last_name),
+        formatCSVField(client.phone),
+        formatCSVField(med.allergies),
+        formatCSVField(med.dietary_restrictions),
+        formatCSVField(med.medications),
+        formatCSVField(med.medical_conditions_checklist)
+      ];
+
+      csvContent += row.join(",") + "\n";
+    });
+
+    // יצירת הקובץ והורדתו אוטומטית
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${selectedProgram.name || 'Program'}_Participants_Medical.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     // בודקים אם יש "פתק" ב-URL שאומר לנו לפתוח תוכנית מסוימת
@@ -577,6 +702,8 @@ export default function ProgramsPage() {
             <div className="flex items-start justify-between gap-4 bg-[#2C6975] p-6 text-white">
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-sky-600">Program details 📌</p>
+                
+                {/* 1. עריכת שם תוכנית */}
                 {editingField === 'name' ? (
                   <div onKeyDown={handleEditKeyDown}>
                     <input
@@ -597,13 +724,15 @@ export default function ProgramsPage() {
                     {updateError && editingField === 'name' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
                   </div>
                 ) : (
-                  <div className="group relative" onClick={() => handleStartEditing('name', selectedProgram.name || '')}>
-                    <h2 className="mt-2 cursor-pointer text-5xl font-extrabold tracking-tight text-slate-950">{selectedProgram.name || "Untitled Program"}</h2>
-                    <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-2xl group-hover:inline-block">
-                      ✏️
-                    </span>
+                  <div className="group relative w-fit" onClick={() => handleStartEditing('name', selectedProgram.name || '')}>
+                    <h2 className="mt-2 cursor-pointer text-5xl font-extrabold tracking-tight text-white pr-4">{selectedProgram.name || "Untitled Program"}</h2>
+                    <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition-all hover:bg-white/30 ring-1 ring-white/30">
+                      Edit
+                    </button>
                   </div>
                 )}
+                
+                {/* 2. עריכת מיקום */}
                 {editingField === 'location' ? (
                   <div onKeyDown={handleEditKeyDown} className="mt-2">
                     <input
@@ -624,11 +753,11 @@ export default function ProgramsPage() {
                     {updateError && editingField === 'location' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
                   </div>
                 ) : (
-                  <div className="group relative" onClick={() => handleStartEditing('location', selectedProgram.location || '')}>
-                    <p className="mt-2 cursor-pointer text-base font-medium text-slate-600">{selectedProgram.location || "Location not set"}</p>
-                    <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">
-                      ✏️
-                    </span>
+                  <div className="group relative w-fit" onClick={() => handleStartEditing('location', selectedProgram.location || '')}>
+                    <p className="mt-2 cursor-pointer text-base font-medium text-sky-100 pr-4">{selectedProgram.location || "Location not set"}</p>
+                    <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition-all hover:bg-white/30 ring-1 ring-white/30">
+                      Edit
+                    </button>
                   </div>
                 )}
               </div>
@@ -644,6 +773,8 @@ export default function ProgramsPage() {
 
             <div className="grid gap-6 p-6 lg:grid-cols-[3fr_1fr]">
               <div className="space-y-6">
+                
+                {/* 3. עריכת תיאור */}
                 <div className="rounded-[24px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
                   {editingField === 'description' ? (
                     <div onKeyDown={handleEditKeyDown}>
@@ -668,18 +799,66 @@ export default function ProgramsPage() {
                   ) : (
                     <div className="group relative" onClick={() => handleStartEditing('description', selectedProgram.description || '')}>
                       <p className="text-base font-semibold uppercase tracking-[0.22em] text-sky-500">Description 🧾</p>
-                      <p className="mt-4 cursor-pointer text-base leading-7 text-slate-600">{selectedProgram.description || "No description has been provided for this program."}</p>
-                      <span className="absolute -right-8 top-0 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                      <p className="mt-4 cursor-pointer text-base leading-7 text-slate-600 pr-16">{selectedProgram.description || "No description has been provided for this program."}</p>
+                      <button className="opacity-0 group-hover:opacity-100 absolute right-0 top-0 flex items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200 transition-all hover:bg-sky-100">
+                        Edit
+                      </button>
                     </div>
                   )}
                 </div>
 
+                {/* התראות רפואיות - מופיע תמיד */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 text-amber-800 font-bold text-[11px] uppercase tracking-[0.18em]">
+                    ⚠️ Medical & Safety Alerts
+                  </div>
+                  
+                  {programMedicalAlerts.length > 0 ? (
+                    <ul className="space-y-3">
+                      {programMedicalAlerts.map((alert) => (
+                        <li key={alert.id} className="text-sm text-amber-900 flex items-start gap-2.5 bg-amber-100/50 p-2.5 rounded-xl border border-amber-100/80">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-2"></span>
+                          <div className="flex-1">
+                            <span className="font-bold text-amber-950">{alert.name}</span>
+                            <span className="text-amber-700/60 mx-1.5">•</span>
+                            <span className="font-semibold text-amber-800">{alert.issue}:</span> 
+                            <span className="text-amber-900 ml-1 block mt-0.5 text-[13px]">{alert.desc}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-xl bg-white/60 px-4 py-3 border border-amber-100/50">
+                      <span className="text-sm font-medium text-amber-700/80">
+                        No medical alerts reported for the enrolled participants.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* רשימת משתתפים */}
                 <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
                   <div className="flex items-center justify-between gap-4">
-                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#6A8589]"><UsersRound className="h-4 w-4 text-[#6BB2A0]" />Participants</p>
-                    <span className="rounded-full bg-[#DCEAD6] px-3 py-1 text-xs font-bold text-[#2C6975]">
-                      {registeredParticipants.length}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#6A8589]">
+                        <UsersRound className="h-4 w-4 text-[#6BB2A0]" />
+                        Participants
+                      </p>
+                      <span className="rounded-full bg-[#DCEAD6] px-3 py-1 text-xs font-bold text-[#2C6975]">
+                        {registeredParticipants.length}
+                      </span>
+                    </div>
+                    {/* כפתור ייצוא נתונים רפואיים למשתתפים */}
+                    {registeredParticipants.length > 0 && (
+                      <button 
+                        onClick={exportProgramParticipantsCSV}
+                        className="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors border border-sky-200"
+                        title="Export Medical List to CSV"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Export CSV
+                      </button>
+                    )}
                   </div>
                   {registeredParticipants.length === 0 ? (
                     <p className="mt-4 text-sm text-[#6A8589]">No participants have been added yet.</p>
@@ -704,6 +883,7 @@ export default function ProgramsPage() {
                   )}
                 </div>
 
+                {/* הוספת משתתף */}
                 <div className="rounded-2xl border border-[#C9D9D1] bg-[#EAF2EA] p-5">
                   <div className="mb-4">
                     <p className="text-lg font-bold text-[#15383E]">Add client to this program</p>
@@ -764,10 +944,107 @@ export default function ProgramsPage() {
                 </div>
               </div>
 
+              {/* סרגל צד */}
               <aside className="space-y-4">
+                
+                {/* צוות מדריכים */}
+                {(selectedProgram.coordinators?.length > 0 || selectedProgram.staff_ids?.length > 0) && (
+                  <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0] mb-3">Assigned Staff</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(selectedProgram.coordinators || selectedProgram.staff_ids).map((staff, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EEF4EC] text-[#2C6975] text-xs font-bold border border-[#D7E3D5] hover:bg-[#DCEAD6] transition-colors cursor-default">
+                          👤 {staff}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* סרגל תפוסה Gauge */}
+                <div className="rounded-3xl bg-white border border-[#D7E3D5] p-5 shadow-sm">
+                  <div className="flex justify-between items-end mb-4">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6A8589]">Enrollment Gauge</p>
+                      <p className="text-sm font-semibold text-[#15383E] mt-1">
+                        <span className="text-xl font-black text-[#2C6975]">{registeredParticipants.length}</span> Registered
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {(() => {
+                        const max = selectedProgram.max_members > 0 ? selectedProgram.max_members : 50;
+                        const min = selectedProgram.min_members || 0;
+                        const enrolled = registeredParticipants.length;
+                        
+                        if (enrolled < min) {
+                          return <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">Needs {min - enrolled} More</span>;
+                        } else if (enrolled >= max) {
+                          return <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">Full Capacity</span>;
+                        } else {
+                          return <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">Good Standing</span>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {(() => {
+                    const max = selectedProgram.max_members > 0 ? selectedProgram.max_members : 50;
+                    const min = selectedProgram.min_members || 0;
+                    const enrolled = registeredParticipants.length;
+                    
+                    const percent = Math.min(100, Math.max(0, (enrolled / max) * 100));
+                    const minPercent = Math.min(100, Math.max(0, (min / max) * 100));
+                    
+                    let barColor = 'bg-rose-400'; 
+                    let borderColor = 'border-rose-400';
+                    
+                    if (enrolled >= min) {
+                      barColor = 'bg-[#6BB2A0]'; 
+                      borderColor = 'border-[#6BB2A0]';
+                    }
+                    if (enrolled >= max) {
+                      barColor = 'bg-slate-600'; 
+                      borderColor = 'border-slate-600';
+                    }
+                    
+                    return (
+                      <div className="relative pt-6 pb-6 w-full">
+                        <div className="h-3 w-full bg-slate-100 rounded-full relative">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-700 relative ${barColor}`}
+                            style={{ width: `${percent}%` }}
+                          >
+                            <div className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-white border-2 rounded-full shadow-md ${borderColor}`}></div>
+                          </div>
+
+                          {min > 0 && (
+                            <div 
+                              className="absolute top-1/2 flex flex-col items-center z-10"
+                              style={{ left: `${minPercent}%`, transform: 'translate(-50%, -50%)' }}
+                            >
+                              <div className="h-6 w-0.5 bg-rose-400"></div>
+                              <span className="text-[10px] font-bold text-rose-500 absolute top-5 whitespace-nowrap">Min: {min}</span>
+                            </div>
+                          )}
+                          
+                          <div 
+                            className="absolute top-1/2 flex flex-col items-center z-10"
+                            style={{ left: '100%', transform: 'translate(-50%, -50%)' }}
+                          >
+                            <div className="h-6 w-0.5 bg-slate-400"></div>
+                            <span className="text-[10px] font-bold text-slate-500 absolute top-5 whitespace-nowrap">Max: {max}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">Program metrics</p>
                   <div className="mt-4 grid gap-3">
+                    
+                    {/* 4. עריכת תאריך התחלה */}
                     <div className="rounded-3xl bg-sky-50 p-4" onKeyDown={handleEditKeyDown}>
                       {editingField === 'start_date' ? (
                         <div>
@@ -790,13 +1067,17 @@ export default function ProgramsPage() {
                           {updateError && editingField === 'start_date' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
                         </div>
                       ) : (
-                        <div className="group relative" onClick={() => handleStartEditing('start_date', selectedProgram.start_date)}>
+                        <div className="group relative w-fit" onClick={() => handleStartEditing('start_date', selectedProgram.start_date)}>
                           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-400">Start</p>
-                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.start_date)}</p>
-                          <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900 pr-4">{formatProgramDate(selectedProgram.start_date)}</p>
+                          <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/60 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200 transition-all hover:bg-white shadow-sm">
+                            Edit
+                          </button>
                         </div>
                       )}
                     </div>
+
+                    {/* 5. עריכת תאריך סיום */}
                     <div className="rounded-3xl bg-emerald-50 p-4" onKeyDown={handleEditKeyDown}>
                       {editingField === 'end_date' ? (
                         <div>
@@ -819,29 +1100,92 @@ export default function ProgramsPage() {
                           {updateError && editingField === 'end_date' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
                         </div>
                       ) : (
-                        <div className="group relative" onClick={() => handleStartEditing('end_date', selectedProgram.end_date)}>
+                        <div className="group relative w-fit" onClick={() => handleStartEditing('end_date', selectedProgram.end_date)}>
                           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">End</p>
-                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900">{formatProgramDate(selectedProgram.end_date)}</p>
-                          <span className="absolute -right-8 top-1/2 -translate-y-1/2 hidden cursor-pointer rounded-full p-1 text-lg group-hover:inline-block">✏️</span>
+                          <p className="mt-2 cursor-pointer text-lg font-semibold text-slate-900 pr-4">{formatProgramDate(selectedProgram.end_date)}</p>
+                          <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/60 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200 transition-all hover:bg-white shadow-sm">
+                            Edit
+                          </button>
                         </div>
                       )}
                     </div>
-                    <div className="rounded-xl bg-[#EEF4EC] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-400">Registered</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{registeredParticipants.length}</p>
+
+                    {/* 6. עריכת מינימום משתתפים */}
+                    <div className="rounded-3xl bg-rose-50 p-4" onKeyDown={handleEditKeyDown}>
+                      {editingField === 'min_members' ? (
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-400">Min Members</p>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-rose-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none ring-2 ring-rose-100"
+                            autoFocus
+                          />
+                          <div className="mt-2 flex items-center gap-2">
+                            <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-rose-500 px-3 py-1 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-50">
+                              Save
+                            </button>
+                            <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                          {updateError && editingField === 'min_members' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                        </div>
+                      ) : (
+                        <div className="group relative w-fit" onClick={() => handleStartEditing('min_members', selectedProgram.min_members)}>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-400">Min Members</p>
+                          <div className="mt-2 cursor-pointer flex items-baseline gap-2 pr-4">
+                            <span className="text-lg font-semibold text-slate-900">{selectedProgram.min_members || 0}</span>
+                            <span className="text-[11px] text-rose-500 font-medium">({Math.max(0, (selectedProgram.min_members || 0) - registeredParticipants.length)} missing)</span>
+                          </div>
+                          <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/60 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200 transition-all hover:bg-white shadow-sm">
+                            Edit
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="rounded-xl bg-[#F7EEEE] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-400">Missing to minimum</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{Math.max(0, (selectedProgram.min_members || 0) - registeredParticipants.length)}</p>
+
+                    {/* 7. עריכת מקסימום משתתפים */}
+                    <div className="rounded-3xl bg-slate-100 p-4" onKeyDown={handleEditKeyDown}>
+                      {editingField === 'max_members' ? (
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Max Members</p>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none ring-2 ring-slate-200"
+                            autoFocus
+                          />
+                          <div className="mt-2 flex items-center gap-2">
+                            <button onClick={handleSaveEditing} disabled={isUpdating} className="rounded-lg bg-slate-600 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
+                              Save
+                            </button>
+                            <button onClick={handleCancelEditing} className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                          {updateError && editingField === 'max_members' && <p className="mt-1 text-sm text-red-600">{updateError}</p>}
+                        </div>
+                      ) : (
+                        <div className="group relative w-fit" onClick={() => handleStartEditing('max_members', selectedProgram.max_members)}>
+                          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Max Members</p>
+                          <div className="mt-2 cursor-pointer flex items-baseline gap-2 pr-4">
+                            <span className="text-lg font-semibold text-slate-900">{selectedProgram.max_members || "Unlimited"}</span>
+                            {selectedProgram.max_members > 0 && (
+                              <span className="text-[11px] text-slate-500 font-medium">({Math.max(0, selectedProgram.max_members - registeredParticipants.length)} remaining)</span>
+                            )}
+                          </div>
+                          <button className="opacity-0 group-hover:opacity-100 absolute -right-20 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-lg bg-white/60 px-3 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200 transition-all hover:bg-white shadow-sm">
+                            Edit
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="rounded-xl bg-[#EEF1EE] p-4">
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Remaining to maximum</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">
-                        {selectedProgram.max_members > 0
-                          ? Math.max(0, selectedProgram.max_members - registeredParticipants.length)
-                          : "Unlimited"}
-                      </p>
-                    </div>
+
                   </div>
                 </div>
               </aside>
