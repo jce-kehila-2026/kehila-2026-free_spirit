@@ -1,5 +1,5 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc } from "firebase/firestore";
-import { db, storage } from "@/firebase/firebase";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
@@ -13,6 +13,19 @@ export function getFirestoreDb() {
 export function getFirebaseStorage() {
   if (!storage) throw new Error("Firebase Storage is not initialized.");
   return storage;
+}
+
+async function isCurrentUserClientRole(): Promise<boolean> {
+  const user = auth?.currentUser;
+
+  if (!user) {
+    return false;
+  }
+
+  const accountSnapshot = await getDoc(doc(getFirestoreDb(), "accounts", user.uid));
+  const role = accountSnapshot.exists() ? accountSnapshot.data().role : "";
+
+  return role === "client" || role === "Client";
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -31,6 +44,43 @@ export function sanitizeFirestorePayload(obj: Record<string, any>): Record<strin
         }
         return [k, v];
       })
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickClientEditableFields(payload: Record<string, any>): Record<string, any> {
+  const clientEditableFields = new Set([
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "passport_id",
+    "gender",
+    "address",
+    "dob",
+    "referrer",
+    "education_status",
+    "diagnosis",
+    "personal_notes",
+    "passport_number",
+    "passport_country",
+    "citizenship",
+    "date_of_entry",
+    "purpose_of_visit",
+    "home_address",
+    "cohabitants",
+    "dependents",
+    "medical_profile",
+    "contacts",
+    "logistics",
+    "questionnaire",
+    "legal_consents",
+    "financial_aid_applications",
+    "client_documents",
+  ]);
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key]) => clientEditableFields.has(key))
   );
 }
 
@@ -61,7 +111,16 @@ export async function updateClientDoc(
   payload: Record<string, any>
 ): Promise<void> {
   const docRef = doc(getFirestoreDb(), "clients", clientId);
-  
+  const isClientUpdate = await isCurrentUserClientRole();
+
+  if (isClientUpdate) {
+    // Client onboarding writes must be strict patches. Do not send manager-owned
+    // fields or metadata such as status, program_ids, uid, or timestamps because
+    // Firestore rules require those values to remain unchanged for client roles.
+    await updateDoc(docRef, sanitizeFirestorePayload(pickClientEditableFields(payload)));
+    return;
+  }
+
   await updateDoc(docRef, {
     ...sanitizeFirestorePayload(payload),
     updated_at: serverTimestamp(),
@@ -81,6 +140,22 @@ export async function archiveClientInDb(clientId: string): Promise<void> {
   await updateDoc(docRef, {
     is_archived: true,
     updated_at: serverTimestamp(),
+  });
+}
+
+/**
+ * Creates a pending invite token document for a client onboarding link.
+ * The caller supplies the token so the document ID can be embedded in the
+ * manager-facing URL without reading sensitive invite state back from Firestore.
+ */
+export async function createClientInviteDoc(
+  clientId: string,
+  inviteToken: string
+): Promise<void> {
+  await setDoc(doc(getFirestoreDb(), "client_invites", inviteToken), {
+    clientId,
+    status: "pending",
+    created_at: serverTimestamp(),
   });
 }
 

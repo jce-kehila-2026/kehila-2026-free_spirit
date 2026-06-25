@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useNavigation } from "@/components/NavigationProvider/NavigationContext";
 import { auth, db } from "@/firebase/firebase";
+import { isClientRole } from "@/firebase/authRoleService";
 
 // Wraps protected route groups and blocks rendering until Firebase confirms auth.
 export default function ProtectedRoute({ children }) {
@@ -17,6 +18,7 @@ export default function ProtectedRoute({ children }) {
 
   // Prevents protected content from flashing before auth and role checks finish.
   const [authorizedPath, setAuthorizedPath] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // If our dynamic navigation layout state is still resolving its connection to Firestore, 
@@ -26,12 +28,18 @@ export default function ProtectedRoute({ children }) {
     }
 
     let shouldIgnore = false;
+    const redirectTo = (href) => {
+      // Marking redirects explicitly keeps protected children unmounted while
+      // Next.js transitions away, avoiding unauthorized Firestore queries.
+      setIsRedirecting(true);
+      router.replace(href);
+    };
 
     // onAuthStateChanged fires after Firebase finishes checking persisted auth.
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         // Unauthenticated users are sent to the login page.
-        router.replace("/");
+        redirectTo("/");
         return;
       }
 
@@ -41,7 +49,7 @@ export default function ProtectedRoute({ children }) {
         const refreshedUser = auth.currentUser || currentAuthUser;
 
         if (!refreshedUser.emailVerified) {
-          router.replace("/?emailNotVerified=1");
+          redirectTo("/?emailNotVerified=1");
           return;
         }
 
@@ -61,12 +69,19 @@ export default function ProtectedRoute({ children }) {
           });
 
           if (!shouldIgnore && pathname !== "/home") {
-            router.replace("/home");
+            redirectTo("/home");
             return;
           }
         }
 
         if (shouldIgnore) {
+          return;
+        }
+
+        if (isClientRole(userRole)) {
+          // Client accounts are intentionally isolated from the manager route
+          // group; the form route resolves their own clientId from accounts/{uid}.
+          redirectTo("/onboarding");
           return;
         }
 
@@ -80,24 +95,25 @@ export default function ProtectedRoute({ children }) {
           // If a configuration exists, enforce the roles checklist matching matrix rules
           const isAllowed = currentRoutePolicy.allowedRoles?.includes(userRole);
           if (!isAllowed) {
-            router.replace("/home?accessDenied=1");
+            redirectTo("/home?accessDenied=1");
             return;
           }
         } else {
           // Fallback security defense layer: If an admin explicitly deleted a link doc from Firestore, 
           // default to letting only an Admin look at it, or handle public fallback paths if needed.
           if (userRole !== "Admin" && pathname.startsWith("/admin")) {
-            router.replace("/home?accessDenied=1");
+            redirectTo("/home?accessDenied=1");
             return;
           }
         }
 
+        setIsRedirecting(false);
         setAuthorizedPath(pathname);
       } catch (error) {
         console.error("Failed to verify route permissions:", error);
 
         if (!shouldIgnore) {
-          router.replace("/home?accessDenied=1");
+          redirectTo("/home?accessDenied=1");
         }
       }
     });
@@ -108,7 +124,7 @@ export default function ProtectedRoute({ children }) {
     };
   }, [pathname, router, links, isLoadingLinks]);
 
-  if (isLoadingLinks || authorizedPath !== pathname) {
+  if (isLoadingLinks || isRedirecting || authorizedPath !== pathname) {
     // Keep a neutral loading state while auth and links context are still being resolved.
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">

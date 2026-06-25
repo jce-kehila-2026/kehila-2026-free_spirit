@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
-import Navbar from "@/components/Navbar/Navbar";
+import AppNavbar from "@/components/Navbar/AppNavbar";
 import "./globals.css";
 import { NavigationProvider } from "@/components/NavigationProvider/NavigationContext";
 
@@ -19,8 +19,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Wrap the global components inside the dynamic navigation context */}
         <NavigationProvider>
-          {/* Navbar is mounted globally so auth links and logout are available everywhere. */}
-          <Navbar />
+          {/* AppNavbar hides itself only on standalone client-facing flows. */}
+          <AppNavbar />
           <Toaster />
           {children}
         </NavigationProvider>

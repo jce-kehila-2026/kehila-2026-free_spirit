@@ -1,17 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { User } from "firebase/auth";
+import { toast } from "sonner";
 import { auth } from "@/firebase/firebase";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
-import ProfileTab from "@/components/clients/tabs/ProfileTab";
-import MedicalTab from "@/components/clients/tabs/MedicalTab";
-import ContactsTab from "@/components/clients/tabs/ContactsTab";
-import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
-import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
-import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
-import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
-import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
+import ClientDataForm from "@/components/clients/forms/ClientDataForm";
 import { QuickCopy } from "@/components/ui/QuickCopy";
 import { IconPencil, IconLock, IconEye } from "@/components/ui/Icons";
 import ProfileSummaryDashboard from "./ProfileSummaryDashboard";
@@ -19,39 +14,10 @@ import AdvancedSettings from "./AdvancedSettings";
 import ProfileArchiveModal from "./ProfileArchiveModal";
 import StatusConfirmationModal from "./StatusConfirmationModal";
 import { useProfileDashboard } from "./useProfileDashboard"; // Our new orchestrator hook
-import { updateClientStatus } from "@/application/ClientManagementService";
-
-// ─── Tab configuration ────────────────────────────────────────────────────────
-
-export const TABS = [
-  { id: "profile", label: "Profile & Demographics" },
-  { id: "medical", label: "Medical" },
-  { id: "contacts", label: "Contacts" },
-  { id: "logistics", label: "Logistics" },
-  { id: "questionnaire", label: "Questionnaire" },
-  { id: "legal", label: "Legal Consents" },
-  { id: "documents", label: "Documents" },
-  { id: "financial", label: "Financial Aid" },
-] as const;
-
-export type TabId = (typeof TABS)[number]["id"];
-
-interface BaseTabProps {
-  client: ClientDoc;
-  isEditable?: boolean;
-  onBack?: () => void;
-}
-
-const TAB_COMPONENTS: Record<TabId, React.ComponentType<BaseTabProps>> = {
-  profile: ProfileTab as React.ComponentType<BaseTabProps>,
-  medical: MedicalTab as React.ComponentType<BaseTabProps>,
-  contacts: ContactsTab as React.ComponentType<BaseTabProps>,
-  logistics: LogisticsTab as React.ComponentType<BaseTabProps>,
-  questionnaire: QuestionnaireTab as React.ComponentType<BaseTabProps>,
-  legal: LegalConsentsTab as React.ComponentType<BaseTabProps>,
-  documents: DocumentsTab as React.ComponentType<BaseTabProps>,
-  financial: FinancialAidTab as React.ComponentType<BaseTabProps>,
-};
+import {
+  createClientInviteLink,
+  updateClientStatus,
+} from "@/application/ClientManagementService";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -60,14 +26,26 @@ interface ClientProfileDashboardProps {
   onBack: () => void;
 }
 
+type AuthUserWithProfile = User & {
+  first_name?: string;
+  last_name?: string;
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ClientProfileDashboard({ client: initialClient, onBack }: ClientProfileDashboardProps) {
-  const [client, setClient] = useState<ClientDoc>(initialClient);
+  const [statusOverride, setStatusOverride] = useState<{
+    clientId: string;
+    status: ClientDoc["status"];
+  } | null>(null);
 
-  useEffect(() => {
-    setClient(initialClient);
-  }, [initialClient]);
+  // Keep Firestore data as the base record and overlay only the locally saved
+  // status. This avoids a React 19 prop-to-state effect while preserving the
+  // immediate status badge update after a successful transition.
+  const client: ClientDoc =
+    statusOverride?.clientId === initialClient.id
+      ? { ...initialClient, status: statusOverride.status }
+      : initialClient;
 
   // Consume all Tier 2 side effects, async operations, and state variables via the hook
   const {
@@ -90,6 +68,9 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
   // ── Status badge state ───────────────────────────────────────────────────
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isCopyingInvite, setIsCopyingInvite] = useState(false);
 
   async function handleStatusChange() {
     const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
@@ -97,7 +78,7 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     const newStatus = client.status === "registered" ? "interested" : "registered";
     setIsUpdatingStatus(true);
     try {
-      const user = auth?.currentUser as any;
+      const user = auth?.currentUser as AuthUserWithProfile | null;
       let managerName = "Unknown";
       if (user?.first_name && user?.last_name) {
         managerName = `${user.first_name} ${user.last_name}`;
@@ -106,9 +87,25 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
       }
 
       await updateClientStatus(client.id, clientName, newStatus, managerName);
-      setClient((prev) => ({ ...prev, status: newStatus }));
+      setStatusOverride({ clientId: client.id, status: newStatus });
+
+      if (newStatus === "registered" && typeof window !== "undefined") {
+        try {
+          // Registration now completes the invite workflow: once the status write
+          // succeeds, create the pending invite and show the copyable signup URL.
+          const generatedLink = await createClientInviteLink(
+            client.id,
+            window.location.origin,
+          );
+          setInviteLink(generatedLink);
+          setIsInviteModalOpen(true);
+        } catch (error) {
+          console.error("[ClientProfileDashboard] invite generation failed:", error);
+          toast.error("Registration completed, but the invite link could not be generated.");
+        }
+      }
     } catch {
-      // Toast already fired by the service layer
+      // Status service owns the user-facing failure toast.
     } finally {
       setIsUpdatingStatus(false);
       setIsStatusModalOpen(false);
@@ -125,6 +122,20 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     });
     router.push(`/events?${queryParams.toString()}`);
   };
+
+  async function handleCopyInviteLink() {
+    if (!inviteLink) return;
+
+    setIsCopyingInvite(true);
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast.success("Invite link copied to clipboard.");
+    } catch {
+      toast.error("Could not copy the invite link. Please copy it manually.");
+    } finally {
+      setIsCopyingInvite(false);
+    }
+  }
 
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
@@ -269,52 +280,13 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
 
         {/* ── View Switcher ── */}
         {showDetailedTabs ? (
-          <>
-            <nav aria-label="Client profile sections" className="overflow-x-auto rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]">
-              <ol role="tablist" className="flex min-w-max gap-1.5">
-                {TABS.map((tab) => {
-                  const isActive = tab.id === activeTab;
-                  return (
-                    <li key={tab.id} role="presentation">
-                      <button
-                        role="tab"
-                        id={`tab-${tab.id}`}
-                        aria-selected={isActive}
-                        aria-controls={`tabpanel-${tab.id}`}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id)}
-                        className={[
-                          "whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]",
-                          isActive
-                            ? "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]"
-                            : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]",
-                        ].join(" ")}
-                      >
-                        {tab.label}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
-
-            <fieldset className="min-w-0 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
-              <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-                {(() => {
-                  const ActiveTabContent = TAB_COMPONENTS[activeTab];
-                  if (!ActiveTabContent) return null;
-
-                  return (
-                    <ActiveTabContent
-                      client={client}
-                      isEditable={effectiveEditable}
-                      onBack={activeTab === "profile" ? onBack : undefined}
-                    />
-                  );
-                })()}
-              </div>
-            </fieldset>
-          </>
+          <ClientDataForm
+            client={client}
+            isEditable={effectiveEditable}
+            activeTab={activeTab}
+            onActiveTabChange={setActiveTab}
+            onBack={onBack}
+          />
         ) : (
           <ProfileSummaryDashboard 
              client={client} 
@@ -322,7 +294,6 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
              onCreateMeeting={handleCreateMeetingNavigation} 
           />
         )}
-
         {/* ── Advanced Settings ── */}
         <AdvancedSettings 
           isArchived={isArchived} 
@@ -350,6 +321,59 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
             if (!isUpdatingStatus) setIsStatusModalOpen(false);
           }}
         />
+      )}
+
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[1.75rem] border border-white/50 bg-[#FFFDF8] p-6 shadow-[0_24px_60px_rgba(21,56,62,0.28)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[#15383E]">
+                  Client Invite Link
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-[#607B80]">
+                  Share this signup link with {client.first_name || "the client"}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInviteModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-xl font-bold text-[#6A8589] transition hover:bg-[#EEF4EC] hover:text-[#173A40]"
+                aria-label="Close invite link dialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <label className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
+              Signup URL
+            </label>
+            <textarea
+              readOnly
+              value={inviteLink}
+              rows={3}
+              className="mb-4 w-full resize-none rounded-2xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4]"
+            />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsInviteModalOpen(false)}
+                className="rounded-full border border-[#BFD0CA] bg-white px-4 py-2 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC]"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyInviteLink}
+                disabled={isCopyingInvite || !inviteLink}
+                className="rounded-full bg-[#245C66] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#173A40] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCopyingInvite ? "Copying..." : "Copy to Clipboard"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

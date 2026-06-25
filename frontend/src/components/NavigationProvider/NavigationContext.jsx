@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db, isFirebaseInitialized } from "@/firebase/firebase";
+import { getAccountForUser, isStaffRole } from "@/firebase/authRoleService";
 
 // Create the global Context object for navigation settings.
 const NavigationContext = createContext(null);
@@ -38,7 +39,7 @@ export function NavigationProvider({ children }) {
 
     // Wait for Firebase Auth to restore the session before reading navigation permissions.
     // This avoids unauthenticated reads against Firestore rules that may require a signed-in user.
-    const unsubscribeFromAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeFromAuth = onAuthStateChanged(auth, async (user) => {
       stopLinksSubscription();
       setLinksError("");
 
@@ -49,6 +50,16 @@ export function NavigationProvider({ children }) {
       }
 
       setIsLoadingLinks(true);
+
+      const account = await getAccountForUser(user);
+
+      if (!isStaffRole(account?.role)) {
+        // Clients and regular users cannot read manager navigation_links under
+        // Firestore rules, so keep the provider on local static links for them.
+        setLinks([]);
+        setIsLoadingLinks(false);
+        return;
+      }
 
       // Set up a real-time snapshot listener on the navigation_links collection.
       // This allows permission changes in the Admin panel to update active clients without a page refresh.
@@ -88,6 +99,7 @@ export function NavigationProvider({ children }) {
     <NavigationContext.Provider
       value={{
         links,
+        setLinks,
         isLoadingLinks,
         linksError,
       }}

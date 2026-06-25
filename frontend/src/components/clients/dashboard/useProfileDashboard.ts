@@ -4,10 +4,10 @@ import { useState } from "react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { restoreClientInDb, archiveClientInDb } from "@/firebase/clientDbService";
 import { toast } from "sonner";
-import { type TabId } from "./ClientProfileDashboard";
+import { type ClientDataFormTabId } from "@/components/clients/forms/ClientDataForm";
 
 export function useProfileDashboard(client: ClientDoc) {
-  const [activeTab, setActiveTab] = useState<TabId>("profile");
+  const [activeTab, setActiveTab] = useState<ClientDataFormTabId>("profile");
   const [isEditable, setIsEditable] = useState(false);
   const [showDetailedTabs, setShowDetailedTabs] = useState(false);
   const [localIsArchived, setLocalIsArchived] = useState(client.is_archived === true);

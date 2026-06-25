@@ -1,0 +1,176 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function accountPath(uid) {
+      return /databases/$(database)/documents/accounts/$(uid);
+    }
+
+    function invitePath(inviteToken) {
+      return /databases/$(database)/documents/client_invites/$(inviteToken);
+    }
+
+    function hasAccount() {
+      return signedIn() && exists(accountPath(request.auth.uid));
+    }
+
+    function accountData() {
+      return get(accountPath(request.auth.uid)).data;
+    }
+
+    function accountRole() {
+      return hasAccount() ? accountData().role : null;
+    }
+
+    function isAdmin() {
+      return accountRole() == "Admin";
+    }
+
+    function isStaff() {
+      return accountRole() in ["Admin", "Program Manager"];
+    }
+
+    function isClientRole(role) {
+      return role in ["client", "Client"];
+    }
+
+    function isOwnAccount(accountId) {
+      return signedIn() && accountId == request.auth.uid;
+    }
+
+    function claimedInviteMatches(inviteToken, clientId) {
+      return inviteToken is string
+        && existsAfter(invitePath(inviteToken))
+        && getAfter(invitePath(inviteToken)).data.status == "claimed"
+        && getAfter(invitePath(inviteToken)).data.claimedByUid == request.auth.uid
+        && getAfter(invitePath(inviteToken)).data.clientId == clientId;
+    }
+
+    function isDefaultSelfAccountCreate(accountId) {
+      return isOwnAccount(accountId)
+        && request.resource.data.account_id == request.auth.uid
+        && request.resource.data.role == "User"
+        && !("clientId" in request.resource.data)
+        && !("clientInviteToken" in request.resource.data);
+    }
+
+    function isClientSelfAccountWrite(accountId) {
+      return isOwnAccount(accountId)
+        && request.resource.data.account_id == request.auth.uid
+        && isClientRole(request.resource.data.role)
+        && request.resource.data.clientId is string
+        && claimedInviteMatches(
+          request.resource.data.clientInviteToken,
+          request.resource.data.clientId
+        );
+    }
+
+    function isSafeSelfAccountUpdate(accountId) {
+      return isOwnAccount(accountId)
+        && resource.data.account_id == request.auth.uid
+        && request.resource.data.account_id == resource.data.account_id
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.clientId == resource.data.clientId;
+    }
+
+    function isInviteClaim(inviteToken) {
+      return signedIn()
+        && (!("status" in resource.data) || resource.data.status == "pending")
+        && request.resource.data.clientId == resource.data.clientId
+        && request.resource.data.status == "claimed"
+        && request.resource.data.claimedByUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "claimedByUid", "claimedAt"]);
+    }
+
+    function isMappedClient(clientId) {
+      return hasAccount()
+        && isClientRole(accountData().role)
+        && accountData().clientId == clientId;
+    }
+
+    function isClientProfileUpdate(clientId) {
+      return isMappedClient(clientId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "passport_id",
+          "gender",
+          "address",
+          "dob",
+          "referrer",
+          "education_status",
+          "diagnosis",
+          "personal_notes",
+          "passport_number",
+          "passport_country",
+          "citizenship",
+          "date_of_entry",
+          "purpose_of_visit",
+          "home_address",
+          "cohabitants",
+          "dependents",
+          "medical_profile",
+          "contacts",
+          "logistics",
+          "questionnaire",
+          "legal_consents",
+          "financial_aid_applications",
+          "client_documents"
+        ]);
+    }
+
+    function isClientUidClaim(clientId) {
+      return signedIn()
+        && (!("uid" in resource.data) || resource.data.uid == null || resource.data.uid == request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["uid", "updated_at"])
+        && existsAfter(accountPath(request.auth.uid))
+        && isClientRole(getAfter(accountPath(request.auth.uid)).data.role)
+        && getAfter(accountPath(request.auth.uid)).data.clientId == clientId;
+    }
+
+    match /accounts/{accountId} {
+      allow get: if isOwnAccount(accountId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isDefaultSelfAccountCreate(accountId)
+        || isClientSelfAccountWrite(accountId)
+        || isAdmin();
+      allow update: if isAdmin()
+        || isSafeSelfAccountUpdate(accountId)
+        || isClientSelfAccountWrite(accountId);
+      allow delete: if isAdmin();
+    }
+
+    match /client_invites/{inviteToken} {
+      // The invite token is an unguessable document ID. Users must already know
+      // the token from an invite link before they can read or claim it.
+      allow get: if signedIn();
+      allow list: if isStaff();
+      allow create, delete: if isStaff();
+      allow update: if isStaff() || isInviteClaim(inviteToken);
+    }
+
+    match /clients/{clientId} {
+      allow get: if isStaff() || isMappedClient(clientId);
+      allow list: if isStaff();
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || isClientProfileUpdate(clientId)
+        || isClientUidClaim(clientId);
+    }
+
+    // Preserve manager access to the remaining operational collections while
+    // keeping client accounts constrained to the explicit rules above.
+    match /{document=**} {
+      allow read, write: if isStaff();
+    }
+  }
+}

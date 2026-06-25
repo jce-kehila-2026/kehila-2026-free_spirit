@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { Plus, CalendarDays, MapPin, UsersRound, CheckCircle2, X } from "lucide-react";
+import { Plus, CalendarDays, UsersRound, CheckCircle2, X } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 import ManagePrograms from "../manage-programs/page";
 

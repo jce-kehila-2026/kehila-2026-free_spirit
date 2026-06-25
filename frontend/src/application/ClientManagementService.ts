@@ -4,7 +4,7 @@ import { type ClientDoc } from "@/components/clients/list/ClientList";
 import type { ClientFormInput } from "@/schema/clientSchema";
 
 // Import purely from our Tier 4 Data Layer!
-import { subscribeToClients, restoreClientInDb, createClientDoc, updateClientDoc } from "@/firebase/clientDbService";
+import { subscribeToClients, restoreClientInDb, createClientDoc, updateClientDoc, createClientInviteDoc } from "@/firebase/clientDbService";
 import { createSystemEvent } from "@/firebase/clientEventsService";
 
 /**
@@ -176,4 +176,36 @@ export async function registerClient(
   clientName: string
 ): Promise<void> {
   return updateClientStatus(clientId, clientName, "registered", "System");
+}
+
+function createSecureInviteToken(): string {
+  if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+    throw new Error("Secure token generation is not available in this browser.");
+  }
+
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Generates a one-time client invite URL and persists the token document.
+ *
+ * Tier 2 responsibility: owns the workflow contract and user feedback.
+ * Tier 4 responsibility: performs the Firestore write in createClientInviteDoc.
+ */
+export async function createClientInviteLink(
+  clientId: string,
+  origin: string
+): Promise<string> {
+  if (!clientId) {
+    throw new Error("A client ID is required to generate an invite link.");
+  }
+
+  const inviteToken = createSecureInviteToken();
+  await createClientInviteDoc(clientId, inviteToken);
+  toast.success("Invite link generated.");
+
+  return `${origin}/signup?inviteToken=${inviteToken}`;
 }
