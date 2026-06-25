@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 
 import { getVisibleLinks, navigationLinks } from "@/config/accessControl";
 import { useNavigation } from "@/components/NavigationProvider/NavigationContext"; // Make sure this path matches where you saved it
+import { isStaffRole } from "@/firebase/authRoleService";
 
 import { auth, db } from "@/firebase/firebase";
 
@@ -220,6 +221,7 @@ export default function Navbar() {
   const isActivePath = (href) => pathname === href;
 
   const userRole = accountProfile?.role || "";
+  const canReadManagerNotifications = isStaffRole(userRole);
 
   const profileEmail = accountProfile?.email || currentUser?.email || "Signed in";
 
@@ -478,8 +480,8 @@ export default function Navbar() {
           {currentUser && (
 <div className="flex items-center gap-2 border-l border-[#D7E3D5] pl-3">
 
-              {/* Her integrated Notification Bell */}
-<NotificationBell />
+              {/* Staff-only: clients cannot read manager notification collections. */}
+              {canReadManagerNotifications && <NotificationBell />}
  
               {/* Your User Profile Tag */}
 <div className="flex max-w-[235px] items-center gap-2.5 rounded-full bg-[#EEF4EC] py-1.5 pl-1.5 pr-3 ring-1 ring-[#D7E3D5]">
@@ -549,8 +551,8 @@ export default function Navbar() {
                     )}
 </div>
 
-                  {/* Notification Bell inside Mobile layout */}
-<NotificationBell />
+                  {/* Staff-only: clients cannot read manager notification collections. */}
+                  {canReadManagerNotifications && <NotificationBell />}
 </div>
 <button
 

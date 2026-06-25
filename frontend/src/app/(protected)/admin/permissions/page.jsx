@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useNavigation } from "@/components/NavigationProvider/NavigationContext";
 import { db } from "@/firebase/firebase";
 
-const roleOptions = ["User", "Program Manager", "Admin"];
+const roleOptions = ["User", "Program Manager", "Admin", "client"];
 
 export default function AdminPermissionsPage() {
   const { links, isLoadingLinks, linksError, setLinks } = useNavigation();

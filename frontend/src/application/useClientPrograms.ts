@@ -45,24 +45,24 @@ export function useClientPrograms(
   programIds: string[] = []
 ): UseClientProgramsReturn {
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
-  const [localProgramIds, setLocalProgramIds] = useState<string[]>(programIds);
+  const [localProgramState, setLocalProgramState] = useState<{
+    clientId: string;
+    programIds: string[];
+  }>({ clientId, programIds });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Keep local IDs in sync if the parent re-renders with a new client ──────
-  useEffect(() => {
-    setLocalProgramIds(programIds);
-  }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: We intentionally depend only on clientId (not programIds) here so
-  // that optimistic updates aren't clobbered by React re-renders triggered by
-  // the parent passing down the same prop during a Firestore real-time update.
+  // Derive the active IDs during render instead of synchronizing props into
+  // state from an effect. This preserves optimistic edits for the current
+  // client while resetting naturally when a different client is opened.
+  const localProgramIds =
+    localProgramState.clientId === clientId
+      ? localProgramState.programIds
+      : programIds;
 
   // ── Load all programs once on mount ──────────────────────────────────────────
   useEffect(() => {
     let isCancelled = false;
-
-    setIsLoading(true);
-    setError(null);
 
     fetchAllPrograms()
       .then((programs) => {
@@ -97,44 +97,70 @@ export function useClientPrograms(
   const assign = useCallback(
     async (programId: string) => {
       // Optimistic update — add to local IDs immediately
-      setLocalProgramIds((prev) =>
-        prev.includes(programId) ? prev : [...prev, programId]
-      );
+      setLocalProgramState((prev) => {
+        const currentIds = prev.clientId === clientId ? prev.programIds : programIds;
+        return {
+          clientId,
+          programIds: currentIds.includes(programId)
+            ? currentIds
+            : [...currentIds, programId],
+        };
+      });
 
       try {
         await assignClientToProgram(clientId, programId);
         toast.success("Client enrolled in program.");
       } catch (err) {
         // Revert optimistic update on failure
-        setLocalProgramIds((prev) => prev.filter((id) => id !== programId));
+        setLocalProgramState((prev) => {
+          const currentIds = prev.clientId === clientId ? prev.programIds : programIds;
+          return {
+            clientId,
+            programIds: currentIds.filter((id) => id !== programId),
+          };
+        });
         const message =
           err instanceof Error ? err.message : "Failed to assign program.";
         setError(message);
         toast.error("Failed to enroll client in program.");
       }
     },
-    [clientId]
+    [clientId, programIds]
   );
 
   // ── Action: Remove ────────────────────────────────────────────────────────────
   const remove = useCallback(
     async (programId: string) => {
       // Optimistic update — remove from local IDs immediately
-      setLocalProgramIds((prev) => prev.filter((id) => id !== programId));
+      setLocalProgramState((prev) => {
+        const currentIds = prev.clientId === clientId ? prev.programIds : programIds;
+        return {
+          clientId,
+          programIds: currentIds.filter((id) => id !== programId),
+        };
+      });
 
       try {
         await removeClientFromProgram(clientId, programId);
         toast.success("Client removed from program.");
       } catch (err) {
         // Revert optimistic update on failure
-        setLocalProgramIds((prev) => [...prev, programId]);
+        setLocalProgramState((prev) => {
+          const currentIds = prev.clientId === clientId ? prev.programIds : programIds;
+          return {
+            clientId,
+            programIds: currentIds.includes(programId)
+              ? currentIds
+              : [...currentIds, programId],
+          };
+        });
         const message =
           err instanceof Error ? err.message : "Failed to remove program.";
         setError(message);
         toast.error("Failed to remove client from program.");
       }
     },
-    [clientId]
+    [clientId, programIds]
   );
 
   return {

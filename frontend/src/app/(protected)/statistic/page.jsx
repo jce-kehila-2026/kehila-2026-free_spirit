@@ -4,10 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   CalendarCheck, 
-  TrendingUp, 
   AlertCircle,
   Activity,
-  FileWarning,
   UserX,
   ClipboardCheck,
   Megaphone,
@@ -30,8 +28,6 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
-
-import Link from 'next/link';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
@@ -202,7 +198,7 @@ export default function StatisticsPage() {
     });
 
     const demographicsData = Object.entries(ageGroups)
-      .filter(([_, value]) => value > 0)
+      .filter(([, value]) => value > 0)
       .map(([name, value]) => ({ name, value }));
 
     const growthData = Object.entries(monthCounts).map(([month, signups]) => ({
@@ -221,7 +217,7 @@ export default function StatisticsPage() {
 
     // Retention data for donut chart
     const retentionData = Object.entries(retentionCounts)
-      .filter(([_, value]) => value > 0)
+      .filter(([, value]) => value > 0)
       .map(([name, value]) => ({ name, value }));
 
     // Top 5 Locations
@@ -273,7 +269,6 @@ export default function StatisticsPage() {
     demographicsData = [],
     growthData = [],
     programOccupancyData = [],
-    actionItems = [],
     complianceData = [],
     referralData = [],
     retentionData = [],

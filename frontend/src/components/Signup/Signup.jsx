@@ -1,15 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  onAuthStateChanged,
   sendEmailVerification,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
+import {
+  CLIENT_EMAIL_VERIFICATION_PATH,
+  claimClientInviteForUser,
+  getInviteTokenFromCurrentUrl,
+  getPostLoginRedirect,
+} from "@/firebase/authRoleService";
 import {
   getPasswordRequirementResults,
   isPasswordValid,
@@ -94,6 +101,30 @@ export default function Signup() {
     formData.password,
   );
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        return;
+      }
+
+      await user.reload();
+      const refreshedUser = auth.currentUser || user;
+
+      if (!refreshedUser.emailVerified) {
+        setSignupError(
+          "Please verify your email address before continuing to onboarding.",
+        );
+        return;
+      }
+
+      // A verified user refreshing /signup should leave the auth surface and
+      // land wherever their Firestore account role allows.
+      router.replace(await getPostLoginRedirect(refreshedUser));
+    });
+
+    return unsubscribe;
+  }, [router]);
+
   // Converts Firebase and custom registration errors into user-facing messages.
   const getFirebaseErrorMessage = (error) => {
     switch (error.code) {
@@ -159,10 +190,25 @@ export default function Signup() {
         formData.password,
       );
 
+      const inviteToken = getInviteTokenFromCurrentUrl();
+
       try {
         await sendEmailVerification(auth.currentUser || userCredential.user);
       } catch (verificationError) {
         console.error("Failed to send verification email:", verificationError);
+      }
+
+      if (inviteToken) {
+        await claimClientInviteForUser(userCredential.user, inviteToken);
+        if (!userCredential.user.emailVerified) {
+          setSignupError(
+            "Account created. Please verify your email address before continuing to onboarding.",
+          );
+          return;
+        }
+
+        router.push("/onboarding");
+        return;
       }
 
       router.push("/manage-programs");
@@ -181,7 +227,19 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const inviteToken = getInviteTokenFromCurrentUrl();
+
+      if (inviteToken) {
+        await claimClientInviteForUser(result.user, inviteToken);
+        router.push(
+          result.user.emailVerified
+            ? "/onboarding"
+            : CLIENT_EMAIL_VERIFICATION_PATH,
+        );
+        return;
+      }
+
       router.push("/manage-programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
