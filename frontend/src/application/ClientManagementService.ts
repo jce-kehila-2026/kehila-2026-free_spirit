@@ -4,7 +4,14 @@ import { type ClientDoc } from "@/components/clients/list/ClientList";
 import type { ClientFormInput } from "@/schema/clientSchema";
 
 // Import purely from our Tier 4 Data Layer!
-import { subscribeToClients, restoreClientInDb, createClientDoc, updateClientDoc, createClientInviteDoc } from "@/firebase/clientDbService";
+import {
+  subscribeToClients,
+  restoreClientInDb,
+  createClientDoc,
+  updateClientDoc,
+  createClientInviteDoc,
+  createClientInviteEmailNotification,
+} from "@/firebase/clientDbService";
 import { createSystemEvent } from "@/firebase/clientEventsService";
 
 /**
@@ -100,9 +107,8 @@ export const useClientManagementService = () => {
 // These are plain async functions rather than hook-internal methods because they
 // are called from individual profile pages and do not need shared hook state.
 
-// Copy map (Tier 3 business rule): all human-readable strings derived from the
-// target status so the orchestration function stays data-driven and DRY.
-type UpdatableStatus = "registered" | "interested";
+// Client status promotion is intentionally one-way: interested -> registered.
+type UpdatableStatus = "registered";
 
 const STATUS_COPY: Record<
   UpdatableStatus,
@@ -112,11 +118,6 @@ const STATUS_COPY: Record<
     eventTitle: "Client Registered",
     eventBody: (name, managerName) => `${name} was officially registered in the system by ${managerName}.`,
     successToast: (name) => `${name} has been successfully registered.`,
-  },
-  interested: {
-    eventTitle: "Status Reverted to Interested",
-    eventBody: (name, managerName) => `${name}'s status was reverted to Interested by ${managerName}.`,
-    successToast: (name) => `${name} has been reverted to Interested.`,
   },
 };
 
@@ -205,7 +206,28 @@ export async function createClientInviteLink(
 
   const inviteToken = createSecureInviteToken();
   await createClientInviteDoc(clientId, inviteToken);
-  toast.success("Invite link generated.");
 
   return `${origin}/signup?inviteToken=${inviteToken}`;
+}
+
+/**
+ * Creates the secure onboarding invite and queues delivery through Firestore.
+ *
+ * The invite-token algorithm and signup URL remain owned by createClientInviteLink;
+ * this workflow only changes the delivery channel from manual copy to email queue.
+ */
+export async function queueClientRegistrationInviteEmail(
+  clientId: string,
+  clientEmailAddress: string | undefined,
+  origin: string
+): Promise<void> {
+  const normalizedEmail = clientEmailAddress?.trim();
+
+  if (!normalizedEmail) {
+    throw new Error("A client email address is required to queue an invitation.");
+  }
+
+  const inviteUrl = await createClientInviteLink(clientId, origin);
+  await createClientInviteEmailNotification(normalizedEmail, inviteUrl);
+  toast.success("Invitation email queued successfully!");
 }

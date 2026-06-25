@@ -10,6 +10,8 @@ const CANONICAL_ROLES = new Set(Object.values(ROLE));
 const MANAGER_FALLBACK_PATH = "/home";
 const CLIENT_ONBOARDING_PATH = "/onboarding";
 export const CLIENT_EMAIL_VERIFICATION_PATH = "/login?emailNotVerified=1";
+export const EXPIRED_CLIENT_INVITE_MESSAGE =
+  "This onboarding invitation has expired. Please contact Free Spirit administration for a new link.";
 
 function requireFirestore() {
   if (!db) {
@@ -117,6 +119,61 @@ export function getInviteTokenFromCurrentUrl() {
   ).trim();
 }
 
+function getInviteExpiryMillis(invite) {
+  const expiresAt = invite?.expiresAt;
+
+  if (expiresAt && typeof expiresAt.toMillis === "function") {
+    return expiresAt.toMillis();
+  }
+
+  if (expiresAt instanceof Date) {
+    return expiresAt.getTime();
+  }
+
+  if (typeof expiresAt === "string" || typeof expiresAt === "number") {
+    const parsedExpiry = new Date(expiresAt).getTime();
+    return Number.isNaN(parsedExpiry) ? 0 : parsedExpiry;
+  }
+
+  return 0;
+}
+
+function assertInviteCanBeClaimed(invite) {
+  if (invite.status && invite.status !== "pending") {
+    throw new Error("This invite link has already been used.");
+  }
+
+  if (!invite.clientId || typeof invite.clientId !== "string") {
+    throw new Error("This invite link is missing a client record.");
+  }
+
+  // Missing or past expiry values fail closed so legacy tokens cannot bypass the 24-hour policy.
+  if (getInviteExpiryMillis(invite) <= Date.now()) {
+    throw new Error(EXPIRED_CLIENT_INVITE_MESSAGE);
+  }
+}
+
+/**
+ * Validates an invite before account creation. The transaction and Firestore
+ * rules repeat the same checks during claim, so this only protects UX and avoids
+ * creating a new Firebase Auth user for an already expired onboarding link.
+ */
+export async function validateClientInviteToken(inviteToken) {
+  if (!inviteToken) return null;
+
+  const activeDb = requireFirestore();
+  const inviteSnapshot = await getDoc(doc(activeDb, "client_invites", inviteToken));
+
+  if (!inviteSnapshot.exists()) {
+    throw new Error("This invite link is invalid or expired.");
+  }
+
+  const invite = inviteSnapshot.data();
+  assertInviteCanBeClaimed(invite);
+
+  return invite.clientId;
+}
+
 /**
  * Claims an existing manager-created client invite for the signed-in Firebase
  * user. The matching Firestore rules require this account write, invite update,
@@ -138,14 +195,7 @@ export async function claimClientInviteForUser(user, inviteToken) {
     }
 
     const invite = inviteSnapshot.data();
-
-    if (invite.status && invite.status !== "pending") {
-      throw new Error("This invite link has already been used.");
-    }
-
-    if (!invite.clientId || typeof invite.clientId !== "string") {
-      throw new Error("This invite link is missing a client record.");
-    }
+    assertInviteCanBeClaimed(invite);
 
     const clientRef = doc(activeDb, "clients", invite.clientId);
     transaction.set(

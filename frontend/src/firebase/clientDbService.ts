@@ -1,8 +1,10 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { isClientRole } from "@/firebase/authRoleService";
+
+const CLIENT_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ─── Safety Helpers ───────────────────────────────────────────────────────────
 
@@ -153,10 +155,34 @@ export async function createClientInviteDoc(
   clientId: string,
   inviteToken: string
 ): Promise<void> {
+  const expiresAt = Timestamp.fromMillis(Date.now() + CLIENT_INVITE_TTL_MS);
+
   await setDoc(doc(getFirestoreDb(), "client_invites", inviteToken), {
     clientId,
     status: "pending",
     created_at: serverTimestamp(),
+    // Invite claims are rejected after this absolute timestamp by app logic and Firestore rules.
+    expiresAt,
+  });
+}
+
+/**
+ * Queues the registration invite email for the Firebase Trigger Email extension.
+ * Tier 4 owns only the Firestore payload and collection path; the caller owns
+ * when the email should be queued and which invite URL is safe to include.
+ */
+export async function createClientInviteEmailNotification(
+  clientEmailAddress: string,
+  inviteUrl: string
+): Promise<void> {
+  await addDoc(collection(getFirestoreDb(), "automatic_notifications"), {
+    to: clientEmailAddress,
+    message: {
+      subject: "Welcome to Free Spirit! Complete your registration",
+      html: `Hello, <br/><br/>Please click the following link to complete your secure onboarding process: <a href="${inviteUrl}">${inviteUrl}</a><br/><br/>Thank you!`,
+    },
+    createdAt: serverTimestamp(),
+    status: "pending",
   });
 }
 
