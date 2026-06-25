@@ -10,7 +10,8 @@ import {
   ClipboardCheck,
   Megaphone,
   MapPin,
-  HeartHandshake
+  HeartHandshake,
+  Download
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -86,6 +87,7 @@ export default function StatisticsPage() {
 
     // New metrics counters
     let unassignedClientsCount = 0;
+    const unassignedClientsList = [];
     let fullyCompliant = 0;
     let missingForms = 0;
     
@@ -163,6 +165,10 @@ export default function StatisticsPage() {
       if (participatedPrograms === 0) {
         unassignedClientsCount++;
         retentionCounts["0 (not embedded)"]++;
+        unassignedClientsList.push({
+          id: client.id,
+          name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown Client'
+        });
       } else if (participatedPrograms === 1) {
         retentionCounts["1 (one program)"]++;
       } else if (participatedPrograms === 2) {
@@ -237,11 +243,17 @@ export default function StatisticsPage() {
       };
     }).filter(p => p.enrolled > 0 || p.capacity > 0);
 
-    const activeProgramsCount = programs.filter(p => {
-      if (!p.end_date) return true;
+    const activeProgramsList = programs.filter(p => {
+      // אם חסרים תאריכים, אי אפשר להחשיב את התוכנית כפעילה כרגע
+      if (!p.start_date || !p.end_date) return false;
+      
+      const start = p.start_date.toDate ? p.start_date.toDate() : new Date(p.start_date);
       const end = p.end_date.toDate ? p.end_date.toDate() : new Date(p.end_date);
-      return end > now;
-    }).length;
+      
+      // תוכנית נספרת כפעילה *אך ורק* אם אנחנו נמצאים כעת בין תאריך ההתחלה לסיום
+      return now >= start.getTime() && now <= end.getTime();
+    });
+    const activeProgramsCount = activeProgramsList.length;
 
     const kpiData = [
       { id: 1, title: 'Total Clients', value: clients.length, icon: Users, trend: `${recentClients} new clients in 30 days`, color: 'text-blue-600', bgColor: 'bg-blue-100' },
@@ -260,6 +272,8 @@ export default function StatisticsPage() {
       referralData,
       retentionData,
       topLocations,
+      activeProgramsList,
+      unassignedClientsList,
       totalClients: clients.length
     };
   }, [clients, programs]);
@@ -273,6 +287,8 @@ export default function StatisticsPage() {
     referralData = [],
     retentionData = [],
     topLocations = [],
+    activeProgramsList = [],
+    unassignedClientsList = [],
     totalClients = 1,
   } = stats || {};
 
@@ -284,16 +300,115 @@ export default function StatisticsPage() {
     );
   }
 
+const exportToCSV = () => {
+    if (!stats) return;
+
+    // Byte Order Mark (BOM) - קריטי כדי שאקסל יזהה עברית כמו שצריך
+    let csvContent = "\uFEFF";
+
+    // פונקציית עזר ליצירת בלוקים (פסקאות) בתוך הקובץ
+    const addSection = (title, headers, rows) => {
+      csvContent += `${title}\n`;
+      csvContent += `${headers.join(',')}\n`;
+      rows.forEach(row => {
+        // עוטפים במרכאות כדי למנוע שבירת שורות אם יש פסיקים בטקסט
+        const cleanRow = row.map(val => `"${String(val).replace(/"/g, '""')}"`);
+        csvContent += `${cleanRow.join(',')}\n`;
+      });
+      csvContent += `\n\n`; // רווח בין טבלה לטבלה
+    };
+
+    // 1. מדדים כלליים (KPIs)
+    addSection(
+      "--- SYSTEM KPIs ---",
+      ["Metric", "Value", "Trend"],
+      stats.kpiData.map(kpi => [kpi.title, kpi.value, kpi.trend])
+    );
+
+    // 2. דמוגרפיה
+    addSection(
+      "--- DEMOGRAPHICS (AGE GROUPS) ---",
+      ["Age Group", "Count"],
+      stats.demographicsData.map(d => [d.name, d.value])
+    );
+
+    // 3. תפוסת תוכניות
+    addSection(
+      "--- PROGRAM OCCUPANCY ---",
+      ["Program Name", "Capacity", "Enrolled", "Available Spots"],
+      stats.programOccupancyData.map(p => [p.name, p.capacity, p.enrolled, p.capacity - p.enrolled])
+    );
+
+    // 4. סטטוס מסמכים רפואיים ומשפטיים
+    addSection(
+      "--- COMPLIANCE STATUS ---",
+      ["Status", "Count"],
+      stats.complianceData.map(c => [c.name, c.value])
+    );
+
+    // 5. מעורבות / נאמנות
+    addSection(
+      "--- CLIENT ENGAGEMENT ---",
+      ["Programs Participated", "Clients Count"],
+      stats.retentionData.map(r => [r.name, r.value])
+    );
+
+    // 6. מקורות הגעה
+    if (stats.referralData.length > 0) {
+      addSection(
+        "--- REFERRAL SOURCES ---",
+        ["Source", "Clients Count"],
+        stats.referralData.map(r => [r.name, r.value])
+      );
+    }
+
+    // 7. ערים מובילות
+    addSection(
+      "--- TOP LOCATIONS ---",
+      ["City", "Clients Count"],
+      stats.topLocations.map(l => [l.name, l.count])
+    );
+
+    // 8. צמיחה לפי חודשים
+    addSection(
+      "--- GROWTH TRENDS (LAST 6 MONTHS) ---",
+      ["Month", "New Signups"],
+      stats.growthData.map(g => [g.month, g.signups])
+    );
+
+    // יצירת הקובץ והורדתו לדפדפן
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Kehila_Statistics_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(220,234,214,0.72),_transparent_30%),linear-gradient(180deg,_#F7FAF5_0%,_#EEF5F7_100%)] px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
         <header className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] px-6 py-8 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-9 sm:py-10">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Operational insight</p>
-            <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Statistics &amp; reports</h1>
-            <p className="mt-3 text-sm leading-6 text-white/75">Overview of system metrics and program analytics</p>
+        
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Operational insight</p>
+              <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Statistics &amp; reports</h1>
+              <p className="mt-3 text-sm leading-6 text-white/75">Overview of system metrics and program analytics</p>
+            </div>
+            
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 hover:ring-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#245C66]"
+            >
+              <Download size={18} />
+              Export to CSV
+            </button>
           </div>
         </header>
 
@@ -301,8 +416,14 @@ export default function StatisticsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {kpiData.map((kpi) => {
             const Icon = kpi.icon;
+            const isActivePrograms = kpi.id === 2; // בודק אם זו הכרטיסייה השנייה
+            const isUnassignedClients = kpi.id === 3;
+            const isPendingActions = kpi.id === 4; 
             return (
-              <article key={kpi.id} className="flex flex-col justify-between rounded-[1.5rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_12px_30px_rgba(44,105,117,0.07)]">
+              <article 
+                key={kpi.id} 
+                className="relative group flex flex-col justify-between rounded-[1.5rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_12px_30px_rgba(44,105,117,0.07)] transition-all hover:shadow-md"
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-semibold text-[#6A8589]">{kpi.title}</p>
@@ -315,6 +436,54 @@ export default function StatisticsPage() {
                 <div className="mt-4 text-sm text-[#5C7478]">
                   {kpi.trend}
                 </div>
+
+                {/* חלונית צפה (Tooltip) שמופיעה רק בריחוף על "Active Programs" */}
+                {isActivePrograms && activeProgramsList.length > 0 && (
+                  <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                    <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
+                      <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Currently Active Programs:</p>
+                      <ul className="space-y-2 mt-2">
+                        {activeProgramsList.map((prog) => (
+                          <li key={prog.id} className="flex flex-col">
+                            <span className="font-medium truncate">• {prog.name || 'Untitled Program'}</span>
+                            {prog.location && <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">📍 {prog.location}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              {/* חלונית צפה (Tooltip) שמופיעה רק בריחוף על "Unassigned Clients" */}
+                {isUnassignedClients && unassignedClientsList.length > 0 && (
+                  <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                    <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
+                      <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Clients Without Programs:</p>
+                      <ul className="space-y-1.5 mt-2">
+                        {unassignedClientsList.map((client) => (
+                          <li key={client.id} className="flex items-center text-slate-200">
+                            <span className="font-medium truncate">• {client.name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                {/* חלונית צפה (Tooltip) שמופיעה רק בריחוף על "Pending Actions" */}
+                {isPendingActions && actionItems.length > 0 && (
+                  <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                    <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
+                      <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Action Items & Alerts:</p>
+                      <ul className="space-y-2 mt-2">
+                        {actionItems.map((item) => (
+                          <li key={item.id} className="flex flex-col">
+                            <span className="font-medium text-slate-200 truncate">• {item.client}</span>
+                            <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">{item.issue}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </article>
             );
           })}
