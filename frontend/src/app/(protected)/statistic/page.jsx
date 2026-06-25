@@ -283,6 +283,7 @@ export default function StatisticsPage() {
     demographicsData = [],
     growthData = [],
     programOccupancyData = [],
+    actionItems = [],
     complianceData = [],
     referralData = [],
     retentionData = [],

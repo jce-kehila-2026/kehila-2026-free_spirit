@@ -2,6 +2,7 @@ import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy
 import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import { isClientRole } from "@/firebase/authRoleService";
 
 // ─── Safety Helpers ───────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ async function isCurrentUserClientRole(): Promise<boolean> {
   const accountSnapshot = await getDoc(doc(getFirestoreDb(), "accounts", user.uid));
   const role = accountSnapshot.exists() ? accountSnapshot.data().role : "";
 
-  return role === "client" || role === "Client";
+  return isClientRole(role);
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────

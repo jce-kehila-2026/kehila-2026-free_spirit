@@ -211,7 +211,8 @@ export default function Signup() {
         return;
       }
 
-      router.push("/manage-programs");
+      // New manager accounts land on the routed programs workspace; creation stays inside its modal UI.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {
@@ -240,7 +241,8 @@ export default function Signup() {
         return;
       }
 
-      router.push("/manage-programs");
+      // Google-created manager accounts use the routed programs workspace, not the private modal component.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {

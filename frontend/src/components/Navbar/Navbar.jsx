@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 
 import { getVisibleLinks, navigationLinks } from "@/config/accessControl";
 import { useNavigation } from "@/components/NavigationProvider/NavigationContext"; // Make sure this path matches where you saved it
-import { isStaffRole } from "@/firebase/authRoleService";
+import { isAdminRole } from "@/firebase/authRoleService";
 
 import { auth, db } from "@/firebase/firebase";
 
@@ -110,7 +110,7 @@ export default function Navbar() {
 
             email: currentUser.email || "",
 
-            role: "User",
+            role: "",
 
           });
 
@@ -130,7 +130,7 @@ export default function Navbar() {
 
             email: currentUser.email || "",
 
-            role: "User",
+            role: "",
 
           });
 
@@ -204,7 +204,7 @@ export default function Navbar() {
 
       // Replace history so the user cannot return to a protected page with Back.
 
-      router.replace("/");
+      router.replace("/login");
 
     } catch (error) {
 
@@ -221,7 +221,7 @@ export default function Navbar() {
   const isActivePath = (href) => pathname === href;
 
   const userRole = accountProfile?.role || "";
-  const canReadManagerNotifications = isStaffRole(userRole);
+  const canReadManagerNotifications = isAdminRole(userRole);
 
   const profileEmail = accountProfile?.email || currentUser?.email || "Signed in";
 

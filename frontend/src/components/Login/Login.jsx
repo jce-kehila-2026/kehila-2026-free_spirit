@@ -110,6 +110,14 @@ export default function Login() {
         const refreshedUser = auth.currentUser || user;
         const redirectPath = await getSecurePostAuthRedirect(refreshedUser);
 
+        if (redirectPath === "/login") {
+          setAuthError(
+            "Your account is not authorized. Please contact an administrator.",
+          );
+          setIsCheckingAuth(false);
+          return;
+        }
+
         if (redirectPath === CLIENT_EMAIL_VERIFICATION_PATH) {
           setAuthError(
             "Please verify your email address before continuing to onboarding.",

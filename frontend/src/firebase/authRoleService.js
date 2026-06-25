@@ -1,8 +1,12 @@
 import { doc, getDoc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 
-const CLIENT_ROLES = new Set(["client", "Client"]);
-const STAFF_ROLES = new Set(["Admin", "Program Manager"]);
+export const ROLE = Object.freeze({
+  ADMIN: "admin",
+  CLIENT: "client",
+});
+
+const CANONICAL_ROLES = new Set(Object.values(ROLE));
 const MANAGER_FALLBACK_PATH = "/home";
 const CLIENT_ONBOARDING_PATH = "/onboarding";
 export const CLIENT_EMAIL_VERIFICATION_PATH = "/login?emailNotVerified=1";
@@ -20,11 +24,15 @@ function normalizeRole(role) {
 }
 
 export function isClientRole(role) {
-  return CLIENT_ROLES.has(normalizeRole(role));
+  return normalizeRole(role) === ROLE.CLIENT;
 }
 
-export function isStaffRole(role) {
-  return STAFF_ROLES.has(normalizeRole(role));
+export function isAdminRole(role) {
+  return normalizeRole(role) === ROLE.ADMIN;
+}
+
+export function isCanonicalRole(role) {
+  return CANONICAL_ROLES.has(normalizeRole(role));
 }
 
 /**
@@ -70,25 +78,23 @@ export async function stampAccountLogin(user) {
 
 /**
  * Reads the canonical account profile and returns the route users should land on
- * after authentication. Missing account profiles keep the historical manager
- * fallback so existing staff login behavior remains stable.
+ * after authentication. Invalid or legacy roles fail closed to login so stale
+ * `User`, `Client`, or `Program Manager` account states cannot inherit access.
  */
 export async function getPostLoginRedirect(user) {
   const account = await getAccountForUser(user);
 
-  if (!account) {
-    return MANAGER_FALLBACK_PATH;
+  if (!account || !isCanonicalRole(account.role)) {
+    return "/login";
   }
 
   await stampAccountLogin(user);
 
-  if (!isClientRole(account.role)) {
+  if (isAdminRole(account.role)) {
     return MANAGER_FALLBACK_PATH;
   }
 
   // Client onboarding is blocked until Firebase Auth confirms the email.
-  // Manager/admin fallback behavior stays unchanged because this gate applies
-  // only after the canonical Firestore role is known to be a client role.
   return user.emailVerified
     ? CLIENT_ONBOARDING_PATH
     : CLIENT_EMAIL_VERIFICATION_PATH;
@@ -147,7 +153,7 @@ export async function claimClientInviteForUser(user, inviteToken) {
       {
         account_id: user.uid,
         email: user.email || "",
-        role: "client",
+        role: ROLE.CLIENT,
         clientId: invite.clientId,
         clientInviteToken: inviteToken,
         last_login: serverTimestamp(),

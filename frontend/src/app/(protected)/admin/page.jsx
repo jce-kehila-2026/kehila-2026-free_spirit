@@ -1,15 +1,11 @@
 import Link from "next/link";
 
 const adminSections = [
+  // Dynamic navigation permissions were removed; static RBAC keeps this dashboard focused on account operations.
   {
     href: "/admin/accounts",
     title: "Account Management",
     description: "Review user accounts, update roles, and remove accounts.",
-  },
-  {
-    href: "/admin/permissions",
-    title: "Navigation Permissions",
-    description: "Control which roles can see each dynamic navigation link.",
   },
 ];
 
@@ -25,7 +21,7 @@ export default function AdminDashboardPage() {
             Central admin dashboard
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
-            Manage user accounts and application navigation access.
+            Manage user accounts and role assignments.
           </p>
         </header>
 
