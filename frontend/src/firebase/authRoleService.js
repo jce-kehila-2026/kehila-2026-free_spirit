@@ -9,9 +9,12 @@ export const ROLE = Object.freeze({
 const CANONICAL_ROLES = new Set(Object.values(ROLE));
 const MANAGER_FALLBACK_PATH = "/home";
 const CLIENT_ONBOARDING_PATH = "/onboarding";
+export const ACCESS_DENIED_PATH = "/access-denied?inactive=1";
 export const CLIENT_EMAIL_VERIFICATION_PATH = "/login?emailNotVerified=1";
 export const EXPIRED_CLIENT_INVITE_MESSAGE =
   "This onboarding invitation has expired. Please contact Free Spirit administration for a new link.";
+export const INACTIVE_CLIENT_ACCOUNT_MESSAGE =
+  "חשבונך אינו פעיל כעת. אנא פנה להנהלת Free Spirit. / Your account is currently inactive. Please contact Free Spirit administration.";
 
 function requireFirestore() {
   if (!db) {
@@ -35,6 +38,13 @@ export function isAdminRole(role) {
 
 export function isCanonicalRole(role) {
   return CANONICAL_ROLES.has(normalizeRole(role));
+}
+
+export function isArchivedClientRecord(clientData) {
+  // Only explicit archive markers may disable a client session. Transitional
+  // onboarding states such as "invited" and "registered" must remain active.
+  const status = normalizeRole(clientData?.status);
+  return clientData?.is_archived === true || status === "Archived";
 }
 
 /**
@@ -94,6 +104,35 @@ export async function getPostLoginRedirect(user) {
 
   if (isAdminRole(account.role)) {
     return MANAGER_FALLBACK_PATH;
+  }
+
+  if (account.clientId && typeof account.clientId === "string") {
+    const activeDb = requireFirestore();
+    try {
+      const clientSnapshot = await getDoc(doc(activeDb, "clients", account.clientId));
+
+      // Archived client records are denied before the onboarding surface renders.
+      // Missing or transitional statuses are not inactive-account evidence.
+      if (clientSnapshot.exists() && isArchivedClientRecord(clientSnapshot.data())) {
+        return ACCESS_DENIED_PATH;
+      }
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "permission-denied"
+      ) {
+        // During invite signup, Auth can observe the new user before the
+        // Firestore claim transaction is fully readable. Do not sign out or
+        // redirect unless an explicit archived client document was read above.
+        return user.emailVerified
+          ? CLIENT_ONBOARDING_PATH
+          : CLIENT_EMAIL_VERIFICATION_PATH;
+      }
+
+      throw error;
+    }
   }
 
   // Client onboarding is blocked until Firebase Auth confirms the email.
@@ -220,6 +259,9 @@ export async function claimClientInviteForUser(user, inviteToken) {
 
     transaction.update(clientRef, {
       uid: user.uid,
+      // The client becomes registered only after a real Firebase Auth account
+      // successfully claims the pending invite token.
+      status: "registered",
       updated_at: serverTimestamp(),
     });
 

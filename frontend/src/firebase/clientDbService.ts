@@ -1,10 +1,15 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp, where } from "firebase/firestore";
 import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { isClientRole } from "@/firebase/authRoleService";
 
 const CLIENT_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface ClientInviteResendState {
+  canResend: boolean;
+  reason: "expired" | "active" | "claimed" | "missing";
+}
 
 // ─── Safety Helpers ───────────────────────────────────────────────────────────
 
@@ -184,6 +189,68 @@ export async function createClientInviteEmailNotification(
     createdAt: serverTimestamp(),
     status: "pending",
   });
+}
+
+function getTimestampMillis(value: unknown): number {
+  if (value && typeof value === "object" && "toMillis" in value) {
+    const timestampLike = value as { toMillis?: () => number };
+    return typeof timestampLike.toMillis === "function" ? timestampLike.toMillis() : 0;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+}
+
+/**
+ * Reads invite state for an admin-controlled resend decision.
+ * A resend is allowed only when the newest pending invite has expired and no
+ * active pending invite already exists for the same client.
+ */
+export async function getClientInviteResendState(
+  clientId: string
+): Promise<ClientInviteResendState> {
+  const snapshot = await getDocs(
+    query(collection(getFirestoreDb(), "client_invites"), where("clientId", "==", clientId))
+  );
+
+  if (snapshot.empty) {
+    return { canResend: false, reason: "missing" };
+  }
+
+  const invites = snapshot.docs
+    .map((inviteDoc) => inviteDoc.data())
+    .sort((a, b) => getTimestampMillis(b.created_at) - getTimestampMillis(a.created_at));
+  const now = Date.now();
+  const hasActivePendingInvite = invites.some(
+    (invite) =>
+      (!invite.status || invite.status === "pending") &&
+      getTimestampMillis(invite.expiresAt) > now
+  );
+
+  if (hasActivePendingInvite) {
+    return { canResend: false, reason: "active" };
+  }
+
+  const latestPendingInvite = invites.find(
+    (invite) => !invite.status || invite.status === "pending"
+  );
+
+  if (!latestPendingInvite) {
+    return { canResend: false, reason: "claimed" };
+  }
+
+  return {
+    canResend: getTimestampMillis(latestPendingInvite.expiresAt) <= now,
+    reason: "expired",
+  };
 }
 
 /**

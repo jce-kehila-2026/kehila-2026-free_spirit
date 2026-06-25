@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   sendEmailVerification,
+  signOut,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import {
   CLIENT_EMAIL_VERIFICATION_PATH,
+  ACCESS_DENIED_PATH,
   claimClientInviteForUser,
   getInviteTokenFromCurrentUrl,
   getPostLoginRedirect,
@@ -214,7 +216,11 @@ export default function Signup() {
           return;
         }
 
-        router.push("/onboarding");
+        const redirectPath = await getPostLoginRedirect(userCredential.user);
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
         return;
       }
 
@@ -247,11 +253,13 @@ export default function Signup() {
 
       if (inviteToken) {
         await claimClientInviteForUser(result.user, inviteToken);
-        router.push(
-          result.user.emailVerified
-            ? "/onboarding"
-            : CLIENT_EMAIL_VERIFICATION_PATH,
-        );
+        const redirectPath = result.user.emailVerified
+          ? await getPostLoginRedirect(result.user)
+          : CLIENT_EMAIL_VERIFICATION_PATH;
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
         return;
       }
 

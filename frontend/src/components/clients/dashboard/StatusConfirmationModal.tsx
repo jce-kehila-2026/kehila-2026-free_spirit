@@ -22,9 +22,9 @@ const COPY: Record<
   { title: string; body: string; actionLabel: string; actionClass: string }
 > = {
   interested: {
-    title: "Register Client",
-    body: "Are you sure you want to officially register this client? This will update their status in the system.",
-    actionLabel: "Confirm Registration",
+    title: "Send Invitation",
+    body: "Are you sure you want to send this client an onboarding invitation? Their status will move to Invited until they complete signup.",
+    actionLabel: "Send Invitation",
     // Solid teal — a positive, forward-moving action
     actionClass:
       "bg-[#245C66] text-white hover:bg-[#173A40] focus:ring-[#6BB2A0]",

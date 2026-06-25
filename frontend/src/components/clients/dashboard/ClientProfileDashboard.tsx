@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import ProfileArchiveModal from "./ProfileArchiveModal";
 import StatusConfirmationModal from "./StatusConfirmationModal";
 import { useProfileDashboard } from "./useProfileDashboard"; // Our new orchestrator hook
 import {
+  getClientRegistrationInviteResendState,
   queueClientRegistrationInviteEmail,
   updateClientStatus,
 } from "@/application/ClientManagementService";
@@ -68,17 +69,56 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
   // ── Status badge state ───────────────────────────────────────────────────
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [canResendInvite, setCanResendInvite] = useState(false);
+  const [isCheckingInvite, setIsCheckingInvite] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState(false);
+
+  useEffect(() => {
+    let shouldIgnore = false;
+
+    async function resolveInviteState() {
+      if (client.status !== "invited" || isArchived) {
+        setCanResendInvite(false);
+        return;
+      }
+
+      setIsCheckingInvite(true);
+      try {
+        const inviteState = await getClientRegistrationInviteResendState(client.id);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(inviteState.canResend);
+        }
+      } catch (error) {
+        console.error("[ClientProfileDashboard] invite state check failed:", error);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(false);
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setIsCheckingInvite(false);
+        }
+      }
+    }
+
+    resolveInviteState();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [client.id, client.status, isArchived]);
 
   async function handleStatusChange() {
-    if (client.status === "registered") {
-      toast.error("Registered clients cannot be reverted to Interested.");
+    if (client.status !== "interested") {
+      toast.error("Only interested clients can receive a first invitation.");
       setIsStatusModalOpen(false);
       return;
     }
 
     const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
     // Toggle: registered → interested, anything else → registered
-    const newStatus = "registered";
+    const newStatus = "invited";
     setIsUpdatingStatus(true);
     try {
       const user = auth?.currentUser as AuthUserWithProfile | null;
@@ -92,7 +132,7 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
       await updateClientStatus(client.id, clientName, newStatus, managerName);
       setStatusOverride({ clientId: client.id, status: newStatus });
 
-      if (newStatus === "registered" && typeof window !== "undefined") {
+      if (newStatus === "invited" && typeof window !== "undefined") {
         try {
           // Registration queues the invite email through Firestore instead of
           // exposing the raw onboarding URL in an admin copy dialog.
@@ -124,6 +164,29 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     });
     router.push(`/events?${queryParams.toString()}`);
   };
+
+  async function handleResendInvitation() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setIsResendingInvite(true);
+    try {
+      // Resend uses the same secure generator as first registration, creating
+      // a fresh token with a new 24-hour expiry before queuing email delivery.
+      await queueClientRegistrationInviteEmail(
+        client.id,
+        client.email,
+        window.location.origin,
+      );
+      setCanResendInvite(false);
+    } catch (error) {
+      console.error("[ClientProfileDashboard] invite resend failed:", error);
+      toast.error("The invitation email could not be resent.");
+    } finally {
+      setIsResendingInvite(false);
+    }
+  }
 
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
@@ -191,12 +254,12 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
                   type="button"
                   id="btn-status-badge"
                   onClick={() => setIsStatusModalOpen(true)}
-                  disabled={client.status === "registered"}
+                  disabled={client.status !== "interested"}
                   className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:border-white/30 disabled:hover:bg-transparent disabled:hover:text-white/80"
                   aria-label={
-                    client.status === "registered"
-                      ? "Client is registered and cannot be reverted"
-                      : "Register client"
+                    client.status === "interested"
+                      ? "Invite client"
+                      : "Client is already past the initial invite step"
                   }
                 >
                   <span className={[
@@ -210,6 +273,17 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
               )}
 
               {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
+              {!isArchived && client.status === "invited" && canResendInvite && (
+                <button
+                  type="button"
+                  onClick={handleResendInvitation}
+                  disabled={isCheckingInvite || isResendingInvite}
+                  className="inline-flex items-center rounded-lg border border-white/30 bg-white px-4 py-2 text-sm font-semibold text-[#245C66] shadow-sm transition-colors duration-150 hover:bg-[#EEF4EC] focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isResendingInvite ? "Resending..." : "Resend Invitation"}
+                </button>
+              )}
+
               {!isArchived && (
                 <button
                   type="button"

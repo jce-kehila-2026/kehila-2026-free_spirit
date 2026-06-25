@@ -11,6 +11,8 @@ import {
   updateClientDoc,
   createClientInviteDoc,
   createClientInviteEmailNotification,
+  getClientInviteResendState,
+  type ClientInviteResendState,
 } from "@/firebase/clientDbService";
 import { createSystemEvent } from "@/firebase/clientEventsService";
 
@@ -107,17 +109,17 @@ export const useClientManagementService = () => {
 // These are plain async functions rather than hook-internal methods because they
 // are called from individual profile pages and do not need shared hook state.
 
-// Client status promotion is intentionally one-way: interested -> registered.
-type UpdatableStatus = "registered";
+// Admin invite dispatch is the only browser-side status transition: interested -> invited.
+type UpdatableStatus = "invited";
 
 const STATUS_COPY: Record<
   UpdatableStatus,
   { eventTitle: string; eventBody: (name: string, managerName: string) => string; successToast: (name: string) => string }
 > = {
-  registered: {
-    eventTitle: "Client Registered",
-    eventBody: (name, managerName) => `${name} was officially registered in the system by ${managerName}.`,
-    successToast: (name) => `${name} has been successfully registered.`,
+  invited: {
+    eventTitle: "Client Invited",
+    eventBody: (name, managerName) => `${name} was invited to complete onboarding by ${managerName}.`,
+    successToast: (name) => `${name} has been invited to complete onboarding.`,
   },
 };
 
@@ -176,7 +178,7 @@ export async function registerClient(
   clientId: string,
   clientName: string
 ): Promise<void> {
-  return updateClientStatus(clientId, clientName, "registered", "System");
+  return updateClientStatus(clientId, clientName, "invited", "System");
 }
 
 function createSecureInviteToken(): string {
@@ -230,4 +232,10 @@ export async function queueClientRegistrationInviteEmail(
   const inviteUrl = await createClientInviteLink(clientId, origin);
   await createClientInviteEmailNotification(normalizedEmail, inviteUrl);
   toast.success("Invitation email queued successfully!");
+}
+
+export async function getClientRegistrationInviteResendState(
+  clientId: string
+): Promise<ClientInviteResendState> {
+  return getClientInviteResendState(clientId);
 }
