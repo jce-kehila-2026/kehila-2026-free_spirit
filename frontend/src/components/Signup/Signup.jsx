@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   sendEmailVerification,
+  signOut,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
@@ -13,9 +14,11 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import {
   CLIENT_EMAIL_VERIFICATION_PATH,
+  ACCESS_DENIED_PATH,
   claimClientInviteForUser,
   getInviteTokenFromCurrentUrl,
   getPostLoginRedirect,
+  validateClientInviteToken,
 } from "@/firebase/authRoleService";
 import {
   getPasswordRequirementResults,
@@ -183,14 +186,20 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
+      const inviteToken = getInviteTokenFromCurrentUrl();
+
+      if (inviteToken) {
+        // Validate the token before Firebase Auth user creation so expired
+        // onboarding links cannot create orphaned accounts.
+        await validateClientInviteToken(inviteToken);
+      }
+
       // First create the Firebase Auth user, then persist app-specific profile data.
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password,
       );
-
-      const inviteToken = getInviteTokenFromCurrentUrl();
 
       try {
         await sendEmailVerification(auth.currentUser || userCredential.user);
@@ -207,11 +216,16 @@ export default function Signup() {
           return;
         }
 
-        router.push("/onboarding");
+        const redirectPath = await getPostLoginRedirect(userCredential.user);
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
         return;
       }
 
-      router.push("/manage-programs");
+      // New manager accounts land on the routed programs workspace; creation stays inside its modal UI.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {
@@ -227,20 +241,30 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
-      const result = await signInWithPopup(auth, provider);
       const inviteToken = getInviteTokenFromCurrentUrl();
 
       if (inviteToken) {
+        // Google sign-in can create an auth user, so validate invite freshness
+        // before opening the provider flow whenever an invite is present.
+        await validateClientInviteToken(inviteToken);
+      }
+
+      const result = await signInWithPopup(auth, provider);
+
+      if (inviteToken) {
         await claimClientInviteForUser(result.user, inviteToken);
-        router.push(
-          result.user.emailVerified
-            ? "/onboarding"
-            : CLIENT_EMAIL_VERIFICATION_PATH,
-        );
+        const redirectPath = result.user.emailVerified
+          ? await getPostLoginRedirect(result.user)
+          : CLIENT_EMAIL_VERIFICATION_PATH;
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
         return;
       }
 
-      router.push("/manage-programs");
+      // Google-created manager accounts use the routed programs workspace, not the private modal component.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {

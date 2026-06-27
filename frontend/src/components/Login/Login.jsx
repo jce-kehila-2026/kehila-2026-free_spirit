@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
+  signOut,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
@@ -18,6 +19,7 @@ import {
   CLIENT_EMAIL_VERIFICATION_PATH,
   getInviteTokenFromCurrentUrl,
   getPostLoginRedirect,
+  ACCESS_DENIED_PATH,
 } from "@/firebase/authRoleService";
 import styles from "./Login.module.css";
 
@@ -68,7 +70,7 @@ async function getSecurePostAuthRedirect(user) {
       throw error;
     }
 
-    return user.emailVerified ? "/onboarding" : CLIENT_EMAIL_VERIFICATION_PATH;
+    return getPostLoginRedirect(user);
   }
 
   return getPostLoginRedirect(user);
@@ -102,6 +104,19 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showAccessDenied, setShowAccessDenied] = useState(wasAccessDenied);
 
+  const routeAfterAuth = useCallback(async (user) => {
+    const redirectPath = await getSecurePostAuthRedirect(user);
+
+    if (redirectPath === ACCESS_DENIED_PATH) {
+      // Inactive client accounts must not keep a Firebase Auth session alive.
+      await signOut(auth);
+      router.replace(ACCESS_DENIED_PATH);
+      return;
+    }
+
+    router.replace(redirectPath);
+  }, [router]);
+
   useEffect(() => {
     // If Firebase restores an existing session, skip login unless showing a denial.
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -109,6 +124,14 @@ export default function Login() {
         await user.reload();
         const refreshedUser = auth.currentUser || user;
         const redirectPath = await getSecurePostAuthRedirect(refreshedUser);
+
+        if (redirectPath === "/login") {
+          setAuthError(
+            "Your account is not authorized. Please contact an administrator.",
+          );
+          setIsCheckingAuth(false);
+          return;
+        }
 
         if (redirectPath === CLIENT_EMAIL_VERIFICATION_PATH) {
           setAuthError(
@@ -118,7 +141,7 @@ export default function Login() {
           return;
         }
 
-        router.replace(redirectPath);
+        await routeAfterAuth(refreshedUser);
         return;
       }
 
@@ -126,7 +149,7 @@ export default function Login() {
     });
 
     return unsubscribe;
-  }, [router, wasAccessDenied]);
+  }, [routeAfterAuth, wasAccessDenied]);
 
   useEffect(() => {
     if (!showAccessDenied) {
@@ -212,7 +235,7 @@ export default function Login() {
         credentials.email,
         credentials.password,
       );
-      router.push(await getSecurePostAuthRedirect(userCredential.user));
+      await routeAfterAuth(userCredential.user);
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -255,7 +278,7 @@ export default function Login() {
         localStorage.setItem("googleCalendarAccessToken", accessToken);
       }
 
-      router.push(await getSecurePostAuthRedirect(result.user));
+      await routeAfterAuth(result.user);
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {

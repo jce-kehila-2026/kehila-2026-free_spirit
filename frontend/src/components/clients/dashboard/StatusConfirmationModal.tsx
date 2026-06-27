@@ -22,17 +22,17 @@ const COPY: Record<
   { title: string; body: string; actionLabel: string; actionClass: string }
 > = {
   interested: {
-    title: "Register Client",
-    body: "Are you sure you want to officially register this client? This will update their status in the system.",
-    actionLabel: "Confirm Registration",
+    title: "Send Invitation",
+    body: "Are you sure you want to send this client an onboarding invitation? Their status will move to Invited until they complete signup.",
+    actionLabel: "Send Invitation",
     // Solid teal — a positive, forward-moving action
     actionClass:
       "bg-[#245C66] text-white hover:bg-[#173A40] focus:ring-[#6BB2A0]",
   },
   registered: {
-    title: "Revert Status",
-    body: "Are you sure you want to revert this client back to Interested? Their status will be updated in the system.",
-    actionLabel: "Revert to Interested",
+    title: "Client Registered",
+    body: "This client is already registered. Registered clients cannot be reverted to Interested.",
+    actionLabel: "Already Registered",
     // Amber-tinted — a cautionary, reversing action
     actionClass:
       "bg-[#8A6822] text-white hover:bg-[#6D520F] focus:ring-[#E5C97D]",
@@ -56,6 +56,7 @@ export default function StatusConfirmationModal({
   isLoading = false,
 }: StatusConfirmationModalProps) {
   const { title, body, actionLabel, actionClass } = COPY[currentStatus];
+  const isReverseTransitionBlocked = currentStatus === "registered";
 
   return (
     <div
@@ -102,7 +103,7 @@ export default function StatusConfirmationModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || isReverseTransitionBlocked}
             className={[
               "rounded-full px-5 py-2 text-sm font-bold shadow-sm transition",
               "focus:outline-none focus:ring-2 focus:ring-offset-2",
@@ -110,7 +111,11 @@ export default function StatusConfirmationModal({
               actionClass,
             ].join(" ")}
           >
-            {isLoading ? "Updating..." : actionLabel}
+            {isReverseTransitionBlocked
+              ? "Already Registered"
+              : isLoading
+                ? "Updating..."
+                : actionLabel}
           </button>
         </div>
 

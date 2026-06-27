@@ -26,16 +26,22 @@ service cloud.firestore {
       return hasAccount() ? accountData().role : null;
     }
 
-    function isAdmin() {
-      return accountRole() == "Admin";
+    function isCanonicalRole(role) {
+      return role in ["admin", "client"];
     }
 
-    function isStaff() {
-      return accountRole() in ["Admin", "Program Manager"];
+    function isAdmin() {
+      return accountRole() == "admin";
     }
 
     function isClientRole(role) {
-      return role in ["client", "Client"];
+      return role == "client";
+    }
+
+    function isArchivedClientData(clientData) {
+      return clientData.is_archived == true
+        || clientData.status == "Archived"
+        || clientData.status == "archived";
     }
 
     function isOwnAccount(accountId) {
@@ -47,15 +53,9 @@ service cloud.firestore {
         && existsAfter(invitePath(inviteToken))
         && getAfter(invitePath(inviteToken)).data.status == "claimed"
         && getAfter(invitePath(inviteToken)).data.claimedByUid == request.auth.uid
-        && getAfter(invitePath(inviteToken)).data.clientId == clientId;
-    }
-
-    function isDefaultSelfAccountCreate(accountId) {
-      return isOwnAccount(accountId)
-        && request.resource.data.account_id == request.auth.uid
-        && request.resource.data.role == "User"
-        && !("clientId" in request.resource.data)
-        && !("clientInviteToken" in request.resource.data);
+        && getAfter(invitePath(inviteToken)).data.clientId == clientId
+        && getAfter(invitePath(inviteToken)).data.expiresAt is timestamp
+        && request.time < getAfter(invitePath(inviteToken)).data.expiresAt;
     }
 
     function isClientSelfAccountWrite(accountId) {
@@ -77,9 +77,17 @@ service cloud.firestore {
         && request.resource.data.clientId == resource.data.clientId;
     }
 
+    function isCanonicalAdminAccountWrite() {
+      return isAdmin()
+        && (!("role" in request.resource.data)
+          || isCanonicalRole(request.resource.data.role));
+    }
+
     function isInviteClaim(inviteToken) {
       return signedIn()
         && (!("status" in resource.data) || resource.data.status == "pending")
+        && resource.data.expiresAt is timestamp
+        && request.time < resource.data.expiresAt
         && request.resource.data.clientId == resource.data.clientId
         && request.resource.data.status == "claimed"
         && request.resource.data.claimedByUid == request.auth.uid
@@ -87,10 +95,36 @@ service cloud.firestore {
           .hasOnly(["status", "claimedByUid", "claimedAt"]);
     }
 
-    function isMappedClient(clientId) {
+    function isUnexpiredInviteRead() {
+      return resource.data.expiresAt is timestamp
+        && request.time < resource.data.expiresAt;
+    }
+
+    function isOneWayAdminClientUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(["status"])
+        || (
+          resource.data.status == "interested"
+          && request.resource.data.status == "invited"
+        )
+        || (
+          resource.data.status == "invited"
+          && request.resource.data.status == "invited"
+        )
+        || (
+          resource.data.status == "registered"
+          && request.resource.data.status == "registered"
+        );
+    }
+
+    function isMappedClientAccount(clientId) {
       return hasAccount()
         && isClientRole(accountData().role)
         && accountData().clientId == clientId;
+    }
+
+    function isMappedClient(clientId) {
+      return isMappedClientAccount(clientId)
+        && !isArchivedClientData(resource.data);
     }
 
     function isClientProfileUpdate(clientId) {
@@ -129,9 +163,11 @@ service cloud.firestore {
     function isClientUidClaim(clientId) {
       return signedIn()
         && (!("uid" in resource.data) || resource.data.uid == null || resource.data.uid == request.auth.uid)
+        && resource.data.status == "invited"
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "registered"
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(["uid", "updated_at"])
+          .hasOnly(["uid", "status", "updated_at"])
         && existsAfter(accountPath(request.auth.uid))
         && isClientRole(getAfter(accountPath(request.auth.uid)).data.role)
         && getAfter(accountPath(request.auth.uid)).data.clientId == clientId;
@@ -140,10 +176,9 @@ service cloud.firestore {
     match /accounts/{accountId} {
       allow get: if isOwnAccount(accountId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isDefaultSelfAccountCreate(accountId)
-        || isClientSelfAccountWrite(accountId)
-        || isAdmin();
-      allow update: if isAdmin()
+      allow create: if isClientSelfAccountWrite(accountId)
+        || isCanonicalAdminAccountWrite();
+      allow update: if isCanonicalAdminAccountWrite()
         || isSafeSelfAccountUpdate(accountId)
         || isClientSelfAccountWrite(accountId);
       allow delete: if isAdmin();
@@ -151,26 +186,70 @@ service cloud.firestore {
 
     match /client_invites/{inviteToken} {
       // The invite token is an unguessable document ID. Users must already know
-      // the token from an invite link before they can read or claim it.
-      allow get: if signedIn();
-      allow list: if isStaff();
-      allow create, delete: if isStaff();
-      allow update: if isStaff() || isInviteClaim(inviteToken);
+      // the token from an invite link before they can read it, which allows the
+      // pre-auth signup screen to validate only still-active invite documents.
+      allow get: if isAdmin() || isUnexpiredInviteRead();
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.expiresAt is timestamp;
+      allow delete: if isAdmin();
+      // Claims stay authenticated so Firestore can bind claimedByUid, account,
+      // and client uid writes to the same Firebase Auth user in one transaction.
+      allow update: if isAdmin() || isInviteClaim(inviteToken);
     }
 
     match /clients/{clientId} {
-      allow get: if isStaff() || isMappedClient(clientId);
-      allow list: if isStaff();
-      allow create, delete: if isStaff();
-      allow update: if isStaff()
+      // Mapped clients may read their own profile so the app can explicitly
+      // detect archived records and end the session without guessing from a
+      // permission-denied race. Profile writes still require isMappedClient().
+      allow get: if isAdmin() || isMappedClientAccount(clientId);
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if (isAdmin() && isOneWayAdminClientUpdate())
         || isClientProfileUpdate(clientId)
         || isClientUidClaim(clientId);
+    }
+
+    match /programs/{document=**} {
+      // Manager program views and assignment flows are admin-only under the
+      // canonical lowercase role contract.
+      allow read, write: if isAdmin();
+    }
+
+    match /program_templates/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /locations/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /events/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /automatic_notifications/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /todos/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /navigation_links/{document=**} {
+      // The dynamic permissions dashboard is no longer part of route
+      // enforcement, but existing admin screens may still inspect/edit docs.
+      allow read, write: if isAdmin();
+    }
+
+    match /statistics/{document=**} {
+      allow read, write: if isAdmin();
     }
 
     // Preserve manager access to the remaining operational collections while
     // keeping client accounts constrained to the explicit rules above.
     match /{document=**} {
-      allow read, write: if isStaff();
+      allow read, write: if isAdmin();
     }
   }
 }

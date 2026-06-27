@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
@@ -15,7 +15,8 @@ import ProfileArchiveModal from "./ProfileArchiveModal";
 import StatusConfirmationModal from "./StatusConfirmationModal";
 import { useProfileDashboard } from "./useProfileDashboard"; // Our new orchestrator hook
 import {
-  createClientInviteLink,
+  getClientRegistrationInviteResendState,
+  queueClientRegistrationInviteEmail,
   updateClientStatus,
 } from "@/application/ClientManagementService";
 
@@ -68,14 +69,56 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
   // ── Status badge state ───────────────────────────────────────────────────
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [inviteLink, setInviteLink] = useState("");
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [isCopyingInvite, setIsCopyingInvite] = useState(false);
+  const [canResendInvite, setCanResendInvite] = useState(false);
+  const [isCheckingInvite, setIsCheckingInvite] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState(false);
+
+  useEffect(() => {
+    let shouldIgnore = false;
+
+    async function resolveInviteState() {
+      if (client.status !== "invited" || isArchived) {
+        setCanResendInvite(false);
+        return;
+      }
+
+      setIsCheckingInvite(true);
+      try {
+        const inviteState = await getClientRegistrationInviteResendState(client.id);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(inviteState.canResend);
+        }
+      } catch (error) {
+        console.error("[ClientProfileDashboard] invite state check failed:", error);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(false);
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setIsCheckingInvite(false);
+        }
+      }
+    }
+
+    resolveInviteState();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [client.id, client.status, isArchived]);
 
   async function handleStatusChange() {
+    if (client.status !== "interested") {
+      toast.error("Only interested clients can receive a first invitation.");
+      setIsStatusModalOpen(false);
+      return;
+    }
+
     const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
     // Toggle: registered → interested, anything else → registered
-    const newStatus = client.status === "registered" ? "interested" : "registered";
+    const newStatus = "invited";
     setIsUpdatingStatus(true);
     try {
       const user = auth?.currentUser as AuthUserWithProfile | null;
@@ -89,19 +132,18 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
       await updateClientStatus(client.id, clientName, newStatus, managerName);
       setStatusOverride({ clientId: client.id, status: newStatus });
 
-      if (newStatus === "registered" && typeof window !== "undefined") {
+      if (newStatus === "invited" && typeof window !== "undefined") {
         try {
-          // Registration now completes the invite workflow: once the status write
-          // succeeds, create the pending invite and show the copyable signup URL.
-          const generatedLink = await createClientInviteLink(
+          // Registration queues the invite email through Firestore instead of
+          // exposing the raw onboarding URL in an admin copy dialog.
+          await queueClientRegistrationInviteEmail(
             client.id,
+            client.email,
             window.location.origin,
           );
-          setInviteLink(generatedLink);
-          setIsInviteModalOpen(true);
         } catch (error) {
           console.error("[ClientProfileDashboard] invite generation failed:", error);
-          toast.error("Registration completed, but the invite link could not be generated.");
+          toast.error("Registration completed, but the invitation email could not be queued.");
         }
       }
     } catch {
@@ -123,17 +165,26 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     router.push(`/events?${queryParams.toString()}`);
   };
 
-  async function handleCopyInviteLink() {
-    if (!inviteLink) return;
+  async function handleResendInvitation() {
+    if (typeof window === "undefined") {
+      return;
+    }
 
-    setIsCopyingInvite(true);
+    setIsResendingInvite(true);
     try {
-      await navigator.clipboard.writeText(inviteLink);
-      toast.success("Invite link copied to clipboard.");
-    } catch {
-      toast.error("Could not copy the invite link. Please copy it manually.");
+      // Resend uses the same secure generator as first registration, creating
+      // a fresh token with a new 24-hour expiry before queuing email delivery.
+      await queueClientRegistrationInviteEmail(
+        client.id,
+        client.email,
+        window.location.origin,
+      );
+      setCanResendInvite(false);
+    } catch (error) {
+      console.error("[ClientProfileDashboard] invite resend failed:", error);
+      toast.error("The invitation email could not be resent.");
     } finally {
-      setIsCopyingInvite(false);
+      setIsResendingInvite(false);
     }
   }
 
@@ -203,8 +254,13 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
                   type="button"
                   id="btn-status-badge"
                   onClick={() => setIsStatusModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
-                  aria-label="Change client status"
+                  disabled={client.status !== "interested"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:border-white/30 disabled:hover:bg-transparent disabled:hover:text-white/80"
+                  aria-label={
+                    client.status === "interested"
+                      ? "Invite client"
+                      : "Client is already past the initial invite step"
+                  }
                 >
                   <span className={[
                     "h-1.5 w-1.5 rounded-full",
@@ -217,6 +273,17 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
               )}
 
               {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
+              {!isArchived && client.status === "invited" && canResendInvite && (
+                <button
+                  type="button"
+                  onClick={handleResendInvitation}
+                  disabled={isCheckingInvite || isResendingInvite}
+                  className="inline-flex items-center rounded-lg border border-white/30 bg-white px-4 py-2 text-sm font-semibold text-[#245C66] shadow-sm transition-colors duration-150 hover:bg-[#EEF4EC] focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isResendingInvite ? "Resending..." : "Resend Invitation"}
+                </button>
+              )}
+
               {!isArchived && (
                 <button
                   type="button"
@@ -323,58 +390,6 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
         />
       )}
 
-      {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#15383E]/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-[1.75rem] border border-white/50 bg-[#FFFDF8] p-6 shadow-[0_24px_60px_rgba(21,56,62,0.28)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-[#15383E]">
-                  Client Invite Link
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-[#607B80]">
-                  Share this signup link with {client.first_name || "the client"}.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsInviteModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xl font-bold text-[#6A8589] transition hover:bg-[#EEF4EC] hover:text-[#173A40]"
-                aria-label="Close invite link dialog"
-              >
-                &times;
-              </button>
-            </div>
-
-            <label className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-[#6A8589]">
-              Signup URL
-            </label>
-            <textarea
-              readOnly
-              value={inviteLink}
-              rows={3}
-              className="mb-4 w-full resize-none rounded-2xl border border-[#BFD0CA] bg-white px-4 py-3 text-sm leading-6 text-[#31585F] outline-none focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4]"
-            />
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setIsInviteModalOpen(false)}
-                className="rounded-full border border-[#BFD0CA] bg-white px-4 py-2 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC]"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyInviteLink}
-                disabled={isCopyingInvite || !inviteLink}
-                className="rounded-full bg-[#245C66] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#173A40] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isCopyingInvite ? "Copying..." : "Copy to Clipboard"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

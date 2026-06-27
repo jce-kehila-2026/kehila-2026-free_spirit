@@ -10,7 +10,9 @@ import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { auth, db } from "@/firebase/firebase";
 import {
   CLIENT_EMAIL_VERIFICATION_PATH,
+  ACCESS_DENIED_PATH,
   getAccountForUser,
+  isArchivedClientRecord,
   isClientRole,
 } from "@/firebase/authRoleService";
 import freeSpiritLogo from "../../../../docs/design-reference/image.png";
@@ -101,6 +103,13 @@ export default function ClientOnboardingPage() {
           throw new Error("Your linked client profile could not be found.");
         }
 
+        if (isArchivedClientRecord(clientSnapshot.data())) {
+          // Archived client records must not retain an authenticated onboarding session.
+          await signOut(activeAuth);
+          router.replace(ACCESS_DENIED_PATH);
+          return;
+        }
+
         if (shouldIgnore) {
           return;
         }
@@ -117,6 +126,23 @@ export default function ClientOnboardingPage() {
         });
       } catch (error) {
         if (shouldIgnore) {
+          return;
+        }
+
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "permission-denied"
+        ) {
+          setState({
+            status: "error",
+            client: null,
+            // Permission-denied can happen during the invite-claim propagation
+            // window. Only an explicitly read archived record signs the user out.
+            message:
+              "Your onboarding profile is still being prepared. Please refresh in a moment.",
+          });
           return;
         }
 

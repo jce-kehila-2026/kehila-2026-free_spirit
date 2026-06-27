@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { Plus, CalendarDays, UsersRound, CheckCircle2, X } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
-import ManagePrograms from "../manage-programs/page";
+// Keep the manage-programs UI private to this route so it cannot register as a standalone URL.
+import ManagePrograms from "./_components/ManagePrograms";
 
 const formatProgramDate = (value) => {
   if (!value) return "-";

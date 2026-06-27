@@ -4,8 +4,17 @@ import { collection, getDocs, doc, updateDoc , deleteDoc, serverTimestamp } from
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { db } from "@/firebase/firebase";
+import { ROLE, isCanonicalRole } from "@/firebase/authRoleService";
 
-const roleOptions = ["User", "Program Manager", "Admin", "client"];
+const roleOptions = [ROLE.ADMIN, ROLE.CLIENT];
+
+function getCanonicalRoleValue(role) {
+  return isCanonicalRole(role) ? role : "";
+}
+
+function getRoleDisplay(role) {
+  return isCanonicalRole(role) ? role : "Unauthorized";
+}
 
 const formatCreatedAt = (createdAt) => {
   if (!createdAt?.toDate) {
@@ -188,18 +197,21 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 font-semibold">
                       {user.email || "No email"}
                     </td>
-                    <td className="px-4 py-3">{user.role || "User"}</td>
+                    <td className="px-4 py-3">{getRoleDisplay(user.role)}</td>
                     <td className="px-4 py-3">{formatCreatedAt(user.created_at)}</td>
                     <td className="px-4 py-3">{formatAccountTimestamp(user.last_login)}</td>
                     <td className="px-4 py-3">
                       <select
                         className="w-full max-w-[220px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.14)] disabled:cursor-not-allowed disabled:opacity-70"
-                        value={user.role || "User"}
+                        value={getCanonicalRoleValue(user.role)}
                         onChange={(event) =>
                           handleRoleChange(user.id, event.target.value)
                         }
                         disabled={updatingUserId === user.id}
                       >
+                        <option value="" disabled>
+                          Select canonical role
+                        </option>
                         {roleOptions.map((role) => (
                           <option key={role} value={role}>
                             {role}

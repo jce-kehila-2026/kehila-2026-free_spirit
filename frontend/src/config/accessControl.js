@@ -1,3 +1,5 @@
+import { ROLE } from "@/firebase/authRoleService";
+
 // Static navigation fallback used before dynamic Firestore navigation links are loaded.
 // Keep labels in English and align role-gated links with Firestore Security Rules.
 
@@ -12,41 +14,39 @@ export const navigationLinks = [
     href: "/dashboard",
     label: "Personal Area",
     visibility: "authenticated",
-    allowedRoles: ["Admin", "Program Manager", "User", "Client"],
+    allowedRoles: [ROLE.ADMIN],
   },
   {
-    href: "/manage-programs",
-    label: "Manage Programs",
+    href: "/programs",
+    label: "Programs",
     visibility: "authenticated",
-    allowedRoles: [],
-    showInNavigation: false,
+    allowedRoles: [ROLE.ADMIN],
   },
-  { href: "/programs", label: "Programs", visibility: "authenticated" },
 
-  // Internal staff links should not be shown to regular client/user accounts.
+  // Internal manager links should not be shown to client accounts.
   {
     href: "/clients",
     label: "Clients",
     visibility: "authenticated",
-    allowedRoles: ["Admin"],
+    allowedRoles: [ROLE.ADMIN],
   },
   {
     href: "/events",
     label: "Events & Follow-ups",
     visibility: "authenticated",
-    allowedRoles: ["Admin"],
+    allowedRoles: [ROLE.ADMIN],
   },
   {
     href: "/admin",
     label: "Admin Dashboard",
     visibility: "authenticated",
-    allowedRoles: ["Admin"],
+    allowedRoles: [ROLE.ADMIN],
   },
   {
     href: "/statistic",
     label: "Statistics",
     visibility: "authenticated",
-    allowedRoles: ["Admin"],
+    allowedRoles: [ROLE.ADMIN],
   },
 ];
 
@@ -86,8 +86,12 @@ const getRoutePolicy = (pathname) =>
 export const canAccessPath = (pathname, userRole) => {
   const routePolicy = getRoutePolicy(pathname);
 
-  if (!routePolicy?.allowedRoles || routePolicy.allowedRoles.length === 0) {
-    return true;
+  if (!routePolicy) {
+    return false;
+  }
+
+  if (!routePolicy.allowedRoles || routePolicy.allowedRoles.length === 0) {
+    return false;
   }
 
   return routePolicy.allowedRoles.includes(userRole);
