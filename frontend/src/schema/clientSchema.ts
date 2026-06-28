@@ -3,7 +3,7 @@ import { z } from "zod";
 import { nameRegex, nameError, CLIENT_STATUS, GENDER_OPTIONS, EDUCATION_STATUS_OPTIONS } from "./constants"
 import { medicalProfileSchema } from "./medicalSchema"
 import { contactSchema } from "./contactSchema"
-import { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
+import { dependentSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
 import { customFieldsSchema } from "./customFieldSchema"
 
 // ============================================================================
@@ -77,19 +77,18 @@ const clientBaseSchema = z.object({
   personal_notes: z.string().trim().max(4000, "Personal notes text is too long").optional().or(z.literal("")),
 
   // Legacy demographics
-  passport_number: z.string().trim().max(30).optional().or(z.literal("")),
   passport_country: z.string().trim().max(100).optional().or(z.literal("")),
   citizenship: z.string().trim().max(100).optional().or(z.literal("")),
   date_of_entry: z.string().optional().or(z.literal("")),
   purpose_of_visit: z.string().trim().max(500).optional().or(z.literal("")),
   home_address: z.string().trim().max(300).optional().or(z.literal("")),
-  cohabitants: z.string().trim().max(500).optional().or(z.literal("")),
+  household_members: z.string().trim().max(500).optional().or(z.literal("")),
   dependents: z.array(dependentSchema).default([]),
 
   // Nested structures (Imported)
   medical_profile: medicalProfileSchema.optional().default({}),
   contacts: z.array(contactSchema).default([]),
-  logistics: logisticsSchema.optional().default({}),
+
   questionnaire: questionnaireSchema.optional().default({}),
   legal_consents: legalConsentsSchema.optional().default({}),
   stays: z.array(staySchema).default([]),
@@ -104,11 +103,12 @@ const clientBaseSchema = z.object({
 // ============================================================================
 
 export const clientSchema = clientBaseSchema.superRefine((data, ctx) => {
-  // If a contact card was added, its name and phone are required.
+  // If a contact card was added, its name, phone, and relationship are required.
   // Adding a contact card at all is optional.
   data.contacts.forEach((contact, index) => {
     const name = typeof contact.contact_name === "string" ? contact.contact_name.trim() : "";
     const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
+    const relationship = typeof contact.relationship === "string" ? contact.relationship.trim() : "";
 
     if (!name) {
       ctx.addIssue({
@@ -124,6 +124,13 @@ export const clientSchema = clientBaseSchema.superRefine((data, ctx) => {
         path: ["contacts", index, "phone"],
       });
     }
+    if (!relationship) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Relationship is required",
+        path: ["contacts", index, "relationship"],
+      });
+    }
   });
 });
 
@@ -135,16 +142,18 @@ export type ClientFormInput = z.input<typeof clientSchema>;
 // ============================================================================
 
 // Basic Info fields (used by profile tabs that edit existing clients)
+// NOTE: date_of_entry and purpose_of_visit are intentionally excluded here.
+// They are owned exclusively by the Logistics tab (LogisticsTabController).
 export const basicInfoSchema = clientBaseSchema.pick({
   first_name: true, last_name: true, email: true, phone: true, status: true,
   passport_id: true, gender: true, address: true, dob: true, referrer: true,
   education_status: true, program_ids: true, diagnosis: true, personal_notes: true,
-  passport_number: true, passport_country: true, citizenship: true, home_address: true,
-  cohabitants: true, dependents: true, custom_fields: true,
+  passport_country: true, citizenship: true, home_address: true,
+  household_members: true, dependents: true, custom_fields: true,
 });
 export type BasicInfoFormData = z.infer<typeof basicInfoSchema>;
 
-export type { FinancialAidApplication } from "./financialAidSchema";
+
 export type { ClientDocument } from "./documentSchema";
 
 // ============================================================================
@@ -173,32 +182,30 @@ export type { Contact, ContactsFormData } from "../schema/contactSchema";
 
 // From Medical Domain
 export { 
-  healthcareProviderSchema, 
-  vaccinationSchema, 
-  hospitalizationSchema, 
+  healthcareProviderSchema,
+  allergySchema,
+  medicationSchema,
+  hospitalizationSchema,
+  vaccinationHistorySchema,
+  developmentalHistorySchema,
+  pastMedicalHistorySchema,
   medicalProfileSchema, 
   medicalProfileStepSchema 
 } from "../schema/medicalSchema";
 export type { 
   MedicalProfile, 
   HealthcareProvider, 
-  Vaccination, 
-  Hospitalization, 
+  Allergy,
+  Medication,
+  Hospitalization,
+  VaccinationHistory,
+  VaccinationEntry,
+  DevelopmentalHistory,
+  PastMedicalHistory,
   MedicalProfileFormData 
 } from "../schema/medicalSchema";
 
-// From Financial Domain
-export { 
-  FINANCIAL_AID_STATUS, 
-  paymentInstallmentSchema, 
-  financialAidApplicationSchema, 
-  financialAidTabSchema 
-} from "../schema/financialAidSchema";
-export type { 
-  FinancialAidStatus, 
-  PaymentInstallment, 
-  FinancialAidTabFormData 
-} from "../schema/financialAidSchema";
+
 
 // From Document Domain
 export { 
@@ -211,5 +218,5 @@ export type {
 } from "../schema/documentSchema";
 
 // From Auxiliary / Legacy Domain
-export { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema";
-export type { Dependent, Logistics, Questionnaire, LegalConsents } from "./supplementarySchema";
+export { dependentSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema";
+export type { Dependent, Questionnaire, LegalConsents } from "./supplementarySchema";

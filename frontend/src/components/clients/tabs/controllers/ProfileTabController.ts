@@ -48,11 +48,10 @@ export function useProfileTabController(client: ClientDoc) {
       program_ids: client.program_ids ?? [],
       diagnosis: client.diagnosis ?? "",
       personal_notes: client.personal_notes ?? "",
-      passport_number: client.passport_number ?? "",
       passport_country: client.passport_country ?? "",
       citizenship: client.citizenship ?? "",
       home_address: client.home_address ?? "",
-      cohabitants: client.cohabitants ?? "",
+      household_members: client.household_members ?? "",
       dependents: (client.dependents ?? []).map((d) => ({
         name: d.name ?? "",
         relationship: d.relationship ?? "",
@@ -81,9 +80,9 @@ export function useProfileTabController(client: ClientDoc) {
         setOpen((prev) => ({ ...prev, basic: true }));
       }
       if (
-        errors.passport_id || errors.passport_number || errors.passport_country ||
+        errors.passport_id || errors.passport_country ||
         errors.citizenship || errors.dob || errors.gender || errors.education_status ||
-        errors.referrer || errors.address || errors.home_address || errors.cohabitants ||
+        errors.referrer || errors.address || errors.home_address || errors.household_members ||
         errors.diagnosis || errors.personal_notes
       ) {
         setOpen((prev) => ({ ...prev, demographics: true }));
@@ -95,9 +94,9 @@ export function useProfileTabController(client: ClientDoc) {
     return () => clearTimeout(timeout);
   }, [
     errors.first_name, errors.last_name, errors.email, errors.phone, errors.status,
-    errors.passport_id, errors.passport_number, errors.passport_country,
+    errors.passport_id, errors.passport_country,
     errors.citizenship, errors.dob, errors.gender, errors.education_status,
-    errors.referrer, errors.address, errors.home_address, errors.cohabitants,
+    errors.referrer, errors.address, errors.home_address, errors.household_members,
     errors.diagnosis, errors.personal_notes, errors.dependents,
   ]);
 
