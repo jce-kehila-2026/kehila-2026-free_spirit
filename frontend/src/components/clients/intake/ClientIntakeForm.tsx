@@ -11,6 +11,7 @@ import { useClientManagementService } from "@/application/ClientManagementServic
 // TIER 1 — Presentation sub-components
 import BasicInfoStep from "./BasicInfoStep";
 import ContactsStep from "./ContactsStep";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // ─── Default values ───────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ const DEFAULT_VALUES: ClientFormInput = {
     medical_clearance_status: undefined,
   },
   contacts: [],
+  custom_fields: {},
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -121,6 +123,10 @@ export default function ClientIntakeForm({ onSaveSuccess, onCancel }: ClientInta
           {/* ── Contacts Section ── */}
           <div className="mt-4">
             <ContactsStep />
+          </div>
+
+          <div className="mt-4">
+            <CustomFieldsSection tab="profile" form={methods} />
           </div>
 
           {/* ── Footer: Cancel + Save ── */}

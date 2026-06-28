@@ -155,6 +155,7 @@ service cloud.firestore {
           "logistics",
           "questionnaire",
           "legal_consents",
+          "custom_fields",
           "financial_aid_applications",
           "client_documents"
         ]);
@@ -208,6 +209,19 @@ service cloud.firestore {
       allow update: if (isAdmin() && isOneWayAdminClientUpdate())
         || isClientProfileUpdate(clientId)
         || isClientUidClaim(clientId);
+    }
+
+    match /client_field_definitions/{fieldId} {
+      allow get, list: if signedIn()
+        && (isAdmin() || resource.data.active == true);
+      allow create: if isAdmin()
+        && request.resource.data.id == fieldId
+        && request.resource.data.isCustom == true
+        && request.resource.data.active == true;
+      allow update: if isAdmin()
+        && resource.data.isCustom == true
+        && request.resource.data.isCustom == true;
+      allow delete: if false;
     }
 
     match /programs/{document=**} {

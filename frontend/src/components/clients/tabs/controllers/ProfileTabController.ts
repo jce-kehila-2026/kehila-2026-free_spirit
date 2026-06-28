@@ -58,6 +58,7 @@ export function useProfileTabController(client: ClientDoc) {
         relationship: d.relationship ?? "",
         dob: d.dob ?? "",
       })),
+      custom_fields: client.custom_fields ?? {},
     },
   });
 
@@ -104,8 +105,15 @@ export function useProfileTabController(client: ClientDoc) {
   async function onSubmit(data: BasicInfoFormData) {
     setIsSaving(true);
     try {
-      await updateClientDoc(client.id, data);
-      form.reset(data); // Resets isDirty state so the save button disables again
+      const mergedData = {
+        ...data,
+        custom_fields: {
+          ...(client.custom_fields ?? {}),
+          ...(data.custom_fields ?? {}),
+        },
+      };
+      await updateClientDoc(client.id, mergedData);
+      form.reset(mergedData); // Resets isDirty state so the save button disables again
       toast.success("Profile saved successfully.");
     } catch (err) {
       console.error("[ProfileTabController] Update failed:", err);

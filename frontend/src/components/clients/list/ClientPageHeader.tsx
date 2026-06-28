@@ -8,6 +8,7 @@ interface ClientPageHeaderProps {
   editingClient: ClientDoc | null;
   onAddNew: () => void;
   onBackToList: () => void;
+  onManageFields?: () => void;
 }
 
 export default function ClientPageHeader({
@@ -15,6 +16,7 @@ export default function ClientPageHeader({
   editingClient,
   onAddNew,
   onBackToList,
+  onManageFields,
 }: ClientPageHeaderProps) {
   if (view === "dashboard") return null;
 
@@ -42,14 +44,25 @@ export default function ClientPageHeader({
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {view === "list" ? (
-          <button
-            type="button"
-            onClick={onAddNew}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9D4CC] focus-visible:ring-offset-2 focus-visible:ring-offset-[#245C66]"
-          >
-            <IconPlus className="h-4 w-4" />
-            Add new client
-          </button>
+          <>
+            {onManageFields && (
+              <button
+                type="button"
+                onClick={onManageFields}
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/30 bg-white/10 px-3.5 py-2 text-sm font-bold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              >
+                Manage fields
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onAddNew}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9D4CC] focus-visible:ring-offset-2 focus-visible:ring-offset-[#245C66]"
+            >
+              <IconPlus className="h-4 w-4" />
+              Add new client
+            </button>
+          </>
         ) : (
           <button
             type="button"

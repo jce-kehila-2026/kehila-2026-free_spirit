@@ -5,6 +5,7 @@ import type { FieldErrors } from "react-hook-form";
 import { MEDICAL_CLEARANCE_STATUS } from "@/schema/constants";
 import type { HealthcareProvider, Vaccination, Hospitalization } from "@/schema/medicalSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our Tier 2 Controller
 import { 
@@ -627,6 +628,10 @@ export default function MedicalTab({ client, isEditable }: MedicalTabProps) {
             </div>
           </AccordionSection>
 
+        </div>
+
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+          <CustomFieldsSection tab="medical" client={client} isEditable={isEditable} />
         </div>
 
         {/* ── Sticky footer ── */}

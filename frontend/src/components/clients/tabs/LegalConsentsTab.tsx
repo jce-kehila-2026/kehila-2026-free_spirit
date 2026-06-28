@@ -2,6 +2,7 @@
 
 import { AccordionSection } from "@/components/ui/AccordionSection";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our Tier 2 Controller
 import { useLegalConsentsTabController } from "./controllers/LegalConsentsTabController";
@@ -238,6 +239,10 @@ export default function LegalConsentsTab({ client, isEditable }: LegalConsentsTa
         </div>
 
         {/* ── Sticky footer (edit mode only) ── */}
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+          <CustomFieldsSection tab="legal_consents" client={client} isEditable={isEditable} />
+        </div>
+
         {isEditable && (
           <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
             {isDirty ? (

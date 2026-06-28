@@ -5,6 +5,7 @@ import type { Dependent } from "@/schema/supplementarySchema";
 import { AccordionSection } from "@/components/ui/AccordionSection";
 import { GENDER_OPTIONS, EDUCATION_STATUS_OPTIONS } from "@/schema/constants";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our new Tier 2 Controller
 import { useProfileTabController, EMPTY_DEPENDENT } from "./controllers/ProfileTabController";
@@ -354,6 +355,8 @@ export default function ProfileTab({ client, isEditable }: ProfileTabProps) {
               })}
             </div>
           </AccordionSection>
+
+          <CustomFieldsSection tab="profile" form={form} isEditable={isEditable} />
         </div>
 
         {/* ── Sticky footer ── */}
