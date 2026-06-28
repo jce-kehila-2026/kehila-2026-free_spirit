@@ -9,11 +9,14 @@ import TimelineWidget from "@/components/clients/dashboard/TimelineWidget";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { createNoteEvent } from "@/firebase/clientEventsService";
 import { getTodayString, getCurrentTimeString } from "@/utils/dateUtils";
+import { trackClientArrival, trackClientDeparture } from "@/application/ClientManagementService";
 
 // Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
+import { Pencil } from "lucide-react";
 import TodoListWidget from "@/components/todos/TodoListWidget";
 import ProgramAssignmentModal from "@/components/clients/dashboard/ProgramAssignmentModal";
+import StayHistoryModal from "@/components/clients/dashboard/StayHistoryModal";
 
 interface ProfileSummaryDashboardProps {
   client: ClientDoc;
@@ -31,6 +34,15 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
+
+  const [isTrackArrivalModalOpen, setIsTrackArrivalModalOpen] = useState(false);
+  const [isTrackDepartureModalOpen, setIsTrackDepartureModalOpen] = useState(false);
+  const [isStayHistoryModalOpen, setIsStayHistoryModalOpen] = useState(false);
+  
+  const [arrivalDate, setArrivalDate] = useState("");
+  const [departureDate, setDepartureDate] = useState("");
+  
+  const [isSavingStay, setIsSavingStay] = useState(false);
 
   const todayStr = getTodayString();
   const currentTimeStr = getCurrentTimeString();
@@ -89,6 +101,67 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
     setNoteTitle("");
     setNoteDate(todayStr);
     setNoteTime(currentTimeStr);
+  }
+
+  // ── Stay handlers ────────────────────────────────────────────────────────
+
+  const stays = client.stays || [];
+  const lastStay = stays.length > 0 ? stays[stays.length - 1] : null;
+  const canTrackArrival = !lastStay || lastStay.departedAt !== null;
+  const canTrackDeparture = lastStay && lastStay.departedAt === null;
+
+  async function handleTrackArrival() {
+    if (!arrivalDate) {
+      alert("Please select an arrival date.");
+      return;
+    }
+    setIsSavingStay(true);
+    try {
+      const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
+      const user = auth?.currentUser as AuthUserWithProfile | null;
+      let managerName = "Unknown";
+      if (user?.first_name && user?.last_name) {
+        managerName = `${user.first_name} ${user.last_name}`;
+      } else if (user?.email) {
+        managerName = user.email.charAt(0).toUpperCase();
+      }
+
+      await trackClientArrival(client.id, clientName, managerName, arrivalDate);
+      setIsTrackArrivalModalOpen(false);
+      setArrivalDate("");
+      setTimelineRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingStay(false);
+    }
+  }
+
+  async function handleTrackDeparture() {
+    if (!departureDate) {
+      alert("Please select a departure date.");
+      return;
+    }
+    setIsSavingStay(true);
+    try {
+      const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
+      const user = auth?.currentUser as AuthUserWithProfile | null;
+      let managerName = "Unknown";
+      if (user?.first_name && user?.last_name) {
+        managerName = `${user.first_name} ${user.last_name}`;
+      } else if (user?.email) {
+        managerName = user.email.charAt(0).toUpperCase();
+      }
+
+      await trackClientDeparture(client.id, clientName, managerName, departureDate);
+      setIsTrackDepartureModalOpen(false);
+      setDepartureDate("");
+      setTimelineRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingStay(false);
+    }
   }
 
   if (!client) return null;
@@ -165,6 +238,53 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
               >
                 Assign Program
               </button>
+
+              {/* Dynamic Tracking Button */}
+              {stays.length > 0 && (
+                <div className="mt-2 mb-1 flex items-center justify-center gap-2 text-xs font-bold text-[#527078]">
+                  <span>
+                    {canTrackDeparture ? (
+                      `Current Stay: Arrived on ${new Date(lastStay!.arrivedAt).toLocaleDateString()}`
+                    ) : (
+                      `Last Departed: ${new Date(lastStay!.departedAt!).toLocaleDateString()}`
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsStayHistoryModalOpen(true)}
+                    className="flex items-center justify-center rounded p-1 text-[#6A8589] transition hover:bg-slate-100 hover:text-[#173A40]"
+                    title="Manage Stay"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              {canTrackArrival && (
+                <button
+                  type="button"
+                  disabled={isArchived}
+                  onClick={() => {
+                    setArrivalDate(todayStr);
+                    setIsTrackArrivalModalOpen(true);
+                  }}
+                  className="w-full rounded-full border border-[#6BB2A0] bg-[#EEF4EC] px-4 py-2.5 text-sm font-bold text-[#2C6975] transition-colors hover:bg-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Track Arrival
+                </button>
+              )}
+              {canTrackDeparture && (
+                <button
+                  type="button"
+                  disabled={isArchived || isSavingStay}
+                  onClick={() => {
+                    setDepartureDate(todayStr);
+                    setIsTrackDepartureModalOpen(true);
+                  }}
+                  className="w-full rounded-full border border-[#E8C1BA] bg-[#FFF2EF] px-4 py-2.5 text-sm font-bold text-[#A3483C] transition-colors hover:bg-[#FBE9E7] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Track Departure
+                </button>
+              )}
             </div>
           </div>
 
@@ -309,6 +429,115 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
           onClose={() => setIsProgramModalOpen(false)}
         />
       )}
+
+      {/* Track Arrival Modal Overlay */}
+      {isTrackArrivalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#15383E]">Track Arrival</h2>
+              <button
+                type="button"
+                onClick={() => setIsTrackArrivalModalOpen(false)}
+                disabled={isSavingStay}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-lg font-bold text-[#6A8589] transition hover:bg-slate-100 hover:text-[#173A40] disabled:opacity-50"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="mb-5">
+              <label className="mb-1 block text-xs font-bold text-[#527078]">Arrival Date</label>
+              <input
+                type="date"
+                value={arrivalDate}
+                onChange={(e) => setArrivalDate(e.target.value)}
+                disabled={isSavingStay}
+                className="w-full rounded-xl border border-[#BFD0CA] bg-[#FAFAFA] px-3 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTrackArrivalModalOpen(false)}
+                disabled={isSavingStay}
+                className="rounded-full border border-[#BFD0CA] bg-white px-4 py-1.5 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTrackArrival}
+                disabled={isSavingStay || !arrivalDate}
+                className="rounded-full bg-[#2C6975] px-5 py-1.5 text-sm font-bold text-white transition hover:bg-[#245C66] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingStay ? "Saving..." : "Submit Arrival"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Track Departure Modal Overlay */}
+      {isTrackDepartureModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#15383E]">Track Departure</h2>
+              <button
+                type="button"
+                onClick={() => setIsTrackDepartureModalOpen(false)}
+                disabled={isSavingStay}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-lg font-bold text-[#6A8589] transition hover:bg-slate-100 hover:text-[#173A40] disabled:opacity-50"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="mb-5">
+              <label className="mb-1 block text-xs font-bold text-[#527078]">Departure Date</label>
+              <input
+                type="date"
+                value={departureDate}
+                onChange={(e) => setDepartureDate(e.target.value)}
+                disabled={isSavingStay}
+                className="w-full rounded-xl border border-[#BFD0CA] bg-[#FAFAFA] px-3 py-2 text-sm text-[#31585F] outline-none transition focus:border-[#6BB2A0] focus:ring-4 focus:ring-[#D7E7D4] disabled:cursor-not-allowed disabled:opacity-70"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTrackDepartureModalOpen(false)}
+                disabled={isSavingStay}
+                className="rounded-full border border-[#BFD0CA] bg-white px-4 py-1.5 text-sm font-bold text-[#31585F] transition hover:bg-[#EEF4EC] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTrackDeparture}
+                disabled={isSavingStay || !departureDate}
+                className="rounded-full bg-[#A3483C] px-5 py-1.5 text-sm font-bold text-white transition hover:bg-[#85392F] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingStay ? "Saving..." : "Submit Departure"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stay History Modal Overlay */}
+      <StayHistoryModal
+        client={client}
+        isOpen={isStayHistoryModalOpen}
+        onClose={() => setIsStayHistoryModalOpen(false)}
+        onSuccess={() => {
+          setIsStayHistoryModalOpen(false);
+          setTimelineRefreshKey((k) => k + 1);
+        }}
+      />
     </>
   );
 }

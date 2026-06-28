@@ -6,6 +6,18 @@ import { contactSchema } from "./contactSchema"
 import { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
 
 // ============================================================================
+// Stays Schema
+// ============================================================================
+
+export const staySchema = z.object({
+  arrivedAt: z.string(),
+  arrivalEventId: z.string().optional(),
+  departedAt: z.string().nullable(),
+  departureEventId: z.string().optional(),
+});
+export type Stay = z.infer<typeof staySchema>;
+
+// ============================================================================
 // Root Client Schema (base)
 // ============================================================================
 
@@ -79,6 +91,7 @@ const clientBaseSchema = z.object({
   logistics: logisticsSchema.optional().default({}),
   questionnaire: questionnaireSchema.optional().default({}),
   legal_consents: legalConsentsSchema.optional().default({}),
+  stays: z.array(staySchema).default([]),
 
   // Soft-delete flag
   is_archived: z.boolean().default(false).optional(),
