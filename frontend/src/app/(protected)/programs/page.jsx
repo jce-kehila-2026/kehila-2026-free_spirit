@@ -601,24 +601,24 @@ const handleProgramCreated = async () => {
     <main className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(180deg,#E5EFE0_0%,#F3F6F0_30%,#DDEAD8_100%)] px-4 py-5 text-[#15383E] sm:px-6 sm:py-7 lg:px-8">
       <div aria-hidden="true" className="absolute -right-36 top-24 -z-10 h-96 w-96 rounded-full border-[70px] border-[#BFD9C1]/60" />
       <div className="relative mx-auto max-w-7xl">
-        <section className="mb-6 overflow-hidden rounded-[1.75rem] bg-[#2C6975] text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)]">
-          <div className="flex flex-col gap-6 px-7 py-7 sm:px-10 sm:py-8 lg:flex-row lg:items-center lg:justify-between lg:px-11">
-            <div>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-px w-10 bg-[#CDE0C9]" />
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#DCEAD6]">Program community</p>
-              </div>
-              <h1 className="text-3xl font-bold tracking-[-0.035em] sm:text-4xl">Programs</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
+        <section className="relative mb-2 overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#2C6975] px-5 py-4 text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)] sm:px-6 sm:py-5">
+          <div
+            aria-hidden="true"
+            className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+          />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="max-w-3xl text-2xl font-bold tracking-tight sm:text-3xl">Programs</h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-5 text-white/78">
                 Review program journeys, understand participation, and help each experience move forward.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsManageModalOpen(true)}
-              className="inline-flex w-fit items-center justify-center gap-2 rounded-full bg-[#DCEAD6] px-5 py-3 text-sm font-bold text-[#245C66] transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#CDE0C9]/50"
-            >
-              <Plus aria-hidden="true" className="h-5 w-5" />
+              <button
+                type="button"
+                onClick={() => setIsManageModalOpen(true)}
+                className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-semibold text-[#15383E] shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9D4CC] focus-visible:ring-offset-2 focus-visible:ring-offset-[#245C66] sm:w-fit"
+              >
+              <Plus aria-hidden="true" className="h-4 w-4" />
               Create New Program
             </button>
           </div>
@@ -640,21 +640,26 @@ const handleProgramCreated = async () => {
         ) : (
           <>
             {availableYears.length > 0 && (
-              <div className="mb-6 flex flex-wrap gap-2">
+              <nav
+                aria-label="Program year filters"
+                className="mb-4 mt-2 rounded-[1.25rem] border border-white/80 bg-[#FFFDF8] p-1.5 shadow-[0_10px_25px_rgba(44,105,117,0.06)]"
+              >
+                <div className="flex gap-1.5 overflow-x-auto sm:flex-wrap">
                 {availableYears.map(year => (
                   <button
                     key={year}
                     onClick={() => setSelectedYear(year)}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] ${
                       activeYear === year
-                        ? "bg-[#2C6975] text-white shadow-md"
-                        : "bg-white text-[#2C6975] ring-1 ring-[#CDE0C9] hover:bg-[#EEF4EC]"
+                        ? "bg-[#2C6975] text-white shadow-sm"
+                        : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]"
                     }`}
                   >
                     {year}
                   </button>
                 ))}
-              </div>
+                </div>
+              </nav>
             )}
             {filteredPrograms.length === 0 ? (
               <div className="rounded-[1.75rem] border border-dashed border-[#B9CFCA] bg-[#FFFDF8] p-10 text-center">
@@ -667,17 +672,17 @@ const handleProgramCreated = async () => {
                   const start = program.start_date?.toDate?.() ? program.start_date.toDate() : new Date(program.start_date || 0);
                   const end = program.end_date?.toDate?.() ? program.end_date.toDate() : new Date(program.end_date || 0);
                   let statusText = "Upcoming";
-                  let statusClass = "bg-cyan-100 text-cyan-800";
-                  let borderClass = "ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] bg-gradient-to-br from-cyan-50/50 to-white";
+                  let statusClass = "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]";
+                  let borderClass = "border border-[#D7E3D5] bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.07)] hover:border-[#B9CFCA] hover:shadow-[0_18px_40px_rgba(44,105,117,0.11)]";
                   
                   if (now >= start.getTime() && now <= end.getTime()) {
                     statusText = "In progress";
-                    statusClass = "bg-[#4F8B75] text-white";
-                    borderClass = "ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] bg-gradient-to-br from-emerald-50/50 to-white";
+                    statusClass = "bg-[#E3F2E8] text-[#2F6F5D] ring-1 ring-[#B9D4CC]";
+                    borderClass = "border border-[#B9D4CC] bg-[#F8FCF7] shadow-[0_14px_34px_rgba(44,105,117,0.08)] hover:border-[#6BB2A0] hover:shadow-[0_18px_40px_rgba(44,105,117,0.12)]";
                   } else if (now > end.getTime()) {
                     statusText = "Completed";
-                    statusClass = "bg-[#EEF1EE] text-[#687B7E]";
-                    borderClass = "border border-slate-200 bg-slate-50 opacity-90 shadow-sm hover:shadow-md";
+                    statusClass = "bg-[#EEF1EE] text-[#687B7E] ring-1 ring-[#D7E3D5]";
+                    borderClass = "border border-slate-200 bg-[#F8FAF9] opacity-95 shadow-sm hover:shadow-md";
                   }
 
                   return (
@@ -689,42 +694,47 @@ const handleProgramCreated = async () => {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") openProgramModal(program);
                       }}
-                      className={`cursor-pointer rounded-[24px] p-6 transition hover:-translate-y-1 relative group ${borderClass}`}
+                      className={`group flex min-h-[230px] cursor-pointer flex-col rounded-[1.25rem] p-5 transition hover:-translate-y-0.5 ${borderClass}`}
                     >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProgramToRemove(program);
-                        }}
-                        className="absolute top-4 right-4 z-10 p-2 bg-white/50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete Program"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                      </button>
-                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <h2 className="text-3xl font-bold text-blue-950">🌟 {program.name || "Untitled Program"}</h2>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <h2 className="overflow-hidden break-words text-xl font-semibold leading-snug tracking-tight text-[#173A40] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                            {program.name || "Untitled Program"}
+                          </h2>
                         </div>
-                        <div className="flex flex-col items-start sm:items-end gap-2">
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-[0.1em] ${statusClass}`}>
+                        <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusClass}`}>
                             {statusText}
                           </span>
-                          <span className="inline-flex items-center rounded-full bg-white/60 px-3 py-1 text-base font-bold text-blue-800 ring-1 ring-blue-200 backdrop-blur-sm">
-                            📍 {program.location || "Unknown location"}
-                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProgramToRemove(program);
+                            }}
+                            className="rounded-full bg-white/80 p-2 text-red-500 opacity-0 shadow-sm ring-1 ring-red-100 transition hover:bg-red-50 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                            title="Delete Program"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
                         </div>
                       </div>
+
+                      <div className="mt-4 rounded-2xl border border-[#D7E3D5] bg-white/70 px-3 py-2 text-sm font-medium leading-5 text-[#31585F]">
+                        <span className="block overflow-hidden break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                          📍 {program.location || "Unknown location"}
+                        </span>
+                      </div>
                       
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-[#EEF4EC] p-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Starts</p>
-                          <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
+                      <div className="mt-auto grid grid-cols-2 gap-3 pt-5">
+                        <div className="rounded-xl border border-[#D7E3D5] bg-[#F7FAF5] p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#7C9194]">Starts</p>
+                          <p className="mt-1 text-sm font-semibold text-[#31585F]">{formatProgramDate(program.start_date)}</p>
                         </div>
-                        <div className="rounded-xl bg-[#E4F0EC] p-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#7C9194]">Ends</p>
-                          <p className="mt-1 text-sm font-bold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
+                        <div className="rounded-xl border border-[#D7E3D5] bg-[#F7FAF5] p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#7C9194]">Ends</p>
+                          <p className="mt-1 text-sm font-semibold text-[#31585F]">{formatProgramDate(program.end_date)}</p>
                         </div>
                       </div>
                     </article>
