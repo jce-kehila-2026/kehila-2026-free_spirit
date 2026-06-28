@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { User } from "firebase/auth";
 import { IconCheck } from "@/components/ui/Icons";
 import { auth } from "@/firebase/firebase";
 
@@ -19,6 +20,11 @@ interface ProfileSummaryDashboardProps {
   isArchived: boolean;
   onCreateMeeting?: () => void; // We keep this for backward compatibility, but we won't use it for the button anymore
 }
+
+type AuthUserWithProfile = User & {
+  first_name?: string;
+  last_name?: string;
+};
 
 export default function ProfileSummaryDashboard({ client, isArchived }: ProfileSummaryDashboardProps) {
   // ── UI State (Tier 1) ────────────────────────────────────────────────────────
@@ -54,7 +60,10 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
     try {
       const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
       
-      const user = auth?.currentUser as any;
+      // Firebase Auth's base User type does not include the optional profile
+      // fields some app flows attach, so this local extension keeps access
+      // explicit without falling back to `any`.
+      const user = auth?.currentUser as AuthUserWithProfile | null;
       let authorName = "Unknown";
       if (user?.first_name && user?.last_name) {
         authorName = `${user.first_name} ${user.last_name}`;

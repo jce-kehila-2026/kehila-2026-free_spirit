@@ -1,7 +1,15 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc } from "firebase/firestore";
-import { db, storage } from "@/firebase/firebase";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp, where } from "firebase/firestore";
+import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import { isClientRole } from "@/firebase/authRoleService";
+
+const CLIENT_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface ClientInviteResendState {
+  canResend: boolean;
+  reason: "expired" | "active" | "claimed" | "missing";
+}
 
 // ─── Safety Helpers ───────────────────────────────────────────────────────────
 
@@ -13,6 +21,19 @@ export function getFirestoreDb() {
 export function getFirebaseStorage() {
   if (!storage) throw new Error("Firebase Storage is not initialized.");
   return storage;
+}
+
+async function isCurrentUserClientRole(): Promise<boolean> {
+  const user = auth?.currentUser;
+
+  if (!user) {
+    return false;
+  }
+
+  const accountSnapshot = await getDoc(doc(getFirestoreDb(), "accounts", user.uid));
+  const role = accountSnapshot.exists() ? accountSnapshot.data().role : "";
+
+  return isClientRole(role);
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -31,6 +52,43 @@ export function sanitizeFirestorePayload(obj: Record<string, any>): Record<strin
         }
         return [k, v];
       })
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickClientEditableFields(payload: Record<string, any>): Record<string, any> {
+  const clientEditableFields = new Set([
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "passport_id",
+    "gender",
+    "address",
+    "dob",
+    "referrer",
+    "education_status",
+    "diagnosis",
+    "personal_notes",
+    "passport_number",
+    "passport_country",
+    "citizenship",
+    "date_of_entry",
+    "purpose_of_visit",
+    "home_address",
+    "cohabitants",
+    "dependents",
+    "medical_profile",
+    "contacts",
+    "logistics",
+    "questionnaire",
+    "legal_consents",
+    "financial_aid_applications",
+    "client_documents",
+  ]);
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key]) => clientEditableFields.has(key))
   );
 }
 
@@ -61,7 +119,16 @@ export async function updateClientDoc(
   payload: Record<string, any>
 ): Promise<void> {
   const docRef = doc(getFirestoreDb(), "clients", clientId);
-  
+  const isClientUpdate = await isCurrentUserClientRole();
+
+  if (isClientUpdate) {
+    // Client onboarding writes must be strict patches. Do not send manager-owned
+    // fields or metadata such as status, program_ids, uid, or timestamps because
+    // Firestore rules require those values to remain unchanged for client roles.
+    await updateDoc(docRef, sanitizeFirestorePayload(pickClientEditableFields(payload)));
+    return;
+  }
+
   await updateDoc(docRef, {
     ...sanitizeFirestorePayload(payload),
     updated_at: serverTimestamp(),
@@ -82,6 +149,108 @@ export async function archiveClientInDb(clientId: string): Promise<void> {
     is_archived: true,
     updated_at: serverTimestamp(),
   });
+}
+
+/**
+ * Creates a pending invite token document for a client onboarding link.
+ * The caller supplies the token so the document ID can be embedded in the
+ * manager-facing URL without reading sensitive invite state back from Firestore.
+ */
+export async function createClientInviteDoc(
+  clientId: string,
+  inviteToken: string
+): Promise<void> {
+  const expiresAt = Timestamp.fromMillis(Date.now() + CLIENT_INVITE_TTL_MS);
+
+  await setDoc(doc(getFirestoreDb(), "client_invites", inviteToken), {
+    clientId,
+    status: "pending",
+    created_at: serverTimestamp(),
+    // Invite claims are rejected after this absolute timestamp by app logic and Firestore rules.
+    expiresAt,
+  });
+}
+
+/**
+ * Queues the registration invite email for the Firebase Trigger Email extension.
+ * Tier 4 owns only the Firestore payload and collection path; the caller owns
+ * when the email should be queued and which invite URL is safe to include.
+ */
+export async function createClientInviteEmailNotification(
+  clientEmailAddress: string,
+  inviteUrl: string
+): Promise<void> {
+  await addDoc(collection(getFirestoreDb(), "automatic_notifications"), {
+    to: clientEmailAddress,
+    message: {
+      subject: "Welcome to Free Spirit! Complete your registration",
+      html: `Hello, <br/><br/>Please click the following link to complete your secure onboarding process: <a href="${inviteUrl}">${inviteUrl}</a><br/><br/>Thank you!`,
+    },
+    createdAt: serverTimestamp(),
+    status: "pending",
+  });
+}
+
+function getTimestampMillis(value: unknown): number {
+  if (value && typeof value === "object" && "toMillis" in value) {
+    const timestampLike = value as { toMillis?: () => number };
+    return typeof timestampLike.toMillis === "function" ? timestampLike.toMillis() : 0;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+}
+
+/**
+ * Reads invite state for an admin-controlled resend decision.
+ * A resend is allowed only when the newest pending invite has expired and no
+ * active pending invite already exists for the same client.
+ */
+export async function getClientInviteResendState(
+  clientId: string
+): Promise<ClientInviteResendState> {
+  const snapshot = await getDocs(
+    query(collection(getFirestoreDb(), "client_invites"), where("clientId", "==", clientId))
+  );
+
+  if (snapshot.empty) {
+    return { canResend: false, reason: "missing" };
+  }
+
+  const invites = snapshot.docs
+    .map((inviteDoc) => inviteDoc.data())
+    .sort((a, b) => getTimestampMillis(b.created_at) - getTimestampMillis(a.created_at));
+  const now = Date.now();
+  const hasActivePendingInvite = invites.some(
+    (invite) =>
+      (!invite.status || invite.status === "pending") &&
+      getTimestampMillis(invite.expiresAt) > now
+  );
+
+  if (hasActivePendingInvite) {
+    return { canResend: false, reason: "active" };
+  }
+
+  const latestPendingInvite = invites.find(
+    (invite) => !invite.status || invite.status === "pending"
+  );
+
+  if (!latestPendingInvite) {
+    return { canResend: false, reason: "claimed" };
+  }
+
+  return {
+    canResend: getTimestampMillis(latestPendingInvite.expiresAt) <= now,
+    reason: "expired",
+  };
 }
 
 /**

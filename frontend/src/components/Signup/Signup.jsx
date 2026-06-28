@@ -1,15 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  onAuthStateChanged,
   sendEmailVerification,
+  signOut,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
+import {
+  CLIENT_EMAIL_VERIFICATION_PATH,
+  ACCESS_DENIED_PATH,
+  claimClientInviteForUser,
+  getInviteTokenFromCurrentUrl,
+  getPostLoginRedirect,
+  validateClientInviteToken,
+} from "@/firebase/authRoleService";
 import {
   getPasswordRequirementResults,
   isPasswordValid,
@@ -94,6 +104,30 @@ export default function Signup() {
     formData.password,
   );
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        return;
+      }
+
+      await user.reload();
+      const refreshedUser = auth.currentUser || user;
+
+      if (!refreshedUser.emailVerified) {
+        setSignupError(
+          "Please verify your email address before continuing to onboarding.",
+        );
+        return;
+      }
+
+      // A verified user refreshing /signup should leave the auth surface and
+      // land wherever their Firestore account role allows.
+      router.replace(await getPostLoginRedirect(refreshedUser));
+    });
+
+    return unsubscribe;
+  }, [router]);
+
   // Converts Firebase and custom registration errors into user-facing messages.
   const getFirebaseErrorMessage = (error) => {
     switch (error.code) {
@@ -152,6 +186,14 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
+      const inviteToken = getInviteTokenFromCurrentUrl();
+
+      if (inviteToken) {
+        // Validate the token before Firebase Auth user creation so expired
+        // onboarding links cannot create orphaned accounts.
+        await validateClientInviteToken(inviteToken);
+      }
+
       // First create the Firebase Auth user, then persist app-specific profile data.
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -165,7 +207,25 @@ export default function Signup() {
         console.error("Failed to send verification email:", verificationError);
       }
 
-      router.push("/manage-programs");
+      if (inviteToken) {
+        await claimClientInviteForUser(userCredential.user, inviteToken);
+        if (!userCredential.user.emailVerified) {
+          setSignupError(
+            "Account created. Please verify your email address before continuing to onboarding.",
+          );
+          return;
+        }
+
+        const redirectPath = await getPostLoginRedirect(userCredential.user);
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
+        return;
+      }
+
+      // New manager accounts land on the routed programs workspace; creation stays inside its modal UI.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {
@@ -181,8 +241,30 @@ export default function Signup() {
     try {
       setIsLoading(true);
 
-      await signInWithPopup(auth, provider);
-      router.push("/manage-programs");
+      const inviteToken = getInviteTokenFromCurrentUrl();
+
+      if (inviteToken) {
+        // Google sign-in can create an auth user, so validate invite freshness
+        // before opening the provider flow whenever an invite is present.
+        await validateClientInviteToken(inviteToken);
+      }
+
+      const result = await signInWithPopup(auth, provider);
+
+      if (inviteToken) {
+        await claimClientInviteForUser(result.user, inviteToken);
+        const redirectPath = result.user.emailVerified
+          ? await getPostLoginRedirect(result.user)
+          : CLIENT_EMAIL_VERIFICATION_PATH;
+        if (redirectPath === ACCESS_DENIED_PATH) {
+          await signOut(auth);
+        }
+        router.push(redirectPath);
+        return;
+      }
+
+      // Google-created manager accounts use the routed programs workspace, not the private modal component.
+      router.push("/programs");
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {

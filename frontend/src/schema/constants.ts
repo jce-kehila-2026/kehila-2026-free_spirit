@@ -5,8 +5,15 @@
 export const nameRegex = /^[\p{L}\s'-]+$/u;
 export const nameError = "Name can only contain letters, spaces, hyphens, and apostrophes";
 
-export const CLIENT_STATUS = ["interested", "registered", "draft"] as const;
+export const CLIENT_STATUS = ["interested", "invited", "registered", "draft"] as const;
 export type ClientStatus = (typeof CLIENT_STATUS)[number];
+
+export const CLIENT_STATUS_LABELS: Record<ClientStatus, { en: string; he: string }> = {
+  interested: { en: "Interested", he: "מתעניין" },
+  invited: { en: "Invited", he: "נשלחה הזמנה" },
+  registered: { en: "Registered", he: "רשום" },
+  draft: { en: "Draft", he: "טיוטה" },
+};
 
 export const GENDER_OPTIONS = ["male", "female", "other"] as const;
 export type Gender = (typeof GENDER_OPTIONS)[number];

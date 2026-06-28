@@ -1,18 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
+  signOut,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/firebase/firebase";
+import {
+  claimClientInviteForUser,
+  CLIENT_EMAIL_VERIFICATION_PATH,
+  getInviteTokenFromCurrentUrl,
+  getPostLoginRedirect,
+  ACCESS_DENIED_PATH,
+} from "@/firebase/authRoleService";
 import styles from "./Login.module.css";
 
 // Inline Google mark used by the OAuth button without adding another asset file.
@@ -44,6 +52,30 @@ function GoogleLogo() {
   );
 }
 
+async function getSecurePostAuthRedirect(user) {
+  const inviteToken = getInviteTokenFromCurrentUrl();
+
+  if (inviteToken) {
+    try {
+      // Existing users may open a client invite from the login page; claim it
+      // before route selection so Firestore rules can authorize /onboarding.
+      await claimClientInviteForUser(user, inviteToken);
+    } catch (error) {
+      const fallbackRedirect = await getPostLoginRedirect(user);
+
+      if (fallbackRedirect !== "/home") {
+        return fallbackRedirect;
+      }
+
+      throw error;
+    }
+
+    return getPostLoginRedirect(user);
+  }
+
+  return getPostLoginRedirect(user);
+}
+
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,11 +104,44 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showAccessDenied, setShowAccessDenied] = useState(wasAccessDenied);
 
+  const routeAfterAuth = useCallback(async (user) => {
+    const redirectPath = await getSecurePostAuthRedirect(user);
+
+    if (redirectPath === ACCESS_DENIED_PATH) {
+      // Inactive client accounts must not keep a Firebase Auth session alive.
+      await signOut(auth);
+      router.replace(ACCESS_DENIED_PATH);
+      return;
+    }
+
+    router.replace(redirectPath);
+  }, [router]);
+
   useEffect(() => {
     // If Firebase restores an existing session, skip login unless showing a denial.
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !wasAccessDenied && !wasEmailNotVerified) {
-        router.replace("/home");
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && !wasAccessDenied) {
+        await user.reload();
+        const refreshedUser = auth.currentUser || user;
+        const redirectPath = await getSecurePostAuthRedirect(refreshedUser);
+
+        if (redirectPath === "/login") {
+          setAuthError(
+            "Your account is not authorized. Please contact an administrator.",
+          );
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        if (redirectPath === CLIENT_EMAIL_VERIFICATION_PATH) {
+          setAuthError(
+            "Please verify your email address before continuing to onboarding.",
+          );
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        await routeAfterAuth(refreshedUser);
         return;
       }
 
@@ -84,7 +149,7 @@ export default function Login() {
     });
 
     return unsubscribe;
-  }, [router, wasAccessDenied, wasEmailNotVerified]);
+  }, [routeAfterAuth, wasAccessDenied]);
 
   useEffect(() => {
     if (!showAccessDenied) {
@@ -165,12 +230,12 @@ export default function Login() {
         rememberMe ? browserLocalPersistence : browserSessionPersistence,
       );
 
-      await signInWithEmailAndPassword(
+      const userCredential = await signInWithEmailAndPassword(
         auth,
         credentials.email,
         credentials.password,
       );
-      router.push("/home");
+      await routeAfterAuth(userCredential.user);
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -213,7 +278,7 @@ export default function Login() {
         localStorage.setItem("googleCalendarAccessToken", accessToken);
       }
 
-      router.push("/home");
+      await routeAfterAuth(result.user);
     } catch (error) {
       setAuthError(getFirebaseErrorMessage(error));
     } finally {
@@ -239,6 +304,15 @@ export default function Login() {
           role="alert"
         >
           You do not have permission to access that page.
+        </div>
+      )}
+
+      {wasEmailNotVerified && (
+        <div
+          className="fixed left-1/2 top-24 z-[60] w-[min(92vw,460px)] -translate-x-1/2 rounded-2xl border border-[#E5C97D] bg-[#FFF8E8] px-5 py-4 text-center text-sm font-bold text-[#8A6822] shadow-lg"
+          role="alert"
+        >
+          Please verify your email address before continuing to onboarding.
         </div>
       )}
 

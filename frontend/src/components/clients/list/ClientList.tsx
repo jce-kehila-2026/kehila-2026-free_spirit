@@ -40,6 +40,7 @@ interface ClientListProps {
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
     interested: { bg: "bg-[#F7EED8] border-[#E5C97D]", text: "text-[#8A6822]", label: "Interested" },
+    invited: { bg: "bg-[#EEF5F7] border-[#B9CFCA]", text: "text-[#245C66]", label: "Invited" },
     registered: { bg: "bg-[#E5F0E2] border-[#C5DDC0]", text: "text-[#3F7763]", label: "Registered" },
     draft: { bg: "bg-[#EEF5F7] border-[#C9DDE1]", text: "text-[#527078]", label: "Draft" },
   };

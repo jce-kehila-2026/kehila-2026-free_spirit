@@ -82,7 +82,7 @@ export async function ensureGisLoaded() {
             resolve();
           }
         }
-      } catch (e) {
+      } catch {
         reject(new Error("Error while initializing GIS after script load."));
       }
     });

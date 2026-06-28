@@ -1,17 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { User } from "firebase/auth";
+import { toast } from "sonner";
 import { auth } from "@/firebase/firebase";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
-import ProfileTab from "@/components/clients/tabs/ProfileTab";
-import MedicalTab from "@/components/clients/tabs/MedicalTab";
-import ContactsTab from "@/components/clients/tabs/ContactsTab";
-import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
-import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
-import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
-import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
-import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
+import ClientDataForm from "@/components/clients/forms/ClientDataForm";
 import { QuickCopy } from "@/components/ui/QuickCopy";
 import { IconPencil, IconLock, IconEye } from "@/components/ui/Icons";
 import ProfileSummaryDashboard from "./ProfileSummaryDashboard";
@@ -19,39 +14,11 @@ import AdvancedSettings from "./AdvancedSettings";
 import ProfileArchiveModal from "./ProfileArchiveModal";
 import StatusConfirmationModal from "./StatusConfirmationModal";
 import { useProfileDashboard } from "./useProfileDashboard"; // Our new orchestrator hook
-import { updateClientStatus } from "@/application/ClientManagementService";
-
-// ─── Tab configuration ────────────────────────────────────────────────────────
-
-export const TABS = [
-  { id: "profile", label: "Profile & Demographics" },
-  { id: "medical", label: "Medical" },
-  { id: "contacts", label: "Contacts" },
-  { id: "logistics", label: "Logistics" },
-  { id: "questionnaire", label: "Questionnaire" },
-  { id: "legal", label: "Legal Consents" },
-  { id: "documents", label: "Documents" },
-  { id: "financial", label: "Financial Aid" },
-] as const;
-
-export type TabId = (typeof TABS)[number]["id"];
-
-interface BaseTabProps {
-  client: ClientDoc;
-  isEditable?: boolean;
-  onBack?: () => void;
-}
-
-const TAB_COMPONENTS: Record<TabId, React.ComponentType<BaseTabProps>> = {
-  profile: ProfileTab as React.ComponentType<BaseTabProps>,
-  medical: MedicalTab as React.ComponentType<BaseTabProps>,
-  contacts: ContactsTab as React.ComponentType<BaseTabProps>,
-  logistics: LogisticsTab as React.ComponentType<BaseTabProps>,
-  questionnaire: QuestionnaireTab as React.ComponentType<BaseTabProps>,
-  legal: LegalConsentsTab as React.ComponentType<BaseTabProps>,
-  documents: DocumentsTab as React.ComponentType<BaseTabProps>,
-  financial: FinancialAidTab as React.ComponentType<BaseTabProps>,
-};
+import {
+  getClientRegistrationInviteResendState,
+  queueClientRegistrationInviteEmail,
+  updateClientStatus,
+} from "@/application/ClientManagementService";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -60,14 +27,26 @@ interface ClientProfileDashboardProps {
   onBack: () => void;
 }
 
+type AuthUserWithProfile = User & {
+  first_name?: string;
+  last_name?: string;
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ClientProfileDashboard({ client: initialClient, onBack }: ClientProfileDashboardProps) {
-  const [client, setClient] = useState<ClientDoc>(initialClient);
+  const [statusOverride, setStatusOverride] = useState<{
+    clientId: string;
+    status: ClientDoc["status"];
+  } | null>(null);
 
-  useEffect(() => {
-    setClient(initialClient);
-  }, [initialClient]);
+  // Keep Firestore data as the base record and overlay only the locally saved
+  // status. This avoids a React 19 prop-to-state effect while preserving the
+  // immediate status badge update after a successful transition.
+  const client: ClientDoc =
+    statusOverride?.clientId === initialClient.id
+      ? { ...initialClient, status: statusOverride.status }
+      : initialClient;
 
   // Consume all Tier 2 side effects, async operations, and state variables via the hook
   const {
@@ -90,14 +69,59 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
   // ── Status badge state ───────────────────────────────────────────────────
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [canResendInvite, setCanResendInvite] = useState(false);
+  const [isCheckingInvite, setIsCheckingInvite] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState(false);
+
+  useEffect(() => {
+    let shouldIgnore = false;
+
+    async function resolveInviteState() {
+      if (client.status !== "invited" || isArchived) {
+        setCanResendInvite(false);
+        return;
+      }
+
+      setIsCheckingInvite(true);
+      try {
+        const inviteState = await getClientRegistrationInviteResendState(client.id);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(inviteState.canResend);
+        }
+      } catch (error) {
+        console.error("[ClientProfileDashboard] invite state check failed:", error);
+
+        if (!shouldIgnore) {
+          setCanResendInvite(false);
+        }
+      } finally {
+        if (!shouldIgnore) {
+          setIsCheckingInvite(false);
+        }
+      }
+    }
+
+    resolveInviteState();
+
+    return () => {
+      shouldIgnore = true;
+    };
+  }, [client.id, client.status, isArchived]);
 
   async function handleStatusChange() {
+    if (client.status !== "interested") {
+      toast.error("Only interested clients can receive a first invitation.");
+      setIsStatusModalOpen(false);
+      return;
+    }
+
     const clientName = `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim();
     // Toggle: registered → interested, anything else → registered
-    const newStatus = client.status === "registered" ? "interested" : "registered";
+    const newStatus = "invited";
     setIsUpdatingStatus(true);
     try {
-      const user = auth?.currentUser as any;
+      const user = auth?.currentUser as AuthUserWithProfile | null;
       let managerName = "Unknown";
       if (user?.first_name && user?.last_name) {
         managerName = `${user.first_name} ${user.last_name}`;
@@ -106,9 +130,24 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
       }
 
       await updateClientStatus(client.id, clientName, newStatus, managerName);
-      setClient((prev) => ({ ...prev, status: newStatus }));
+      setStatusOverride({ clientId: client.id, status: newStatus });
+
+      if (newStatus === "invited" && typeof window !== "undefined") {
+        try {
+          // Registration queues the invite email through Firestore instead of
+          // exposing the raw onboarding URL in an admin copy dialog.
+          await queueClientRegistrationInviteEmail(
+            client.id,
+            client.email,
+            window.location.origin,
+          );
+        } catch (error) {
+          console.error("[ClientProfileDashboard] invite generation failed:", error);
+          toast.error("Registration completed, but the invitation email could not be queued.");
+        }
+      }
     } catch {
-      // Toast already fired by the service layer
+      // Status service owns the user-facing failure toast.
     } finally {
       setIsUpdatingStatus(false);
       setIsStatusModalOpen(false);
@@ -125,6 +164,29 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
     });
     router.push(`/events?${queryParams.toString()}`);
   };
+
+  async function handleResendInvitation() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setIsResendingInvite(true);
+    try {
+      // Resend uses the same secure generator as first registration, creating
+      // a fresh token with a new 24-hour expiry before queuing email delivery.
+      await queueClientRegistrationInviteEmail(
+        client.id,
+        client.email,
+        window.location.origin,
+      );
+      setCanResendInvite(false);
+    } catch (error) {
+      console.error("[ClientProfileDashboard] invite resend failed:", error);
+      toast.error("The invitation email could not be resent.");
+    } finally {
+      setIsResendingInvite(false);
+    }
+  }
 
   const initials = `${client.first_name?.[0] || ""}${client.last_name?.[0] || ""}`.toUpperCase();
 
@@ -192,8 +254,13 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
                   type="button"
                   id="btn-status-badge"
                   onClick={() => setIsStatusModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
-                  aria-label="Change client status"
+                  disabled={client.status !== "interested"}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors duration-150 hover:border-white/60 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:border-white/30 disabled:hover:bg-transparent disabled:hover:text-white/80"
+                  aria-label={
+                    client.status === "interested"
+                      ? "Invite client"
+                      : "Client is already past the initial invite step"
+                  }
                 >
                   <span className={[
                     "h-1.5 w-1.5 rounded-full",
@@ -206,6 +273,17 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
               )}
 
               {/* ── Active client: Edit Profile / Lock Editing toggle ── */}
+              {!isArchived && client.status === "invited" && canResendInvite && (
+                <button
+                  type="button"
+                  onClick={handleResendInvitation}
+                  disabled={isCheckingInvite || isResendingInvite}
+                  className="inline-flex items-center rounded-lg border border-white/30 bg-white px-4 py-2 text-sm font-semibold text-[#245C66] shadow-sm transition-colors duration-150 hover:bg-[#EEF4EC] focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isResendingInvite ? "Resending..." : "Resend Invitation"}
+                </button>
+              )}
+
               {!isArchived && (
                 <button
                   type="button"
@@ -269,52 +347,13 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
 
         {/* ── View Switcher ── */}
         {showDetailedTabs ? (
-          <>
-            <nav aria-label="Client profile sections" className="overflow-x-auto rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]">
-              <ol role="tablist" className="flex min-w-max gap-1.5">
-                {TABS.map((tab) => {
-                  const isActive = tab.id === activeTab;
-                  return (
-                    <li key={tab.id} role="presentation">
-                      <button
-                        role="tab"
-                        id={`tab-${tab.id}`}
-                        aria-selected={isActive}
-                        aria-controls={`tabpanel-${tab.id}`}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id)}
-                        className={[
-                          "whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]",
-                          isActive
-                            ? "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]"
-                            : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]",
-                        ].join(" ")}
-                      >
-                        {tab.label}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
-
-            <fieldset className="min-w-0 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
-              <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-                {(() => {
-                  const ActiveTabContent = TAB_COMPONENTS[activeTab];
-                  if (!ActiveTabContent) return null;
-
-                  return (
-                    <ActiveTabContent
-                      client={client}
-                      isEditable={effectiveEditable}
-                      onBack={activeTab === "profile" ? onBack : undefined}
-                    />
-                  );
-                })()}
-              </div>
-            </fieldset>
-          </>
+          <ClientDataForm
+            client={client}
+            isEditable={effectiveEditable}
+            activeTab={activeTab}
+            onActiveTabChange={setActiveTab}
+            onBack={onBack}
+          />
         ) : (
           <ProfileSummaryDashboard 
              client={client} 
@@ -322,7 +361,6 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
              onCreateMeeting={handleCreateMeetingNavigation} 
           />
         )}
-
         {/* ── Advanced Settings ── */}
         <AdvancedSettings 
           isArchived={isArchived} 
@@ -351,6 +389,7 @@ export default function ClientProfileDashboard({ client: initialClient, onBack }
           }}
         />
       )}
+
     </div>
   );
 }

@@ -5,7 +5,7 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
   // ── Search & filter state ─────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "registered" | "interested" | "draft"
+    "all" | "registered" | "invited" | "interested" | "draft"
   >("all");
   const [columnFilters, setColumnFilters] = useState<Record<string, { text: string; values: string[] }>>({
     name: { text: "", values: [] },

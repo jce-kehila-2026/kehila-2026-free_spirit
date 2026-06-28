@@ -1,11 +1,20 @@
 "use client";
 
-import { collection, getDocs, doc, updateDoc , deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc , deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { db } from "@/firebase/firebase";
+import { ROLE, isCanonicalRole } from "@/firebase/authRoleService";
 
-const roleOptions = ["User", "Program Manager", "Admin"];
+const roleOptions = [ROLE.ADMIN, ROLE.CLIENT];
+
+function getCanonicalRoleValue(role) {
+  return isCanonicalRole(role) ? role : "";
+}
+
+function getRoleDisplay(role) {
+  return isCanonicalRole(role) ? role : "Unauthorized";
+}
 
 const formatCreatedAt = (createdAt) => {
   if (!createdAt?.toDate) {
@@ -13,6 +22,14 @@ const formatCreatedAt = (createdAt) => {
   }
 
   return createdAt.toDate().toLocaleString();
+};
+
+const formatAccountTimestamp = (timestamp) => {
+  if (!timestamp?.toDate) {
+    return "Unknown";
+  }
+
+  return timestamp.toDate().toLocaleString();
 };
 
 export default function AdminUsersPage() {
@@ -75,6 +92,7 @@ export default function AdminUsersPage() {
     try {
       await updateDoc(doc(db, "accounts", userId), {
         role: nextRole,
+        updated_at: serverTimestamp(),
       });
 
       setUsers((currentUsers) =>
@@ -155,6 +173,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Current Role</th>
                 <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Last Login</th>
                 <th className="px-4 py-3">Update Role</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -162,13 +181,13 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-slate-200">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan="4">
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan="6">
                     Loading users...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan="4">
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan="6">
                     No users found.
                   </td>
                 </tr>
@@ -178,17 +197,21 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 font-semibold">
                       {user.email || "No email"}
                     </td>
-                    <td className="px-4 py-3">{user.role || "User"}</td>
+                    <td className="px-4 py-3">{getRoleDisplay(user.role)}</td>
                     <td className="px-4 py-3">{formatCreatedAt(user.created_at)}</td>
+                    <td className="px-4 py-3">{formatAccountTimestamp(user.last_login)}</td>
                     <td className="px-4 py-3">
                       <select
                         className="w-full max-w-[220px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-600 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.14)] disabled:cursor-not-allowed disabled:opacity-70"
-                        value={user.role || "User"}
+                        value={getCanonicalRoleValue(user.role)}
                         onChange={(event) =>
                           handleRoleChange(user.id, event.target.value)
                         }
                         disabled={updatingUserId === user.id}
                       >
+                        <option value="" disabled>
+                          Select canonical role
+                        </option>
                         {roleOptions.map((role) => (
                           <option key={role} value={role}>
                             {role}

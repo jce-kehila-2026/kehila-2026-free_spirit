@@ -1,37 +1,35 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useNavigation } from "@/components/NavigationProvider/NavigationContext";
 import { auth, db } from "@/firebase/firebase";
+import { isAdminRole, isClientRole } from "@/firebase/authRoleService";
 
 // Wraps protected route groups and blocks rendering until Firebase confirms auth.
 export default function ProtectedRoute({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Consume dynamic realtime links data from our global layout context
-  const { links, isLoadingLinks } = useNavigation();
-
   // Prevents protected content from flashing before auth and role checks finish.
   const [authorizedPath, setAuthorizedPath] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    // If our dynamic navigation layout state is still resolving its connection to Firestore, 
-    // hold off execution to guarantee proper matching values
-    if (isLoadingLinks) {
-      return;
-    }
-
     let shouldIgnore = false;
+    const redirectTo = (href) => {
+      // Marking redirects explicitly keeps protected children unmounted while
+      // Next.js transitions away, avoiding unauthorized Firestore queries.
+      setIsRedirecting(true);
+      router.replace(href);
+    };
 
     // onAuthStateChanged fires after Firebase finishes checking persisted auth.
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // Unauthenticated users are sent to the login page.
-        router.replace("/");
+        // Unauthenticated users are sent to the canonical login page.
+        redirectTo("/login");
         return;
       }
 
@@ -41,63 +39,46 @@ export default function ProtectedRoute({ children }) {
         const refreshedUser = auth.currentUser || currentAuthUser;
 
         if (!refreshedUser.emailVerified) {
-          router.replace("/?emailNotVerified=1");
+          redirectTo("/login?emailNotVerified=1");
           return;
         }
 
         const accountRef = doc(db, "accounts", user.uid);
         const accountSnapshot = await getDoc(accountRef);
-        let userRole = "User";
 
-        if (accountSnapshot.exists()) {
-          userRole = accountSnapshot.data().role;
-        } else {
-          await setDoc(accountRef, {
-            account_id: user.uid,
-            email: refreshedUser.email || "",
-            role: userRole,
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp(),
-          });
-
-          if (!shouldIgnore && pathname !== "/home") {
-            router.replace("/home");
-            return;
-          }
+        if (!accountSnapshot.exists()) {
+          redirectTo("/login");
+          return;
         }
+
+        const userRole = accountSnapshot.data().role;
 
         if (shouldIgnore) {
           return;
         }
 
-        // Dynamic Role-Based Access Control Evaluation
-        // Find the active rule policy for the current path in our realtime Firestore links array
-        const currentRoutePolicy = links.find(
-          (link) => pathname === link.href || pathname.startsWith(`${link.href}/`)
-        );
-
-        if (currentRoutePolicy) {
-          // If a configuration exists, enforce the roles checklist matching matrix rules
-          const isAllowed = currentRoutePolicy.allowedRoles?.includes(userRole);
-          if (!isAllowed) {
-            router.replace("/home?accessDenied=1");
-            return;
-          }
-        } else {
-          // Fallback security defense layer: If an admin explicitly deleted a link doc from Firestore, 
-          // default to letting only an Admin look at it, or handle public fallback paths if needed.
-          if (userRole !== "Admin" && pathname.startsWith("/admin")) {
-            router.replace("/home?accessDenied=1");
-            return;
-          }
+        if (isClientRole(userRole)) {
+          // Client accounts are isolated from this protected manager route group.
+          // Their own allowed surface is the standalone /onboarding route.
+          redirectTo("/onboarding");
+          return;
         }
 
+        if (!isAdminRole(userRole)) {
+          // Legacy, missing, or unsupported roles fail closed instead of falling
+          // through to a manager page with only client-side data-load failures.
+          redirectTo("/login");
+          return;
+        }
+
+        // Admin is the only role authorized for every route in this group.
+        setIsRedirecting(false);
         setAuthorizedPath(pathname);
       } catch (error) {
         console.error("Failed to verify route permissions:", error);
 
         if (!shouldIgnore) {
-          router.replace("/home?accessDenied=1");
+          redirectTo("/login");
         }
       }
     });
@@ -106,9 +87,9 @@ export default function ProtectedRoute({ children }) {
       shouldIgnore = true;
       unsubscribe();
     };
-  }, [pathname, router, links, isLoadingLinks]);
+  }, [pathname, router]);
 
-  if (isLoadingLinks || authorizedPath !== pathname) {
+  if (isRedirecting || authorizedPath !== pathname) {
     // Keep a neutral loading state while auth and links context are still being resolved.
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">

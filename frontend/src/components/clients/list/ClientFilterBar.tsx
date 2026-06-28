@@ -4,7 +4,7 @@ interface ClientFilterBarProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
   statusFilter: string;
-  setStatusFilter: (val: "all" | "registered" | "interested" | "draft") => void;
+  setStatusFilter: (val: "all" | "registered" | "invited" | "interested" | "draft") => void;
 }
 
 export default function ClientFilterBar({
@@ -34,12 +34,13 @@ export default function ClientFilterBar({
         <select
           value={statusFilter}
           onChange={(e) =>
-            setStatusFilter(e.target.value as "all" | "registered" | "interested" | "draft")
+            setStatusFilter(e.target.value as "all" | "registered" | "invited" | "interested" | "draft")
           }
           className="w-full appearance-none rounded-2xl border border-[#D7E3D5] bg-white py-3 pl-4 pr-10 text-sm font-semibold text-[#31585F] shadow-sm focus:border-[#6BB2A0] focus:outline-none focus:ring-2 focus:ring-[#B9D4CC]"
         >
           <option value="all">All Statuses</option>
           <option value="registered">Registered</option>
+          <option value="invited">Invited</option>
           <option value="interested">Interested</option>
           <option value="draft">Draft</option>
         </select>
