@@ -11,7 +11,8 @@ import {
   Megaphone,
   MapPin,
   HeartHandshake,
-  Download
+  Download,
+  Settings2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -26,7 +27,8 @@ import {
   Legend, 
   LineChart, 
   Line,
-  ResponsiveContainer 
+  ResponsiveContainer ,
+  Tooltip
 } from 'recharts';
 
 import { collection, getDocs } from "firebase/firestore";
@@ -39,6 +41,50 @@ export default function StatisticsPage() {
   const [clients, setClients] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [activeAlertRules, setActiveAlertRules] = useState(['passport_id', 'dob']);
+  const [isAlertMenuOpen, setIsAlertMenuOpen] = useState(false);
+  const [isDisplayMenuOpen, setIsDisplayMenuOpen] = useState(false);
+    const [visibleWidgets, setVisibleWidgets] = useState({
+    kpis: true,
+    growth: true,
+    occupancy: true,
+    demographics: true,
+    gender: true,
+    compliance: true,
+    engagement: true,
+    referrals: true,
+    locations: true,
+    intake: true,
+  });
+
+  
+  const [isWidgetsConfigLoaded, setIsWidgetsConfigLoaded] = useState(false);
+
+  // טעינה מהזיכרון כשהדף נפתח
+ // טעינה מהזיכרון כשהדף נפתח - מעודכן כדי למנוע שגיאת Cascading Render
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        const savedConfig = localStorage.getItem("dashboard_widgets_v1");
+        if (savedConfig) {
+          try {
+            setVisibleWidgets(JSON.parse(savedConfig));
+          } catch (error) {
+            console.error("Error parsing saved widget config:", error);
+          }
+        }
+        setIsWidgetsConfigLoaded(true);
+      }, 0);
+    }
+  }, []);
+
+  // שמירה לזיכרון בכל פעם שהמנהל משנה משהו
+  useEffect(() => {
+    if (isWidgetsConfigLoaded && typeof window !== "undefined") {
+      localStorage.setItem("dashboard_widgets_v1", JSON.stringify(visibleWidgets));
+    }
+  }, [visibleWidgets, isWidgetsConfigLoaded]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,6 +136,8 @@ export default function StatisticsPage() {
     const unassignedClientsList = [];
     let fullyCompliant = 0;
     let missingForms = 0;
+    let statusCounts = { draft: 0, interested: 0, registered: 0 };
+    let genderCounts = { male: 0, female: 0, other: 0, unknown: 0 };
     
     const sourceCounts = {};
     const locationCounts = {};
@@ -121,25 +169,43 @@ export default function StatisticsPage() {
       }
 
       // Action Items Checks
-      if (client.status === 'registered' && !client.passport_id) {
-        actionItems.push({
-          id: `missing_id_${client.id}`,
-          clientId: client.id,
-          client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
-          issue: 'Missing Passport/ID',
-          program: 'N/A',
-          severity: 'high'
-        });
+      // 3. Action Items Logic (Dynamic Rules)
+      const name = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown Client';
+
+      // תעודת זהות / דרכון
+      if (activeAlertRules.includes('passport_id') && client.status === 'registered' && !client.passport_id) {
+        actionItems.push({ id: `${client.id}-id`, client: name, issue: 'Missing ID/Passport', severity: 'high' });
       }
-      if (!client.dob || client.dob === "") {
-        actionItems.push({
-          id: `missing_dob_${client.id}`,
-          clientId: client.id,
-          client: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Unknown',
-          issue: 'Missing Date of Birth',
-          program: 'N/A',
-          severity: 'medium'
-        });
+      
+      // תאריך לידה
+      if (activeAlertRules.includes('dob') && !client.dob) {
+        actionItems.push({ id: `${client.id}-dob`, client: name, issue: 'Missing Date of Birth', severity: 'medium' });
+      }
+      
+      // טלפון
+      if (activeAlertRules.includes('phone') && !client.phone) {
+        actionItems.push({ id: `${client.id}-phone`, client: name, issue: 'Missing Phone Number', severity: 'medium' });
+      }
+
+      // אימייל
+      if (activeAlertRules.includes('email') && !client.email) {
+        actionItems.push({ id: `${client.id}-email`, client: name, issue: 'Missing Email Address', severity: 'medium' });
+      }
+
+      // כתובת מגורים
+      if (activeAlertRules.includes('address') && !client.address) {
+        actionItems.push({ id: `${client.id}-address`, client: name, issue: 'Missing Home Address', severity: 'low' });
+      }
+
+      // אנשי קשר (מוודא שהמערך לא ריק)
+      if (activeAlertRules.includes('contacts') && (!client.contacts || client.contacts.length === 0)) {
+        actionItems.push({ id: `${client.id}-contacts`, client: name, issue: 'No Emergency Contacts', severity: 'high' });
+      }
+
+      // אישור רפואי (בודק בתוך אובייקט medical_profile)
+      if (activeAlertRules.includes('medical') && 
+         (!client.medical_profile || client.medical_profile.medical_clearance_status === 'Missing')) {
+        actionItems.push({ id: `${client.id}-med`, client: name, issue: 'Missing Medical Clearance', severity: 'high' });
       }
 
       // Growth Calculation
@@ -201,7 +267,30 @@ export default function StatisticsPage() {
           locationCounts[cityPart] = (locationCounts[cityPart] || 0) + 1;
         }
       }
+
+// 5. Funnel Status Logic
+      if (client.status) {
+        const s = client.status.toLowerCase();
+        if (statusCounts[s] !== undefined) {
+          statusCounts[s]++;
+        }
+      }
+
+      // 6. Gender Logic
+      if (client.gender) {
+        const g = client.gender.toLowerCase();
+        if (g === 'male') genderCounts.male++;
+        else if (g === 'female') genderCounts.female++;
+        else genderCounts.other++;
+      } else {
+        genderCounts.unknown++;
+      }
+
     });
+
+
+    
+    
 
     const demographicsData = Object.entries(ageGroups)
       .filter(([, value]) => value > 0)
@@ -211,6 +300,20 @@ export default function StatisticsPage() {
       month,
       signups
     }));
+
+    // Funnel Data (מסודר לפי שלבי ההרשמה)
+    const statusFunnelData = [
+      { name: 'Draft', value: statusCounts.draft },
+      { name: 'Interested', value: statusCounts.interested },
+      { name: 'Registered', value: statusCounts.registered }
+    ];
+
+    // Gender Data (מסנן החוצה קבוצות ריקות)
+    const genderData = [
+      { name: 'Male', value: genderCounts.male },
+      { name: 'Female', value: genderCounts.female },
+      { name: 'Other/Unknown', value: genderCounts.other + genderCounts.unknown }
+    ].filter(g => g.value > 0);
 
     const complianceData = [
       { name: 'Fully Compliant', value: fullyCompliant },
@@ -274,9 +377,11 @@ export default function StatisticsPage() {
       topLocations,
       activeProgramsList,
       unassignedClientsList,
-      totalClients: clients.length
+      totalClients: clients.length,
+      statusFunnelData, // <--- הוספנו
+      genderData
     };
-  }, [clients, programs]);
+  }, [clients, programs, activeAlertRules]);
 
   const {
     kpiData = [],
@@ -291,6 +396,8 @@ export default function StatisticsPage() {
     activeProgramsList = [],
     unassignedClientsList = [],
     totalClients = 1,
+    statusFunnelData = [], // <--- הוספנו
+    genderData = [],
   } = stats || {};
 
   if (loading) {
@@ -394,8 +501,7 @@ const exportToCSV = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
-        <header className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] px-6 py-8 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-9 sm:py-10">
-        
+        <header className="mb-6 rounded-[1.75rem] bg-[#2C6975] text-white shadow-lg">        
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Operational insight</p>
@@ -403,17 +509,65 @@ const exportToCSV = () => {
               <p className="mt-3 text-sm leading-6 text-white/75">Overview of system metrics and program analytics</p>
             </div>
             
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 hover:ring-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#245C66]"
-            >
-              <Download size={18} />
-              Export to CSV
-            </button>
+            {/* אזור הכפתורים */}
+            <div className="flex items-center gap-3 relative">
+              
+              {/* כפתור הגדרות תצוגה */}
+              <div>
+                <button
+                  onClick={() => setIsDisplayMenuOpen(!isDisplayMenuOpen)}
+                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+                >
+                  <Settings2 size={18} />
+                  Customize
+                </button>
+                
+                {/* תפריט נפתח לבחירת גרפים */}
+                {isDisplayMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-slate-200 z-50 text-slate-800">
+                    <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Visible Widgets</p>
+                    <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+                      {[
+                       { key: 'kpis', label: 'Top KPIs Cards' },
+                        { key: 'growth', label: 'Growth Trends (Line)' },
+                        { key: 'occupancy', label: 'Program Occupancy (Bar)' },
+                        { key: 'demographics', label: 'Client Demographics (Age)' },
+                        { key: 'gender', label: 'Gender Distribution (Pie)' },    
+                        { key: 'intake', label: 'Intake Status Pipeline (Bar)' },
+                        { key: 'compliance', label: 'Compliance Status (Pie)' },
+                        { key: 'engagement', label: 'Client Engagement (Pie)' },
+                        { key: 'referrals', label: 'Referral Sources (List)' },
+                        { key: 'locations', label: 'Top Locations (List)' },
+                      ].map((item) => (
+                        <label key={item.key} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors">
+                          <input 
+                            type="checkbox" 
+                            checked={visibleWidgets[item.key]}
+                            onChange={() => setVisibleWidgets(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            className="h-4 w-4 rounded border-slate-300 text-[#2C6975] focus:ring-[#2C6975]"
+                          />
+                          <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* כפתור ייצוא */}
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+              >
+                <Download size={18} />
+                Export CSV
+              </button>
+            </div>
           </div>
         </header>
 
         {/* ROW 1: KPIs (Top 4 tabs) */}
+        {visibleWidgets.kpis && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {kpiData.map((kpi) => {
             const Icon = kpi.icon;
@@ -444,10 +598,20 @@ const exportToCSV = () => {
                     <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Currently Active Programs:</p>
                       <ul className="space-y-2 mt-2">
-                        {activeProgramsList.map((prog) => (
-                          <li key={prog.id} className="flex flex-col">
-                            <span className="font-medium truncate">• {prog.name || 'Untitled Program'}</span>
-                            {prog.location && <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">📍 {prog.location}</span>}
+                       {activeProgramsList.map((prog) => (
+                          <li 
+                            key={prog.id} 
+                            onClick={() => setSelectedProgram(prog)}
+                            className="flex flex-col p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/item"
+                          >
+                            <span className="font-medium truncate group-hover/item:text-cyan-300 transition-colors">
+                              🔍 {prog.name || 'Untitled Program'}
+                            </span>
+                            {prog.location && (
+                              <span className="text-[11px] text-[#8CA5A8] ml-5 truncate">
+                                📍 {prog.location}
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -461,8 +625,14 @@ const exportToCSV = () => {
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Clients Without Programs:</p>
                       <ul className="space-y-1.5 mt-2">
                         {unassignedClientsList.map((client) => (
-                          <li key={client.id} className="flex items-center text-slate-200">
-                            <span className="font-medium truncate">• {client.name}</span>
+                          <li 
+                            key={client.id} 
+                            onClick={() => window.location.href = `/clients?openClientId=${client.id}`}
+                            className="flex items-center p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/client text-slate-200"
+                          >
+                            <span className="font-medium truncate group-hover/client:text-cyan-300 transition-colors">
+                              👤 {client.name}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -470,17 +640,77 @@ const exportToCSV = () => {
                   </div>
                 )}
                 {/* חלונית צפה (Tooltip) שמופיעה רק בריחוף על "Pending Actions" */}
+              {/* כפתור הגדרות התראות שמופיע רק בכרטיסיית Pending Actions */}
+                {isPendingActions && (
+                  <div className="absolute top-4 right-4 z-50">
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsAlertMenuOpen(!isAlertMenuOpen); }}
+                      className="p-1.5 bg-black/10 hover:bg-black/20 rounded-md transition-colors text-white/80 hover:text-white"
+                      title="Alert Settings"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    
+                    {/* תפריט נפתח לבחירת התראות */}
+                    {isAlertMenuOpen && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-100 text-slate-700 text-sm font-medium z-[60]"
+                      >
+                        <p className="text-xs text-slate-400 mb-2 pb-1.5 border-b border-slate-100 uppercase tracking-wider">Alert Rules</p>
+                        {[
+                          { id: 'passport_id', label: 'Missing ID / Passport' },
+                          { id: 'dob', label: 'Missing Date of Birth' },
+                          { id: 'phone', label: 'Missing Phone Number' },
+                          { id: 'email', label: 'Missing Email Address' },
+                          { id: 'address', label: 'Missing Home Address' },
+                          { id: 'contacts', label: 'Missing Emergency Contacts' },
+                          { id: 'medical', label: 'Missing Medical Clearance' }
+                        ].map(rule => (
+                          <label key={rule.id} className="flex items-center gap-2.5 py-2 cursor-pointer hover:bg-slate-50 rounded-lg px-2 -mx-1 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={activeAlertRules.includes(rule.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setActiveAlertRules([...activeAlertRules, rule.id]);
+                                } else {
+                                  setActiveAlertRules(activeAlertRules.filter(r => r !== rule.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#2C6975] focus:ring-[#2C6975]"
+                            />
+                            <span className="text-[13px]">{rule.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {isPendingActions && actionItems.length > 0 && (
                   <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
                     <div className="bg-[#15383E] text-white text-sm rounded-xl p-4 shadow-xl border border-[#2C6975] max-h-56 overflow-y-auto">
                       <p className="font-semibold mb-2 border-b border-[#2C6975] pb-2 text-[#CDE0C9]">Action Items & Alerts:</p>
-                      <ul className="space-y-2 mt-2">
-                        {actionItems.map((item) => (
-                          <li key={item.id} className="flex flex-col">
-                            <span className="font-medium text-slate-200 truncate">• {item.client}</span>
-                            <span className="text-[11px] text-[#8CA5A8] ml-3 truncate">{item.issue}</span>
-                          </li>
-                        ))}
+                     <ul className="space-y-1.5 mt-2">
+                        {actionItems.map((item) => {
+                          // מחלצים את ה-ID המקורי של הלקוח מתוך ה-ID של ההתראה
+                          const realClientId = item.id.split('-')[0];
+
+                          return (
+                            <li 
+                              key={item.id} 
+                              onClick={() => window.location.href = `/clients?openClientId=${realClientId}`}
+                              className="flex flex-col p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group/action"
+                            >
+                              <span className="font-medium text-slate-200 truncate group-hover/action:text-orange-300 transition-colors">
+                                • {item.client}
+                              </span>
+                              <span className="text-[11px] text-[#8CA5A8] ml-3 truncate group-hover/action:text-orange-200/70">
+                                {item.issue}
+                              </span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   </div>
@@ -489,261 +719,406 @@ const exportToCSV = () => {
             );
           })}
         </div>
-
-        {/* ROW 2: Main Charts Grid (Large) */}
+)}
+       
+       {/* ROW 2: Main Charts Grid (Large) */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           
           {/* Growth Trends - Line Chart */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
-            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-              <Activity className="text-[#2C6975]" />
-              Growth Trends
-            </h2>
-            <div className="h-[300px] w-full">
-              {growthData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={growthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
-                    <XAxis dataKey="month" stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} />
-                    <YAxis stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <RechartsTooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="signups" 
-                      stroke="#2C6975"
-                      strokeWidth={3}
-                      dot={{ fill: '#6BB2A0', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-[#6A8589]">No growth data available</div>
-              )}
-            </div>
-          </section>
+          {visibleWidgets.growth && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                <Activity className="text-[#2C6975]" />
+                Growth Trends
+              </h2>
+              <div className="min-h-[300px] w-full flex-1">
+                {growthData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={growthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
+                      <XAxis dataKey="month" stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} />
+                      <YAxis stroke="#6A8589" tick={{ fill: '#6A8589' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="signups" 
+                        stroke="#2C6975"
+                        strokeWidth={3}
+                        dot={{ fill: '#6BB2A0', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6 }} 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center text-[#6A8589]">No growth data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Program Occupancy - Bar Chart */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
-            <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-              <CalendarCheck className="text-[#3F7763]" />
-              Program Occupancy
-            </h2>
-            <div className="h-[300px] w-full">
-              {programOccupancyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={programOccupancyData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
-                    <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                    <RechartsTooltip 
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Bar dataKey="capacity" name="Total Capacity" fill="#C9DDE1" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="enrolled" name="Enrolled" fill="#6BB2A0" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-[#6A8589]">No program occupancy data available</div>
-              )}
-            </div>
-          </section>
+          {visibleWidgets.occupancy && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                <CalendarCheck className="text-[#3F7763]" />
+                Program Occupancy
+              </h2>
+              <div className="min-h-[300px] w-full flex-1">
+                {programOccupancyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={programOccupancyData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D7E3D5" />
+                      <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} />
+                      <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
+                      <RechartsTooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                      <Bar dataKey="capacity" name="Total Capacity" fill="#C9DDE1" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="enrolled" name="Enrolled" fill="#6BB2A0" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center text-[#6A8589]">No program occupancy data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
         </div>
 
-        {/* ROW 3: Medium Charts Grid (3 Columns) */}
+       {/* ROW: 3 Pie Charts (Demographics, Compliance, Engagement) */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           
-          {/* Demographics - Pie Chart */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-            <h2 className="mb-2 flex items-center gap-2 text-lg font-bold text-[#15383E]">
-              <Users className="text-[#7FA7B2]" size={20} />
-              Client Demographics
-            </h2>
-            <p className="mb-4 text-xs text-[#6A8589]">Age distribution across all clients</p>
-            
-            {/* שיניתי את העטיפה כאן כדי לוודא שהיא לא קורסת */}
-            <div className="flex justify-center items-center w-full min-h-[250px]">
-              {demographicsData.length > 0 ? (
-                // הורדנו את ה-ResponsiveContainer והגדרנו רוחב וגובה ישירות לגרף
-                <PieChart width={300} height={250}>
-                  <Pie
-                    data={demographicsData}
-                    cx="50%"
-                    cy="55%"
-                    innerRadius={45}
-                    outerRadius={75}
-                    fill="#8884d8"
-                    paddingAngle={5}
-                    dataKey="value"
-                    isAnimationActive={false}
-                    label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
-                  >
-                    {demographicsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Legend />
-                </PieChart>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No data available</div>
-              )}
-            </div>
-          </section>
+          {/* 1. Client Demographics */}
+          {visibleWidgets.demographics && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <div className="mb-2 flex items-center gap-2">
+                <Users className="text-[#7FA7B2]" size={20} />
+                <h2 className="text-lg font-bold text-[#15383E]">Client Demographics</h2>
+              </div>
+              <p className="mb-4 text-xs text-[#6A8589]">Age distribution across all clients</p>
+              
+              <div className="min-h-[250px] w-full flex-1">
+                {demographicsData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={demographicsData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                        isAnimationActive={false}
+                        label={({ value, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {demographicsData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
-          {/* Compliance Status - Pie Chart */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-            <h2 className="mb-2 flex items-center gap-2 text-lg font-bold text-[#15383E]">
-              <ClipboardCheck className="text-[#6BB2A0]" size={20} />
-              Compliance Status
-            </h2>
-            <p className="mb-4 text-xs text-[#6A8589]">Medical & Legal form completion</p>
-            <div className="h-[250px] w-full flex-1">
-              {complianceData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={complianceData}
-                      cx="50%"
-                      cy="55%"
-                      innerRadius={45}
-                      outerRadius={75}
-                      paddingAngle={5}
-                      dataKey="value"
-                      isAnimationActive={false}
-                      label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
-                    >
-                      {complianceData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.name === 'Fully Compliant' ? '#6BB2A0' : '#E58A7A'} 
-                        />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No data available</div>
-              )}
-            </div>
-          </section>
+          {/* 2. Compliance Status */}
+          {visibleWidgets.compliance && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <div className="mb-2 flex items-center gap-2">
+                <ClipboardCheck className="text-[#6BB2A0]" size={20} />
+                <h2 className="text-lg font-bold text-[#15383E]">Compliance Status</h2>
+              </div>
+              <p className="mb-4 text-xs text-[#6A8589]">Medical & Legal form completion</p>
+              
+              <div className="min-h-[250px] w-full flex-1">
+                {complianceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={complianceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                        isAnimationActive={false}
+                        label={({ value, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {complianceData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.name === 'Fully Compliant' ? '#6BB2A0' : '#E58A7A'} 
+                          />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
-          {/* Client Retention / Engagement - Donut Chart */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-            <div className="mb-2 flex items-center gap-2">
-              <HeartHandshake className="text-[#2C6975]" size={20} />
-              <h2 className="text-lg font-bold text-[#15383E]">Client Engagement</h2>
-            </div>
-            <p className="mb-4 text-xs text-[#6A8589]">Number of programs participated in (loyalty metric)</p>
-            <div className="h-[250px] w-full flex-1">
-              {retentionData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={retentionData}
-                      cx="50%"
-                      cy="55%"
-                      innerRadius={45}
-                      outerRadius={75}
-                      paddingAngle={5}
-                      dataKey="value"
-                      isAnimationActive={false}
-                      label={({ value, percent }) => `${(percent * 100).toFixed(0)}% (${value})`}
-                    >
-                      {retentionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No data available</div>
-              )}
-            </div>
-          </section>
+          {/* 3. Client Engagement */}
+          {visibleWidgets.engagement && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <div className="mb-2 flex items-center gap-2">
+                <HeartHandshake className="text-[#2C6975]" size={20} />
+                <h2 className="text-lg font-bold text-[#15383E]">Client Engagement</h2>
+              </div>
+              <p className="mb-4 text-xs text-[#6A8589]">Number of programs participated in</p>
+              
+              <div className="min-h-[250px] w-full flex-1">
+                {retentionData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={retentionData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                        isAnimationActive={false}
+                        label={({ value, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {retentionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
         </div>
 
-        {/* ROW 4: Mixed Layout (Referral Sources & Top Locations) */}
+  {/* ROW 4: Mixed Layout (Referral Sources & Top Locations) */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           
           {/* Referral Sources - Horizontal Bar Chart (Spans 2 cols) */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] lg:col-span-2 flex flex-col">
-            <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-              <Megaphone className="text-[#D2A94F]" />
-              Referral Sources
-            </h2>
-            <p className="mb-6 text-sm text-[#6A8589]">Where clients are discovering the platform</p>
-            <div className="h-[280px] w-full flex-1">
-              {referralData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={referralData} 
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#D7E3D5" />
-                    <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <YAxis dataKey="name" type="category" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} width={120} />
-                    <RechartsTooltip 
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="value" name="Clients" fill="#D2A94F" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No referral data available</div>
-              )}
-            </div>
-          </section>
-
+          {visibleWidgets.referrals && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] lg:col-span-2 flex flex-col">
+              <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                <Megaphone className="text-[#D2A94F]" />
+                Referral Sources
+              </h2>
+              <p className="mb-6 text-sm text-[#6A8589]">Where clients are discovering the platform</p>
+              
+              {/* === התיקון כאן: חסימת הקריסה עם גובה קבוע === */}
+              <div className="min-h-[280px] w-full">
+                {referralData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart 
+                      data={referralData} 
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#D7E3D5" />
+                      <XAxis type="number" stroke="#64748b" tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis dataKey="name" type="category" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 12 }} tickLine={false} axisLine={false} width={120} />
+                      <RechartsTooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="value" name="Clients" fill="#D2A94F" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[280px] items-center justify-center text-sm text-[#6A8589]">No referral data available</div>
+                )}
+              </div>
+            </section>
+          )}
+              
           {/* Top Locations - Custom List with Progress Bars */}
-          <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-            <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-              <MapPin className="text-[#3F7763]" />
-              Top Locations
-            </h2>
-            <p className="mb-6 text-sm text-[#6A8589]">Geographic segmentation of clients</p>
-            <div className="flex-1 space-y-2.5">
-              {topLocations.length > 0 ? (
-                topLocations.map((loc, index) => {
-                  const percentage = Math.round((loc.count / totalClients) * 100);
-                  return (
-                    <div key={index} className="flex flex-col gap-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-[#15383E]">{loc.name}</span>
-                        <span className="font-bold text-[#2C6975]">{loc.count} <span className="font-normal text-[#6A8589]">({percentage}%)</span></span>
+          {visibleWidgets.locations && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                <MapPin className="text-[#3F7763]" />
+                Top Locations
+              </h2>
+              <p className="mb-6 text-sm text-[#6A8589]">Geographic segmentation of clients</p>
+              <div className="flex-1 space-y-2.5">
+                {topLocations.length > 0 ? (
+                  topLocations.map((loc, index) => {
+                    const percentage = Math.round((loc.count / totalClients) * 100);
+                    return (
+                      <div key={index} className="flex flex-col gap-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-[#15383E]">{loc.name}</span>
+                          <span className="font-bold text-[#2C6975]">{loc.count} <span className="font-normal text-[#6A8589]">({percentage}%)</span></span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4ECE2]">
+                          <div 
+                            className="h-full rounded-full bg-[#6BB2A0] transition-all duration-500 ease-in-out" 
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4ECE2]">
-                        <div 
-                          className="h-full rounded-full bg-[#6BB2A0] transition-all duration-500 ease-in-out" 
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No location data available</div>
-              )}
-            </div>
-          </section>
+                    );
+                  })
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-[#6A8589]">No location data available</div>
+                )}
+              </div>
+            </section>
+          )}
+        
+        </div>
+      {/* ROW 3: Demographics & Intake Pipeline */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          
+          {/* גרף פילוח מגדרי (Gender Distribution) */}
+          {visibleWidgets.gender && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                Gender Distribution
+              </h2>
+              <div className="min-h-[250px] w-full flex-1">
+                {genderData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={genderData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {genderData.map((entry, index) => {
+                          const colors = ['#2C6975', '#E5C97D', '#8CA5A8'];
+                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        })}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        itemStyle={{ color: '#15383E', fontWeight: 'bold' }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No gender data available</div>
+                )}
+              </div>
+            </section>
+          )}
 
+          {/* משפך סטטוס לקוחות (Intake Funnel) */}
+          {visibleWidgets.intake && (
+            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
+              <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                Intake Status Pipeline
+              </h2>
+              <div className="min-h-[250px] w-full flex-1">
+                {statusFunnelData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={statusFunnelData} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#5C7478', fontSize: 13, fontWeight: 500 }} />
+                      <RechartsTooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                      />
+                      <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={32}>
+                        {statusFunnelData.map((entry, index) => {
+                          const colors = ['#C9DDE1', '#E5C97D', '#C5DDC0']; 
+                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No status data available</div>
+                )}
+              </div>
+            </section>
+          )}
+          
         </div>
 
-    
+    </div>
+      
+         {/* חלון תצוגה מהירה לתוכנית */}
+         {selectedProgram && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0a191c]/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[24px] p-6 sm:p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* כפתור סגירה */}
+            <button 
+              onClick={() => setSelectedProgram(null)}
+              className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-red-50 hover:text-red-500 rounded-full text-slate-400 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
+            <div className="mb-6 pr-8">
+              <h2 className="text-2xl font-bold text-[#15383E]">🌟 {selectedProgram.name}</h2>
+              <p className="text-[#5C7478] mt-1.5 text-sm font-medium">📍 {selectedProgram.location || "Unknown location"}</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-[#EEF4EC] p-3.5 rounded-2xl">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#7C9194]">Starts</p>
+                <p className="mt-1 font-bold text-[#15383E]">
+                  {selectedProgram.start_date ? (selectedProgram.start_date.toDate ? selectedProgram.start_date.toDate() : new Date(selectedProgram.start_date)).toLocaleDateString('he-IL') : "N/A"}
+                </p>
+              </div>
+              <div className="bg-[#E4F0EC] p-3.5 rounded-2xl">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#7C9194]">Ends</p>
+                <p className="mt-1 font-bold text-[#15383E]">
+                  {selectedProgram.end_date ? (selectedProgram.end_date.toDate ? selectedProgram.end_date.toDate() : new Date(selectedProgram.end_date)).toLocaleDateString('he-IL') : "N/A"}
+                </p>
+              </div>
+            </div>
 
-      </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#15383E]">Enrolled Participants</p>
+                <p className="text-xs text-slate-500 mt-0.5">Current program capacity</p>
+              </div>
+              <div className="text-3xl font-black text-[#2C6975]">
+                {selectedProgram.participant_count || 0}
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => window.location.href = `/programs?openId=${selectedProgram.id}`} 
+              className="w-full py-3.5 bg-[#2C6975] text-white font-bold rounded-xl hover:bg-[#1f4a53] transition-all shadow-lg shadow-[#2C6975]/20 hover:shadow-[#2C6975]/40 hover:-translate-y-0.5"
+            >
+              Manage in Programs Page ➔
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

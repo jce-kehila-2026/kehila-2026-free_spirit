@@ -88,6 +88,23 @@ export default function ClientList({
     }
   }, [openFilter]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const openClientId = params.get('openClientId');
+
+    if (openClientId && externalDocs && externalDocs.length > 0) {
+      const clientToOpen = externalDocs.find((c) => c.id === openClientId);
+      
+      if (clientToOpen) {
+        setTimeout(() => {
+          onEdit(clientToOpen);
+        }, 0);
+        
+        window.history.replaceState(null, '', '/clients');
+      }
+    }
+  }, [externalDocs, onEdit]);
+
   const clients = showArchived
     ? (externalDocs || []).filter((c) => c.is_archived === true)
     : (externalDocs || []).filter((c) => c.is_archived !== true);
