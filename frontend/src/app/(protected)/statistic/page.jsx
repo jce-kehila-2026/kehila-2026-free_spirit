@@ -501,22 +501,21 @@ const exportToCSV = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
-        <header className="mb-6 rounded-[1.75rem] bg-[#2C6975] text-white shadow-lg">        
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#CDE0C9]">Operational insight</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Statistics &amp; reports</h1>
-              <p className="mt-3 text-sm leading-6 text-white/75">Overview of system metrics and program analytics</p>
+        <header className="mb-5 rounded-[1.75rem] bg-[#2C6975] text-white shadow-lg">        
+          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+            <div className="min-w-0">
+              <h1 className="mt-1.5 text-2xl font-bold tracking-[-0.035em] sm:text-3xl">Statistics &amp; reports</h1>
+              <p className="mt-1.5 text-sm leading-5 text-white/75">Overview of system metrics and program analytics</p>
             </div>
             
             {/* אזור הכפתורים */}
-            <div className="flex items-center gap-3 relative">
+            <div className="relative flex flex-wrap items-center gap-2 sm:justify-end">
               
               {/* כפתור הגדרות תצוגה */}
               <div>
                 <button
                   onClick={() => setIsDisplayMenuOpen(!isDisplayMenuOpen)}
-                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
                 >
                   <Settings2 size={18} />
                   Customize
@@ -557,7 +556,7 @@ const exportToCSV = () => {
               {/* כפתור ייצוא */}
               <button
                 onClick={exportToCSV}
-                className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+                className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
               >
                 <Download size={18} />
                 Export CSV
