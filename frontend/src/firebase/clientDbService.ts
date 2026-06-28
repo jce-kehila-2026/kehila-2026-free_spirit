@@ -79,7 +79,7 @@ function pickClientEditableFields(payload: Record<string, any>): Record<string, 
     "dependents",
     "medical_profile",
     "contacts",
-    "logistics",
+
     "questionnaire",
     "legal_consents",
     "custom_fields",

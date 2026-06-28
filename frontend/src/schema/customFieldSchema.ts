@@ -13,7 +13,6 @@ export const CUSTOM_FIELD_TABS = [
   "profile",
   "medical",
   "contacts",
-  "logistics",
   "questionnaire",
   "legal_consents",
   "documents",

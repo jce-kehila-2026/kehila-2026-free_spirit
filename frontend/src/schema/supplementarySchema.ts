@@ -11,26 +11,6 @@ export const dependentSchema = z.object({
 export type Dependent = z.infer<typeof dependentSchema>;
 
 /**
- * Logistics — program / insurance scheduling fields extracted from legacy PDFs.
- */
-export const logisticsSchema = z.object({
-  insurance_agent_name:   z.string().trim().max(100).optional().or(z.literal("")),
-  insurance_agent_number: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9\s\-()]{7,20}$/, {
-      message: "Enter a valid phone number",
-    })
-    .optional()
-    .or(z.literal("")),
-  insurance_period_start: z.string().optional().or(z.literal("")),
-  insurance_period_end:   z.string().optional().or(z.literal("")),
-  program_consultant:     z.string().trim().max(100).optional().or(z.literal("")),
-  program_start_date:     z.string().optional().or(z.literal("")),
-});
-export type Logistics = z.infer<typeof logisticsSchema>;
-
-/**
  * Questionnaire — open-ended profile-enrichment fields from legacy intake forms.
  */
 export const questionnaireSchema = z.object({

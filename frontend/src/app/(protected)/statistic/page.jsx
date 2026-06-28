@@ -198,9 +198,8 @@ export default function StatisticsPage() {
       if (activeAlertRules.includes('contacts') && (!client.contacts || client.contacts.length === 0)) {
         actionItems.push({ id: `${client.id}-contacts`, client: name, issue: 'No Emergency Contacts', severity: 'high' });
       }
-      if (activeAlertRules.includes('medical') && 
-         (!client.medical_profile || client.medical_profile.medical_clearance_status === 'Missing')) {
-        actionItems.push({ id: `${client.id}-med`, client: name, issue: 'Missing Medical Clearance', severity: 'high' });
+      if (activeAlertRules.includes('medical') && !client.medical_profile) {
+        actionItems.push({ id: `${client.id}-med`, client: name, issue: 'Missing Medical Profile', severity: 'high' });
       }
 
       // Growth Calculation
@@ -238,8 +237,7 @@ export default function StatisticsPage() {
       }
 
       // Compliance Logic
-      const medicalStatus = client.medical_profile?.medical_clearance_status;
-      if (medicalStatus === 'Approved' || medicalStatus === 'approved') {
+      if (client.medical_profile) {
         fullyCompliant++;
       } else {
         missingForms++;

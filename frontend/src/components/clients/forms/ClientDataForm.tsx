@@ -8,7 +8,7 @@ import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
 import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
 import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
-import LogisticsTab from "@/components/clients/tabs/LogisticsTab";
+
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
 import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
 
@@ -16,7 +16,7 @@ export const CLIENT_DATA_FORM_TABS = [
   { id: "profile", label: "Profile & Demographics" },
   { id: "medical", label: "Medical" },
   { id: "contacts", label: "Contacts" },
-  { id: "logistics", label: "Logistics" },
+
   { id: "questionnaire", label: "Questionnaire" },
   { id: "legal", label: "Legal Consents" },
   { id: "documents", label: "Documents" },
@@ -35,7 +35,7 @@ const TAB_COMPONENTS: Record<ClientDataFormTabId, ComponentType<BaseTabProps>> =
   profile: ProfileTab as ComponentType<BaseTabProps>,
   medical: MedicalTab as ComponentType<BaseTabProps>,
   contacts: ContactsTab as ComponentType<BaseTabProps>,
-  logistics: LogisticsTab as ComponentType<BaseTabProps>,
+
   questionnaire: QuestionnaireTab as ComponentType<BaseTabProps>,
   legal: LegalConsentsTab as ComponentType<BaseTabProps>,
   documents: DocumentsTab as ComponentType<BaseTabProps>,
@@ -97,8 +97,7 @@ function isTabComplete(client: ClientDoc, tabId: ClientDataFormTabId): boolean {
       return hasFilledValue(client.medical_profile);
     case "contacts":
       return hasFilledValue(client.contacts);
-    case "logistics":
-      return hasFilledValue(client.logistics);
+
     case "questionnaire":
       return hasFilledValue(client.questionnaire);
     case "legal":

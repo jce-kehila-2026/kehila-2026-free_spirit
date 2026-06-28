@@ -22,7 +22,6 @@ const TAB_LABELS: Record<CustomFieldTab, string> = {
   profile: "Profile & Demographics",
   medical: "Medical",
   contacts: "Contacts",
-  logistics: "Logistics",
   questionnaire: "Questionnaire",
   legal_consents: "Legal Consents",
   documents: "Documents",

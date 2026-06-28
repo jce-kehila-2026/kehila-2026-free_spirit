@@ -3,7 +3,7 @@ import { z } from "zod";
 import { nameRegex, nameError, CLIENT_STATUS, GENDER_OPTIONS, EDUCATION_STATUS_OPTIONS } from "./constants"
 import { medicalProfileSchema } from "./medicalSchema"
 import { contactSchema } from "./contactSchema"
-import { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
+import { dependentSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
 import { customFieldsSchema } from "./customFieldSchema"
 
 // ============================================================================
@@ -88,7 +88,7 @@ const clientBaseSchema = z.object({
   // Nested structures (Imported)
   medical_profile: medicalProfileSchema.optional().default({}),
   contacts: z.array(contactSchema).default([]),
-  logistics: logisticsSchema.optional().default({}),
+
   questionnaire: questionnaireSchema.optional().default({}),
   legal_consents: legalConsentsSchema.optional().default({}),
   stays: z.array(staySchema).default([]),
@@ -229,5 +229,5 @@ export type {
 } from "../schema/documentSchema";
 
 // From Auxiliary / Legacy Domain
-export { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema";
-export type { Dependent, Logistics, Questionnaire, LegalConsents } from "./supplementarySchema";
+export { dependentSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema";
+export type { Dependent, Questionnaire, LegalConsents } from "./supplementarySchema";
