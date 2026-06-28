@@ -13,8 +13,13 @@ import {
   createClientInviteEmailNotification,
   getClientInviteResendState,
   type ClientInviteResendState,
+  trackArrival,
+  trackDeparture,
+  manageStay,
+  getFirestoreDb,
 } from "@/firebase/clientDbService";
 import { createSystemEvent } from "@/firebase/clientEventsService";
+import { doc, getDoc } from "firebase/firestore";
 
 /**
  * Application Layer (Tier 2) — Client Management Service.
@@ -238,4 +243,75 @@ export async function getClientRegistrationInviteResendState(
   clientId: string
 ): Promise<ClientInviteResendState> {
   return getClientInviteResendState(clientId);
+}
+
+// ─── Client Stays (Tier 2) ──────────────────────────────────────────────────
+
+export async function trackClientArrival(
+  clientId: string,
+  clientName: string,
+  managerName: string,
+  arrivalDateStr?: string
+): Promise<void> {
+  try {
+    await trackArrival(clientId, clientName, managerName, arrivalDateStr);
+    toast.success(`${clientName} has been marked as arrived.`);
+  } catch (err) {
+    console.error("[ClientManagementService] trackClientArrival failed:", err);
+    toast.error("Failed to track arrival. Please check your connection and try again.");
+    throw err;
+  }
+}
+
+export async function trackClientDeparture(
+  clientId: string,
+  clientName: string,
+  managerName: string,
+  departureDateStr?: string
+): Promise<void> {
+  try {
+    await trackDeparture(clientId, clientName, managerName, departureDateStr);
+    toast.success(`${clientName} has been marked as departed.`);
+  } catch (err) {
+    console.error("[ClientManagementService] trackClientDeparture failed:", err);
+    toast.error(err instanceof Error ? err.message : "Failed to track departure. Please check your connection and try again.");
+    throw err;
+  }
+}
+
+export async function manageClientStay(
+  clientId: string,
+  stayIndex: number,
+  newArrivalDate: string,
+  newDepartureDate: string | null,
+  deleteRecord: boolean
+): Promise<void> {
+  try {
+    if (!deleteRecord && newDepartureDate && new Date(newDepartureDate) < new Date(newArrivalDate)) {
+      throw new Error("Departure date cannot be before arrival date.");
+    }
+    await manageStay(clientId, stayIndex, newArrivalDate, newDepartureDate, deleteRecord);
+    toast.success(deleteRecord ? "Stay record deleted." : "Stay updated successfully.");
+  } catch (err) {
+    console.error("[ClientManagementService] manageClientStay failed:", err);
+    toast.error(err instanceof Error ? err.message : "Failed to manage stay.");
+    throw err;
+  }
+}
+
+// Backward compatibility for UI components that haven't been updated yet
+export async function manageClientRecentStay(
+  clientId: string,
+  newArrivalDate: string,
+  newDepartureDate: string | null | undefined,
+  deleteRecord: boolean
+): Promise<void> {
+  const db = getFirestoreDb();
+  const clientSnap = await getDoc(doc(db, "clients", clientId));
+  if (!clientSnap.exists()) throw new Error("Client not found");
+  
+  const stays = clientSnap.data().stays || [];
+  if (stays.length === 0) throw new Error("No stay found");
+  
+  await manageClientStay(clientId, stays.length - 1, newArrivalDate, newDepartureDate || null, deleteRecord);
 }

@@ -395,3 +395,257 @@ export async function removeClientFromProgram(
 
   await batch.commit();
 }
+
+// ─── Client Stays (Tier 4) ──────────────────────────────────────────────────
+
+/**
+ * Tracks a client's arrival by adding an open stay and logging a system event.
+ * Executes both actions in a single Firestore batch.
+ */
+export async function trackArrival(
+  clientId: string,
+  clientName: string,
+  managerName: string,
+  arrivalDateStr?: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const batch = writeBatch(db);
+
+  const now = new Date();
+  const dateStr = arrivalDateStr || now.toISOString().split("T")[0];
+  const timeStr = now.toTimeString().slice(0, 5);
+
+  // Generate event ref first to get the ID
+  const eventRef = doc(collection(db, "events"));
+
+  const newStay = {
+    arrivedAt: arrivalDateStr ? new Date(arrivalDateStr).toISOString() : now.toISOString(),
+    departedAt: null,
+    arrivalEventId: eventRef.id,
+  };
+
+  // 1. Update client doc
+  batch.update(doc(db, "clients", clientId), {
+    stays: arrayUnion(newStay),
+    updated_at: serverTimestamp(),
+  });
+
+  // 2. Add system event
+  batch.set(eventRef, {
+    type: "system",
+    clientId,
+    clientName,
+    title: "Client Arrived",
+    content: `${clientName} arrived.`,
+    date: dateStr,
+    time: timeStr,
+    status: "note",
+    priority: "normal",
+    createdAt: serverTimestamp(),
+    authorName: managerName,
+  });
+
+  await batch.commit();
+}
+
+function formatStayDuration(arrivalDateStr: string, departureDateStr: string): string {
+  const start = new Date(arrivalDateStr);
+  const end = new Date(departureDateStr);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return "Unknown";
+  }
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const diffTime = end.getTime() - start.getTime();
+  
+  if (diffTime <= 0) {
+    return "Less than a day";
+  }
+
+  let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  const years = Math.floor(diffDays / 365);
+  diffDays -= years * 365;
+
+  const months = Math.floor(diffDays / 30);
+  diffDays -= months * 30;
+
+  const weeks = Math.floor(diffDays / 7);
+  diffDays -= weeks * 7;
+
+  const days = diffDays;
+
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} year${years > 1 ? "s" : ""}`);
+  if (months > 0) parts.push(`${months} month${months > 1 ? "s" : ""}`);
+  if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? "s" : ""}`);
+  if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+
+  if (parts.length === 0) return "Less than a day";
+  
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  
+  const lastPart = parts.pop();
+  return `${parts.join(", ")}, and ${lastPart}`;
+}
+
+/**
+ * Tracks a client's departure by updating the currently open stay and logging a system event.
+ * Executes both actions in a single Firestore batch.
+ */
+export async function trackDeparture(
+  clientId: string,
+  clientName: string,
+  managerName: string,
+  departureDateStr?: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const clientRef = doc(db, "clients", clientId);
+  
+  const clientSnap = await getDoc(clientRef);
+  if (!clientSnap.exists()) {
+    throw new Error("Client not found");
+  }
+  
+  const clientData = clientSnap.data();
+  // Properly cast the stays array to match our schema definition
+  const stays = (clientData.stays || []) as Array<{
+    arrivedAt: string;
+    departedAt: string | null;
+    arrivalEventId?: string;
+    departureEventId?: string;
+  }>;
+  
+  const openStayIndex = stays.findIndex((stay) => stay.departedAt === null);
+  if (openStayIndex === -1) {
+    throw new Error("No open stay found for departure");
+  }
+  
+  const now = new Date();
+  const dateStr = departureDateStr || now.toISOString().split("T")[0];
+  const timeStr = now.toTimeString().slice(0, 5);
+  
+  const departureDateISO = departureDateStr ? new Date(departureDateStr).toISOString() : now.toISOString();
+  const arrivedAtStr = stays[openStayIndex].arrivedAt;
+  
+  const eventRef = doc(collection(db, "events"));
+  
+  stays[openStayIndex].departedAt = departureDateISO;
+  stays[openStayIndex].departureEventId = eventRef.id;
+  
+  const durationStr = formatStayDuration(arrivedAtStr, departureDateISO);
+  
+  const batch = writeBatch(db);
+  
+  // 1. Update client doc with whole stays array
+  batch.update(clientRef, {
+    stays,
+    updated_at: serverTimestamp(),
+  });
+  
+  // 2. Add system event
+  batch.set(eventRef, {
+    type: "system",
+    clientId,
+    clientName,
+    title: "Client Departed",
+    content: `${clientName} departed (Total stay: ${durationStr}).`,
+    date: dateStr,
+    time: timeStr,
+    status: "note",
+    priority: "normal",
+    createdAt: serverTimestamp(),
+    authorName: managerName,
+  });
+  
+  await batch.commit();
+}
+
+/**
+ * Manages the most recent stay for a client.
+ * Allows updating the arrival and departure dates, or deleting the record entirely.
+ */
+export async function manageStay(
+  clientId: string,
+  stayIndex: number,
+  newArrivalDate: string,
+  newDepartureDate: string | null,
+  deleteRecord: boolean
+): Promise<void> {
+  const db = getFirestoreDb();
+  const clientRef = doc(db, "clients", clientId);
+
+  const clientSnap = await getDoc(clientRef);
+  if (!clientSnap.exists()) {
+    throw new Error("Client not found");
+  }
+
+  const clientData = clientSnap.data();
+  const clientName = `${clientData.first_name || ""} ${clientData.last_name || ""}`.trim();
+  const stays = (clientData.stays || []) as Array<{
+    arrivedAt: string;
+    departedAt: string | null;
+    arrivalEventId?: string;
+    departureEventId?: string;
+  }>;
+
+  if (stayIndex < 0 || stayIndex >= stays.length) {
+    throw new Error("Stay not found to manage");
+  }
+
+  const batch = writeBatch(db);
+  const stay = stays[stayIndex];
+
+  if (deleteRecord) {
+    // Delete corresponding events if they exist
+    if (stay.arrivalEventId) {
+      batch.delete(doc(db, "events", stay.arrivalEventId));
+    }
+    if (stay.departureEventId) {
+      batch.delete(doc(db, "events", stay.departureEventId));
+    }
+
+    // Remove the stay
+    stays.splice(stayIndex, 1);
+  } else {
+    // Update the stay
+    const arrivedAtISO = newArrivalDate.includes('T') ? newArrivalDate : new Date(newArrivalDate).toISOString();
+    const departedAtISO = newDepartureDate 
+      ? (newDepartureDate.includes('T') ? newDepartureDate : new Date(newDepartureDate).toISOString()) 
+      : null;
+
+    stay.arrivedAt = arrivedAtISO;
+    stay.departedAt = departedAtISO;
+
+    // Update corresponding events
+    const newArrivalDateStr = arrivedAtISO.split("T")[0];
+    if (stay.arrivalEventId) {
+      batch.update(doc(db, "events", stay.arrivalEventId), {
+        date: newArrivalDateStr,
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    if (stay.departureEventId && departedAtISO) {
+      const newDepartureDateStr = departedAtISO.split("T")[0];
+      const durationStr = formatStayDuration(arrivedAtISO, departedAtISO);
+      
+      batch.update(doc(db, "events", stay.departureEventId), {
+        date: newDepartureDateStr,
+        content: `${clientName} departed (Total stay: ${durationStr}).`,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
+  batch.update(clientRef, {
+    stays,
+    updated_at: serverTimestamp(),
+  });
+
+  await batch.commit();
+}
