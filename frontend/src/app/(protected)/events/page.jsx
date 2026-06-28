@@ -32,48 +32,35 @@ export default function EventsPage() {
       />
 
       <div className="relative mx-auto max-w-7xl">
-        <section className="mb-6 overflow-hidden rounded-[1.75rem] bg-[#2C6975] text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)]">
-          <div className="grid lg:grid-cols-[1fr_auto]">
-            <div className="relative overflow-hidden px-7 py-7 sm:px-10 sm:py-8 lg:px-11">
-              <div
-                aria-hidden="true"
-                className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
-              />
-              <div className="relative">
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="h-px w-10 bg-[#CDE0C9]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#DCEAD6]">
-                    Community coordination
-                  </p>
-                </div>
-                <h1 className="max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
-                  Meetings & Follow-ups
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:text-base">
-                  Keep participant conversations, reminders, and next steps
-                  organized in one calm, shared workspace.
-                </p>
-              </div>
+        <section className="relative mb-2 overflow-hidden rounded-[1.75rem] bg-[#2C6975] px-5 py-4 text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)] sm:px-6 sm:py-5">
+          <div
+            aria-hidden="true"
+            className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+          />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="max-w-3xl text-2xl font-bold tracking-[-0.035em] sm:text-3xl">
+                Meetings
+              </h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-5 text-white/78">
+                Keep participant meetings, reminders, and next steps, shared workspace.
+              </p>
             </div>
 
-            <div className="flex items-center justify-center border-t border-white/15 bg-[#245C66] lg:w-80 lg:border-l lg:border-t-0">
-              <div className="w-full px-6 py-6">
-                <div className="flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateMeetingModal(true)}
-                    className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-bold text-[#15383E] shadow-sm hover:brightness-95"
-                  >
-                    + Add new meeting
-                  </button>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCreateMeetingModal(true)}
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm hover:brightness-95"
+              >
+                + Add new meeting
+              </button>
             </div>
           </div>
         </section>
         <nav
           aria-label="Events views"
-          className="mt-6 rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]"
+          className="mt-2 rounded-2xl border border-white/80 bg-[#FFFDF8] p-2 shadow-[0_10px_25px_rgba(44,105,117,0.06)]"
         >
           <div role="tablist" className="grid grid-cols-2 gap-2 sm:inline-grid sm:min-w-80">
             {[
@@ -108,9 +95,9 @@ export default function EventsPage() {
           id="events-view-panel"
           role="tabpanel"
           aria-labelledby={`events-tab-${activeView}`}
-          className="mt-4"
+          className="mt-1"
         >
-          <div className="rounded-[1.25rem] bg-white/0 p-2">
+          <div className="rounded-[1.25rem] bg-white/0 p-0">
             {activeView === "calendar" ? (
               <EventCalendar refreshKey={refreshKey} />
             ) : (
@@ -125,7 +112,6 @@ export default function EventsPage() {
             <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/60 bg-[#E7F0E2] p-4 shadow-[0_24px_60px_rgba(21,56,62,0.24)]" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Create meeting">
               <div className="mb-3 flex items-center justify-between rounded-2xl bg-[#2C6975] px-4 py-3 text-white">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#CDE0C9]">Meeting workspace</p>
                   <h3 className="mt-0.5 text-lg font-bold">Create Meeting</h3>
                 </div>
 

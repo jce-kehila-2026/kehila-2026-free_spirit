@@ -442,9 +442,6 @@ export default function Navbar() {
             <span className="block text-base font-bold leading-tight text-[#173A40]">
               Free Spirit
             </span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6A8589]">
-              Kehila Programs
-            </span>
           </span>
 </Link>
 

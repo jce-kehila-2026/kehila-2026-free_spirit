@@ -501,21 +501,25 @@ const exportToCSV = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
-        <header className="mb-5 rounded-[1.75rem] bg-[#2C6975] text-white shadow-lg">        
-          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+        <header className="relative z-20 mb-5 rounded-[1.75rem] bg-[#2C6975] px-5 py-4 text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)] sm:px-6 sm:py-5">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-20 -top-24 -z-10 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+          />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <h1 className="mt-1.5 text-2xl font-bold tracking-[-0.035em] sm:text-3xl">Statistics &amp; reports</h1>
-              <p className="mt-1.5 text-sm leading-5 text-white/75">Overview of system metrics and program analytics</p>
+              <h1 className="max-w-3xl text-2xl font-bold tracking-[-0.035em] sm:text-3xl">Statistics &amp; reports</h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-5 text-white/78">Overview of system metrics and program analytics</p>
             </div>
             
             {/* אזור הכפתורים */}
-            <div className="relative flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="relative z-30 flex flex-wrap items-center gap-2 sm:justify-end">
               
               {/* כפתור הגדרות תצוגה */}
               <div>
                 <button
                   onClick={() => setIsDisplayMenuOpen(!isDisplayMenuOpen)}
-                  className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus:outline-none"
                 >
                   <Settings2 size={18} />
                   Customize
@@ -523,7 +527,7 @@ const exportToCSV = () => {
                 
                 {/* תפריט נפתח לבחירת גרפים */}
                 {isDisplayMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-slate-200 z-50 text-slate-800">
+                  <div className="absolute right-0 top-full z-[80] mt-3 w-64 rounded-2xl bg-white p-3 text-slate-800 shadow-xl ring-1 ring-slate-200">
                     <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Visible Widgets</p>
                     <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
                       {[
@@ -556,7 +560,7 @@ const exportToCSV = () => {
               {/* כפתור ייצוא */}
               <button
                 onClick={exportToCSV}
-                className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/20 focus:outline-none"
+                className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus:outline-none"
               >
                 <Download size={18} />
                 Export CSV

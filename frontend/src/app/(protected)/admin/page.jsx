@@ -13,13 +13,19 @@ export default function AdminDashboardPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(220,234,214,0.72),_transparent_30%),linear-gradient(180deg,_#F7FAF5_0%,_#EEF5F7_100%)] px-4 py-8 sm:px-6 sm:py-10">
       <section className="mx-auto w-full max-w-6xl">
-        <header className="mb-5 rounded-[1.75rem] border border-white/80 bg-[#2C6975] px-5 py-4 text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)] sm:px-6 sm:py-5">
-          <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] sm:text-3xl">
-            Central admin dashboard
-          </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-5 text-white/75">
-            Manage user accounts and role assignments.
-          </p>
+        <header className="relative mb-5 overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#2C6975] px-5 py-4 text-white shadow-[0_14px_34px_rgba(44,105,117,0.10)] sm:px-6 sm:py-5">
+          <div
+            aria-hidden="true"
+            className="absolute -left-20 -top-24 h-72 w-72 rounded-full border-[48px] border-[#6BB2A0]/25"
+          />
+          <div className="relative min-w-0">
+            <h1 className="max-w-3xl text-2xl font-bold tracking-[-0.035em] sm:text-3xl">
+              Central admin dashboard
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-5 text-white/78">
+              Manage user accounts and role assignments.
+            </p>
+          </div>
         </header>
 
         <div className="grid max-w-xl gap-5">
