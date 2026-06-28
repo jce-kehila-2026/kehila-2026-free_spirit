@@ -31,7 +31,7 @@ export const navigationLinks = [
   },
   {
     href: "/events",
-    label: "Events & Follow-ups",
+    label: "Meetings",
     visibility: "authenticated",
     allowedRoles: [ROLE.ADMIN],
   },

@@ -187,9 +187,6 @@ export default function EventList({
           >
             <div className="mb-3 flex items-center justify-between rounded-2xl bg-[#2C6975] px-4 py-3 text-white">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#CDE0C9]">
-                  Meeting workspace
-                </p>
                 <h3 className="mt-0.5 text-lg font-bold">
                   Edit Meeting
                 </h3>

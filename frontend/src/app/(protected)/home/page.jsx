@@ -131,7 +131,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="px-4 pb-8 sm:px-6 sm:pb-12 lg:px-8">
+      <section className="px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8">
         <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#C9DFC5]">
           <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
             <div className="relative min-h-[340px] overflow-hidden bg-[linear-gradient(145deg,#BFD9C1_0%,#DCEAD6_55%,#B9D9D2_100%)] p-8 sm:p-12">
@@ -158,7 +158,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <section className="px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-7 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-10">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2C6975]">
