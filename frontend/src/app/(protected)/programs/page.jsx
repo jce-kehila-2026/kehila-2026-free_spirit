@@ -107,29 +107,52 @@ export default function ProgramsPage() {
       if (client && client.medical_profile) {
         const clientName = `${client.first_name || ""} ${client.last_name || ""}`.trim() || "Unknown Client";
         const med = client.medical_profile;
-        const formatDesc = (data) => Array.isArray(data) ? data.join(', ') : String(data);
+        const formatAllergies = (val) => {
+          if (!val) return "";
+          if (Array.isArray(val)) {
+            return val.map(a => [a.allergen, a.reaction_severity].filter(Boolean).join(" - ")).filter(Boolean).join(", ");
+          }
+          return String(val);
+        };
+
+        const formatMedications = (val) => {
+          if (!val) return "";
+          if (Array.isArray(val)) {
+            return val.map(m => [m.name, m.dose, m.frequency].filter(Boolean).join(" - ")).filter(Boolean).join(", ");
+          }
+          return String(val);
+        };
+
+        const formatDesc = (data) => Array.isArray(data) ? data.join(', ') : String(data || "");
 
         // פונקציית עזר לסינון ערכים שלא דורשים התייחסות ("ללא", "אין" וכו')
-        const isNone = (val) => {
-          if (!val || val.length === 0) return true;
-          const str = formatDesc(val).toLowerCase().trim();
-          return ['ללא', 'none', 'no', 'אין', 'n/a', '-'].includes(str);
+        const isNone = (formattedVal) => {
+          if (!formattedVal) return true;
+          const str = String(formattedVal).toLowerCase().trim();
+          return str === "" || ['ללא', 'none', 'no', 'אין', 'n/a', '-'].includes(str);
         };
 
         const alerts = [];
 
         // הוספת התרעות עם צבעים ואייקונים מותאמים
-        if (!isNone(med.allergies)) {
-          alerts.push({ label: 'Allergies', desc: formatDesc(med.allergies), color: 'text-red-800 bg-red-100 border-red-200', icon: '🐝' });
+        const allergiesStr = formatAllergies(med.allergies);
+        if (!isNone(allergiesStr)) {
+          alerts.push({ label: 'Allergies', desc: allergiesStr, color: 'text-red-800 bg-red-100 border-red-200', icon: '🐝' });
         }
-        if (!isNone(med.dietary_restrictions)) {
-          alerts.push({ label: 'Dietary', desc: formatDesc(med.dietary_restrictions), color: 'text-orange-800 bg-orange-100 border-orange-200', icon: '🍽️' });
+        
+        const dietaryStr = formatDesc(med.dietary_restrictions);
+        if (!isNone(dietaryStr)) {
+          alerts.push({ label: 'Dietary', desc: dietaryStr, color: 'text-orange-800 bg-orange-100 border-orange-200', icon: '🍽️' });
         }
-        if (!isNone(med.medications)) {
-          alerts.push({ label: 'Medications', desc: formatDesc(med.medications), color: 'text-blue-800 bg-blue-100 border-blue-200', icon: '💊' });
+        
+        const medsStr = formatMedications(med.medications);
+        if (!isNone(medsStr)) {
+          alerts.push({ label: 'Medications', desc: medsStr, color: 'text-blue-800 bg-blue-100 border-blue-200', icon: '💊' });
         }
-        if (!isNone(med.medical_conditions_checklist)) {
-          alerts.push({ label: 'Conditions', desc: formatDesc(med.medical_conditions_checklist), color: 'text-purple-800 bg-purple-100 border-purple-200', icon: '🩺' });
+        
+        const conditionsStr = formatDesc(med.medical_conditions_checklist);
+        if (!isNone(conditionsStr)) {
+          alerts.push({ label: 'Conditions', desc: conditionsStr, color: 'text-purple-800 bg-purple-100 border-purple-200', icon: '🩺' });
         }
 
         // אם יש לחניך לפחות התרעה אחת אמיתית, נוסיף אותו לרשימה

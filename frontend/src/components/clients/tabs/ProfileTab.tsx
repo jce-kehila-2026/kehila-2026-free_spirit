@@ -146,9 +146,9 @@ export default function ProfileTab({ client, isEditable }: ProfileTabProps) {
             isOpen={accordions.open.demographics}
             onToggle={() => accordions.toggle('demographics')}
             hasError={!!(
-              errors.passport_id || errors.passport_number || errors.passport_country ||
+              errors.passport_id || errors.passport_country ||
               errors.citizenship || errors.dob || errors.gender || errors.education_status ||
-              errors.referrer || errors.address || errors.home_address || errors.cohabitants ||
+              errors.referrer || errors.address || errors.home_address || errors.household_members ||
               errors.diagnosis || errors.personal_notes
             )}
           >
@@ -158,14 +158,6 @@ export default function ProfileTab({ client, isEditable }: ProfileTabProps) {
                   id="profile-passport_id" type="text" placeholder="e.g. 123456789" readOnly={!isEditable}
                   className={isEditable ? inputCls(!!errors.passport_id) : VIEW_INPUT_CLS}
                   {...register("passport_id")}
-                />
-              </FieldWrapper>
-
-              <FieldWrapper label="Passport Number" htmlFor="profile-passport_number" error={errors.passport_number?.message}>
-                <input
-                  id="profile-passport_number" type="text" placeholder="e.g. A12345678" readOnly={!isEditable}
-                  className={isEditable ? inputCls(!!errors.passport_number) : VIEW_INPUT_CLS}
-                  {...register("passport_number")}
                 />
               </FieldWrapper>
 
@@ -245,11 +237,11 @@ export default function ProfileTab({ client, isEditable }: ProfileTabProps) {
               </div>
 
               <div className="sm:col-span-2">
-                <FieldWrapper label="Cohabitants" htmlFor="profile-cohabitants" error={errors.cohabitants?.message}>
+                <FieldWrapper label="Household Members" htmlFor="profile-household_members" error={errors.household_members?.message}>
                   <textarea
-                    id="profile-cohabitants" placeholder="List names and relationships..." readOnly={!isEditable}
-                    className={isEditable ? textareaCls(!!errors.cohabitants) : VIEW_TEXTAREA_CLS}
-                    {...register("cohabitants")}
+                    id="profile-household_members" placeholder="List names and relationships..." readOnly={!isEditable}
+                    className={isEditable ? textareaCls(!!errors.household_members) : VIEW_TEXTAREA_CLS}
+                    {...register("household_members")}
                   />
                 </FieldWrapper>
               </div>

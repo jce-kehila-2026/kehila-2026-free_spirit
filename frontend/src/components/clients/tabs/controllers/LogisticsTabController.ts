@@ -12,7 +12,11 @@ import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { updateClientDoc } from "@/firebase/clientDbService";
 
 // ─── Tab-level form schema ────────────────────────────────────────────────────
-const logisticsTabSchema = z.object({
+// date_of_entry and purpose_of_visit are root-level Firestore document fields
+// that are visually and logically owned by the Logistics tab. They are
+// intentionally excluded from basicInfoSchema (Profile tab) to avoid
+// conflicting saves.
+export const logisticsTabSchema = z.object({
   date_of_entry:    z.string().optional().or(z.literal("")),
   purpose_of_visit: z.string().trim().max(500).optional().or(z.literal("")),
   logistics:        logisticsSchema,

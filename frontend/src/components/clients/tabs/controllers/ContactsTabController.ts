@@ -12,7 +12,9 @@ import { updateClientDoc } from "@/firebase/clientDbService";
 
 export const EMPTY_CONTACT: Contact = {
   contact_name: "",
-  relationship: "other",
+  // Empty string so superRefine correctly flags a blank card as invalid.
+  // Pre-filling "other" was masking the relationship-required check.
+  relationship: "",
   phone: "",
   email: "",
   is_emergency_contact: false,
@@ -28,11 +30,14 @@ export function useContactsTabController(client: ClientDoc) {
   // 1. Initialize Form Engine
   const form = useForm<ContactsFormData>({
     resolver: zodResolver(contactsStepSchema),
-    mode: "onTouched",
+    // "all" = validate on change AND on blur AND re-validate on submit.
+    // This ensures fields the user never touched are still caught when
+    // the Save button is pressed on a card that was added but left blank.
+    mode: "all",
     defaultValues: {
       contacts: (client.contacts ?? []).map((c) => ({
         contact_name: c.contact_name ?? "",
-        relationship: c.relationship ?? "other",
+        relationship: c.relationship ?? "",
         phone: c.phone ?? "",
         email: c.email ?? "",
         is_emergency_contact: c.is_emergency_contact ?? false,
@@ -55,13 +60,20 @@ export function useContactsTabController(client: ClientDoc) {
 
   // 3. Save Handler (Bridges to Tier 4)
   async function onSubmit(data: ContactsFormData) {
+    // Explicit full-form validation pass as a safety net.
+    // handleSubmit() already runs the resolver, but trigger() forces
+    // RHF to surface errors on every field — including untouched ones —
+    // which matters when a card is appended and saved without interaction.
+    const isValid = await form.trigger();
+    if (!isValid) return;
+
     setIsSaving(true);
     try {
       // updateClientDoc automatically sanitizes undefined values under the hood
       await updateClientDoc(client.id, {
         contacts: data.contacts,
       });
-      
+
       form.reset(data); // Resets isDirty state
       toast.success("Contacts saved successfully.");
     } catch (err) {

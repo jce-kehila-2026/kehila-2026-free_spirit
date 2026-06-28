@@ -76,7 +76,6 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
         client.email,
         client.phone,
         client.passport_id,
-        client.passport_number,
       ].some((field) => field?.toLowerCase().includes(q));
     });
 

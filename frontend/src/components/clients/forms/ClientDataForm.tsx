@@ -54,11 +54,10 @@ const PROFILE_COMPLETION_KEYS = [
   "referrer",
   "education_status",
   "diagnosis",
-  "passport_number",
   "passport_country",
   "citizenship",
   "home_address",
-  "cohabitants",
+  "household_members",
   "dependents",
 ] as const;
 

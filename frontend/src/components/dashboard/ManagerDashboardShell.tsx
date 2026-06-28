@@ -28,7 +28,6 @@ import { db } from "@/firebase/firebase";
 import {
   basicInfoSchema,
   CLIENT_STATUS,
-  MEDICAL_CLEARANCE_STATUS,
 } from "@/schema/clientSchema";
 
 const prospectSchema = basicInfoSchema
@@ -82,7 +81,6 @@ const dashboardClientSchema = z.object({
   dob: optionalDashboardString,
   phone: optionalDashboardString,
   passport_id: optionalDashboardString,
-  passport_number: optionalDashboardString,
   client_documents: z
     .array(
       z.object({
@@ -92,13 +90,8 @@ const dashboardClientSchema = z.object({
     .optional(),
   medical_profile: z
     .object({
-      medical_clearance_status: z
-        .enum(MEDICAL_CLEARANCE_STATUS)
-        .optional()
-        .or(z.literal("")),
-      insurance_company: optionalDashboardString,
-      medications: optionalDashboardString,
-      allergies: optionalDashboardString,
+      medications: z.array(z.unknown()).optional(),
+      allergies:   z.array(z.unknown()).optional(),
       healthcare_providers: z.array(z.unknown()).optional(),
     })
     .optional(),
@@ -1237,15 +1230,13 @@ export default function ManagerDashboardShell() {
           const hasIncompleteProfile =
             !client.dob ||
             !client.phone ||
-            (!client.passport_id && !client.passport_number);
+            !client.passport_id;
           const hasActiveDocument = client.client_documents?.some(
             (document) => document.status === "active",
           );
           const needsMedicalAttention =
-            client.medical_profile?.medical_clearance_status !== "approved" ||
-            !client.medical_profile?.insurance_company ||
-            !client.medical_profile?.medications ||
-            !client.medical_profile?.allergies ||
+            !client.medical_profile?.medications?.length ||
+            !client.medical_profile?.allergies?.length ||
             !client.medical_profile?.healthcare_providers?.length;
 
           if (hasIncompleteProfile) {

@@ -198,6 +198,7 @@ export default function ContactsStep() {
                   label="Contact Name"
                   htmlFor={`contact_name_${index}`}
                   error={ce?.contact_name?.message}
+                  required
                 >
                   <input
                     id={`contact_name_${index}`}
@@ -214,6 +215,7 @@ export default function ContactsStep() {
                   label="Relationship"
                   htmlFor={`relationship_${index}`}
                   error={ce?.relationship?.message}
+                  required
                 >
                   <select
                     id={`relationship_${index}`}
@@ -235,6 +237,7 @@ export default function ContactsStep() {
                   label="Phone"
                   htmlFor={`contact_phone_${index}`}
                   error={ce?.phone?.message}
+                  required
                 >
                   <input
                     id={`contact_phone_${index}`}
