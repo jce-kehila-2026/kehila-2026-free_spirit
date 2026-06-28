@@ -16,7 +16,6 @@ import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { getVisibleLinks, navigationLinks } from "@/config/accessControl";
-import { useNavigation } from "@/components/NavigationProvider/NavigationContext"; // Make sure this path matches where you saved it
 import { isAdminRole } from "@/firebase/authRoleService";
 
 import { auth, db } from "@/firebase/firebase";
@@ -30,9 +29,6 @@ export default function Navbar() {
   const router = useRouter();
 
   const pathname = usePathname();
-
-  // Consume dynamic navigation links and loading states from our global Firestore context
-  const { links, isLoadingLinks } = useNavigation();
 
   // Tracks the current Firebase session so the navbar can show auth-aware links.
 
@@ -231,32 +227,10 @@ export default function Navbar() {
 
   );
 
-  // Merge Firestore-managed navigation links with the local static fallback.
-  // Dynamic links stay first, while local-only links such as Personal Area remain
-  // available until matching Firestore navigation documents are created.
-  const mergeNavigationLinks = (baseLinks, dynamicLinks) => {
-    const baseByHref = new Map(baseLinks.map((link) => [link.href, link]));
-    const mergedDynamicLinks = dynamicLinks.map((link) => ({
-      ...baseByHref.get(link.href),
-      ...link,
-    }));
-    const dynamicByHref = new Map(
-      mergedDynamicLinks.map((link) => [link.href, link]),
-    );
-
-    return [
-      ...mergedDynamicLinks,
-      ...baseLinks.filter((link) => !dynamicByHref.has(link.href)),
-    ];
-  };
-
-  const currentNavigationSource =
-    isLoadingLinks || !links || links.length === 0
-      ? navigationLinks
-      : mergeNavigationLinks(navigationLinks, links);
-
+  // Navigation is now intentionally static. Canonical lowercase roles are
+  // resolved from accounts/{uid}; Firestore no longer drives navbar layout.
   const visibleLinks = getVisibleLinks(
-    currentNavigationSource,
+    navigationLinks,
     currentUser,
     userRole,
   );
@@ -442,9 +416,6 @@ export default function Navbar() {
             <span className="block text-base font-bold leading-tight text-[#173A40]">
               Free Spirit
             </span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6A8589]">
-              Kehila Programs
-            </span>
           </span>
 </Link>
 
@@ -471,7 +442,7 @@ export default function Navbar() {
         {/* Desktop Navigation Control */}
 <div className="hidden min-w-0 items-center gap-3 sm:flex">
 
-          {/* Dynamic role-based navigation loops - renders all tabs from accessControl */}
+          {/* Static role-based navigation loops - renders all tabs from accessControl */}
 <div className="flex items-center gap-1">
 
             {renderNavLinks()}

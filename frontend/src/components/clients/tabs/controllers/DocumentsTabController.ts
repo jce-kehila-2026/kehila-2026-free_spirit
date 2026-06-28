@@ -43,7 +43,6 @@ export function useDocumentsTabController(client: ClientDoc) {
     mode: "onTouched",
     defaultValues: {
       document_type: undefined,
-      expiration_date: "",
       manager_notes: "",
     },
   });
@@ -89,9 +88,7 @@ export function useDocumentsTabController(client: ClientDoc) {
         document_type: formData.document_type,
         file_name: file.name,
         file_url: downloadURL,
-        status: "active",
         uploaded_at: new Date().toISOString().split("T")[0],
-        expiration_date: formData.expiration_date ?? "",
         manager_notes: formData.manager_notes ?? "",
       };
 

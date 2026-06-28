@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-// Create the global Context object for navigation settings.
+// Retained compatibility context for callers outside the navbar while static
+// role-based navigation is verified across the shell.
 const NavigationContext = createContext(null);
 
 export function NavigationProvider({ children }) {
@@ -11,8 +12,8 @@ export function NavigationProvider({ children }) {
   const [linksError, setLinksError] = useState("");
 
   useEffect(() => {
-    // Dynamic permission documents are intentionally ignored. Static role
-    // enforcement now lives in ProtectedRoute and Firestore Security Rules.
+    // Navigation documents are intentionally ignored. Static role enforcement
+    // now lives in ProtectedRoute and Firestore Security Rules.
     const timeoutId = window.setTimeout(() => {
       setLinks([]);
       setLinksError("");

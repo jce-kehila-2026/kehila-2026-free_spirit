@@ -236,12 +236,6 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    match /navigation_links/{document=**} {
-      // The dynamic permissions dashboard is no longer part of route
-      // enforcement, but existing admin screens may still inspect/edit docs.
-      allow read, write: if isAdmin();
-    }
-
     match /statistics/{document=**} {
       allow read, write: if isAdmin();
     }

@@ -28,7 +28,6 @@ import { db } from "@/firebase/firebase";
 import {
   basicInfoSchema,
   CLIENT_STATUS,
-  DOCUMENT_STATUS_OPTIONS,
   MEDICAL_CLEARANCE_STATUS,
 } from "@/schema/clientSchema";
 
@@ -87,7 +86,7 @@ const dashboardClientSchema = z.object({
   client_documents: z
     .array(
       z.object({
-        status: z.enum(DOCUMENT_STATUS_OPTIONS),
+        status: z.string().optional(),
       }).passthrough(),
     )
     .optional(),

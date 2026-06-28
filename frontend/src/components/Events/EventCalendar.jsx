@@ -264,16 +264,13 @@ export default function EventCalendar({ refreshKey = 0 }) {
     );
   }
   return (
-    <section className="events-calendar mt-6 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
+    <section className="events-calendar mt-2 rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
       <div className="mb-6 flex items-start gap-4 border-b border-[#D7E3D5] pb-5">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2C6975] text-white">
           <CalendarDays aria-hidden="true" className="h-5 w-5" />
         </span>
         <div>
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
-            Shared view
-          </p>
-          <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">System Calendar</h2>
+          <h2 className="text-xl font-bold tracking-[-0.02em] text-[#6BB2A0]">System Calendar</h2>
           <p className="mt-2 text-sm text-[#60777B]">View all upcoming scheduled meetings by month, week, or day.</p>
         </div>
       </div>

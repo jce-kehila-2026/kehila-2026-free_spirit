@@ -1,13 +1,12 @@
 import { ROLE } from "@/firebase/authRoleService";
 
-// Static navigation fallback used before dynamic Firestore navigation links are loaded.
+// Static navigation links used by the shell.
 // Keep labels in English and align role-gated links with Firestore Security Rules.
 
 export const navigationLinks = [
   // Guest-only links are visible only when no authenticated session exists.
   { href: "/login", label: "Login", visibility: "guest" },
-  { href: "/signup", label: "Sign Up", visibility: "guest" },
-  { href: "/home", label: "Home", visibility: "guest" },
+  // Public visitors use the logo as the home link; open registration is invite-only.
 
   // Authenticated-only links are visible after login.
   {
@@ -32,7 +31,7 @@ export const navigationLinks = [
   },
   {
     href: "/events",
-    label: "Events & Follow-ups",
+    label: "Meetings",
     visibility: "authenticated",
     allowedRoles: [ROLE.ADMIN],
   },

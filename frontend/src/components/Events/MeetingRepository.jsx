@@ -332,10 +332,7 @@ export default function MeetingRepository({ refreshKey = 0 }) {
     <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_14px_34px_rgba(44,105,117,0.08)] sm:p-6">
       <div className="mb-5 flex flex-col justify-between gap-3 border-b border-[#D7E3D5] pb-5 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#6BB2A0]">
-            Meeting repository
-          </p>
-          <h2 className="text-xl font-bold tracking-[-0.02em] text-[#15383E]">
+          <h2 className="text-xl font-bold tracking-[-0.02em] text-[#6BB2A0]">
             All Meetings
           </h2>
           <p className="mt-2 text-sm text-[#60777B]">

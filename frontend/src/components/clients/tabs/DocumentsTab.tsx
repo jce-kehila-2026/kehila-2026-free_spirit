@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
-import { DOCUMENT_TYPE_OPTIONS, DOCUMENT_STATUS_OPTIONS, type DocumentStatus, type ClientDocument } from "@/schema/documentSchema";
+import { DOCUMENT_TYPE_OPTIONS, type ClientDocument } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // Import our Tier 2 Controller
@@ -14,14 +14,6 @@ interface DocumentsTabProps {
   client: ClientDoc;
 }
 
-// ─── Status badge styling ─────────────────────────────────────────────────────
-
-const STATUS_BADGE: Record<DocumentStatus, { bg: string; text: string; border: string }> = {
-  active:         { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-  expired:        { bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200"     },
-  pending_review: { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200"   },
-  rejected:       { bg: "bg-slate-100",  text: "text-slate-600",   border: "border-slate-200"   },
-};
 
 // ─── Helpers (Pure UI) ────────────────────────────────────────────────────────
 
@@ -40,15 +32,6 @@ function fileIcon(fileName: string) {
   if (ext === "pdf") return "📄";
   if (["jpg", "jpeg", "png", "webp", "heic"].includes(ext ?? "")) return "🖼️";
   return "📎";
-}
-
-function inputCls(hasError: boolean) {
-  return [
-    "w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-800 outline-none",
-    "placeholder:text-slate-400 transition-colors duration-150",
-    "focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1",
-    hasError ? "border-red-400 bg-red-50 focus:ring-red-400" : "border-slate-300 bg-white hover:border-slate-400",
-  ].join(" ");
 }
 
 function selectCls(hasError: boolean) {
@@ -82,8 +65,6 @@ function FieldWrapper({
 // ─── DocumentRow ──────────────────────────────────────────────────────────────
 
 function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelete: () => void; }) {
-  const badge = STATUS_BADGE[document.status] ?? STATUS_BADGE.active;
-
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-[#D7E3D5] bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center">
       <span className="text-xl" aria-hidden="true">{fileIcon(document.file_name)}</span>
@@ -92,15 +73,10 @@ function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelet
         <p className="truncate text-sm font-bold text-[#173A40]">{document.file_name}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <span className="text-xs text-slate-500">{humanize(document.document_type)}</span>
-          {document.expiration_date && <span className="text-xs text-slate-400">Expires: {formatDate(document.expiration_date)}</span>}
           {document.uploaded_at && <span className="text-xs text-slate-400">Uploaded: {formatDate(document.uploaded_at)}</span>}
         </div>
         {document.manager_notes && <p className="mt-1 truncate text-xs text-slate-400 italic">{document.manager_notes}</p>}
       </div>
-
-      <span className={["shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold", badge.bg, badge.text, badge.border].join(" ")}>
-        {humanize(document.status)}
-      </span>
 
       <div className="flex shrink-0 items-center gap-2">
         <a
@@ -123,9 +99,8 @@ function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelet
 // ─── Main Component (Tier 1: Dumb View) ───────────────────────────────────────
 
 export default function DocumentsTab({ client }: DocumentsTabProps) {
-  // Wire up the controller
   const { form, docs, uploadState, actions } = useDocumentsTabController(client);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = form;
+  const { formState: { errors, isSubmitting } } = form;
 
   const isUploading = uploadState.isLoading || isSubmitting || uploadState.uploadProgress !== null;
 
@@ -155,14 +130,73 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
         </div>
       </div>
 
-      {/* ════ Section 2: Upload form ════ */}
-      <form onSubmit={handleSubmit(actions.onSubmit)} noValidate>
-        <div className="overflow-hidden rounded-[1.5rem] border border-[#D7E3D5] bg-white shadow-sm">
-          <div className="border-b border-[#D7E3D5] bg-[#F7FAF5] px-6 py-4 sm:px-8">
-            <h2 className="text-base font-bold text-[#173A40]">Upload New Document</h2>
-            <p className="mt-0.5 text-sm text-slate-500">PDF, JPEG, PNG, WebP, or HEIC · Max 10 MB</p>
-          </div>
+      {/* ════ Section 2: Collapsible upload form ════ */}
+      <UploadSection
+        form={form}
+        errors={errors}
+        isUploading={isUploading}
+        uploadState={uploadState}
+        actions={actions}
+      />
+    </div>
+  );
+}
 
+// ─── UploadSection (isolated collapsible wrapper) ─────────────────────────────
+
+function UploadSection({
+  form,
+  errors,
+  isUploading,
+  uploadState,
+  actions,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  errors: any;
+  isUploading: boolean;
+  uploadState: {
+    isLoading: boolean;
+    uploadProgress: number | null;
+    fileError: string | null;
+    setFileError: (v: string | null) => void;
+    selectedFile: File | null;
+    setSelectedFile: (v: File | null) => void;
+  };
+  actions: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onSubmit: (data: any) => Promise<void>;
+  };
+}) {
+  const { handleSubmit, register } = form;
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-[#D7E3D5] bg-white shadow-sm">
+      {/* Toggle header */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between border-b border-[#D7E3D5] bg-[#F7FAF5] px-6 py-4 sm:px-8 hover:bg-[#EEF4EC] transition-colors"
+        aria-expanded={isOpen}
+      >
+        <div className="text-left">
+          <h2 className="text-base font-bold text-[#173A40]">Upload New Document</h2>
+          <p className="mt-0.5 text-sm text-slate-500">PDF, JPEG, PNG, WebP, or HEIC · Max 10 MB</p>
+        </div>
+        <span
+          className="ml-4 shrink-0 text-lg text-[#2C6975] transition-transform duration-200"
+          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          aria-hidden="true"
+        >
+          ▾
+        </span>
+      </button>
+
+      {/* Collapsible body */}
+      {isOpen && (
+        <form onSubmit={handleSubmit(actions.onSubmit)} noValidate>
           <div className="space-y-5 p-6 sm:p-8">
             {/* File picker */}
             <div className="flex flex-col gap-1">
@@ -213,7 +247,7 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
               )}
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5">
               <FieldWrapper label="Document Type" htmlFor="doc-type" error={errors.document_type?.message} required>
                 <select id="doc-type" className={selectCls(!!errors.document_type)} {...register("document_type")}>
                   <option value="">Select type…</option>
@@ -221,12 +255,8 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
                 </select>
               </FieldWrapper>
 
-              <FieldWrapper label="Expiration Date" htmlFor="doc-expiration" error={errors.expiration_date?.message}>
-                <input id="doc-expiration" type="date" className={inputCls(!!errors.expiration_date)} {...register("expiration_date")} />
-              </FieldWrapper>
-
-              <div className="sm:col-span-2">
-                <FieldWrapper label="Manager Notes" htmlFor="doc-notes" error={errors.manager_notes?.message}>
+              <div>
+                <FieldWrapper label="Notes" htmlFor="doc-notes" error={errors.manager_notes?.message}>
                   <textarea
                     id="doc-notes" rows={3} placeholder="Any context about this document (optional)"
                     className={[
@@ -266,21 +296,8 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
               {isUploading ? "Uploading…" : "Upload Document"}
             </button>
           </div>
-        </div>
-      </form>
-
-      {/* ════ Section 3: Status legend ════ */}
-      <div className="flex flex-wrap gap-3 px-1">
-        <p className="w-full text-xs font-semibold text-slate-400 uppercase tracking-wide">Status legend</p>
-        {DOCUMENT_STATUS_OPTIONS.map((s) => {
-          const b = STATUS_BADGE[s];
-          return (
-            <span key={s} className={["rounded-full border px-2.5 py-0.5 text-xs font-semibold", b.bg, b.text, b.border].join(" ")}>
-              {humanize(s)}
-            </span>
-          );
-        })}
-      </div>
+        </form>
+      )}
     </div>
   );
 }
