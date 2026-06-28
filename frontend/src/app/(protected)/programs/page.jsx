@@ -37,6 +37,8 @@ export default function ProgramsPage() {
   const [updateError, setUpdateError] = useState('');
   const [selectedYear, setSelectedYear] = useState(null);
   const [showProgramAddSuccess, setShowProgramAddSuccess] = useState(false);
+  const [isMedicalExpanded, setIsMedicalExpanded] = useState(false);
+  const [isParticipantsExpanded, setIsParticipantsExpanded] = useState(false);
 
   const availableYears = useMemo(() => {
     const years = programs.map(p => {
@@ -94,39 +96,50 @@ export default function ProgramsPage() {
   }, [allClients, selectedProgram]);
 
   // --- 3. חישוב התראות רפואיות מפורטות ---
-  const programMedicalAlerts = useMemo(() => {
+ // --- 3. חישוב התראות רפואיות מפורטות (מקובץ לפי חניך) ---
+  const groupedMedicalAlerts = useMemo(() => {
     if (!selectedProgram || !Array.isArray(selectedProgram.participant_ids)) return [];
     
-    const detailedAlerts = [];
+    const grouped = [];
 
-    // עוברים רק על הלקוחות שמשובצים לתוכנית הזו
     selectedProgram.participant_ids.forEach(participantId => {
       const client = allClients.find(c => c.id === participantId);
       if (client && client.medical_profile) {
-        // מחלצים את השם המלא של הלקוח
         const clientName = `${client.first_name || ""} ${client.last_name || ""}`.trim() || "Unknown Client";
         const med = client.medical_profile;
-
-        // פונקציית עזר חכמה: מטפלת גם במערכים וגם בטקסט רגיל כדי למנוע קריסות
         const formatDesc = (data) => Array.isArray(data) ? data.join(', ') : String(data);
 
-        // בודקים כל סעיף ומשתמשים בפונקציה הבטוחה שלנו
-        if (med.allergies && med.allergies.length > 0) {
-          detailedAlerts.push({ id: `${client.id}-alg`, name: clientName, issue: 'Allergies', desc: formatDesc(med.allergies) });
+        // פונקציית עזר לסינון ערכים שלא דורשים התייחסות ("ללא", "אין" וכו')
+        const isNone = (val) => {
+          if (!val || val.length === 0) return true;
+          const str = formatDesc(val).toLowerCase().trim();
+          return ['ללא', 'none', 'no', 'אין', 'n/a', '-'].includes(str);
+        };
+
+        const alerts = [];
+
+        // הוספת התרעות עם צבעים ואייקונים מותאמים
+        if (!isNone(med.allergies)) {
+          alerts.push({ label: 'Allergies', desc: formatDesc(med.allergies), color: 'text-red-800 bg-red-100 border-red-200', icon: '🐝' });
         }
-        if (med.dietary_restrictions && med.dietary_restrictions.length > 0) {
-          detailedAlerts.push({ id: `${client.id}-diet`, name: clientName, issue: 'Dietary', desc: formatDesc(med.dietary_restrictions) });
+        if (!isNone(med.dietary_restrictions)) {
+          alerts.push({ label: 'Dietary', desc: formatDesc(med.dietary_restrictions), color: 'text-orange-800 bg-orange-100 border-orange-200', icon: '🍽️' });
         }
-        if (med.medications && med.medications.length > 0) {
-          detailedAlerts.push({ id: `${client.id}-meds`, name: clientName, issue: 'Medications', desc: formatDesc(med.medications) });
+        if (!isNone(med.medications)) {
+          alerts.push({ label: 'Medications', desc: formatDesc(med.medications), color: 'text-blue-800 bg-blue-100 border-blue-200', icon: '💊' });
         }
-        if (med.medical_conditions_checklist && med.medical_conditions_checklist.length > 0) {
-          detailedAlerts.push({ id: `${client.id}-cond`, name: clientName, issue: 'Conditions', desc: formatDesc(med.medical_conditions_checklist) });
+        if (!isNone(med.medical_conditions_checklist)) {
+          alerts.push({ label: 'Conditions', desc: formatDesc(med.medical_conditions_checklist), color: 'text-purple-800 bg-purple-100 border-purple-200', icon: '🩺' });
+        }
+
+        // אם יש לחניך לפחות התרעה אחת אמיתית, נוסיף אותו לרשימה
+        if (alerts.length > 0) {
+          grouped.push({ id: client.id, name: clientName, alerts });
         }
       }
     });
 
-    return detailedAlerts;
+    return grouped;
   }, [allClients, selectedProgram]);
 
   useEffect(() => {
@@ -840,39 +853,92 @@ const handleProgramCreated = async () => {
                     </div>
                   )}
                 </div>
-
-                {/* התראות רפואיות - מופיע תמיד */}
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3 text-amber-800 font-bold text-[11px] uppercase tracking-[0.18em]">
-                    ⚠️ Medical & Safety Alerts
+               {/* התראות רפואיות - עם כפתור ייצוא CSV ושורות דינמיות */}
+               {/* התראות רפואיות - שורות דינמיות שמתרחבות באופן מלא לפי המלל */}
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm transition-all">
+                  <div
+                    onClick={() => setIsMedicalExpanded(!isMedicalExpanded)}
+                    className="flex w-full items-center justify-between cursor-pointer select-none"
+                  >
+                    {/* צד ימין - כותרת ותגית מספר התראות */}
+                    <div className="flex items-center gap-2 text-amber-800 font-bold text-[11px] uppercase tracking-[0.18em]">
+                      <span>⚠️ Medical & Safety Alerts</span>
+                      {groupedMedicalAlerts.length > 0 && (
+                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900">
+                          {groupedMedicalAlerts.length}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* צד שמאל - כפתור הורדה וטקסט כווץ/הרחב */}
+                    <div className="flex items-center gap-3">
+                      {groupedMedicalAlerts.length > 0 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // מונע את סגירת האקורדיון בזמן ההורדה
+                            exportProgramParticipantsCSV();
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-200/50 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors border border-amber-300/50"
+                          title="Export Medical List to CSV"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Export CSV
+                        </button>
+                      )}
+                      <span className="text-xs font-bold opacity-60 text-amber-800">
+                        {isMedicalExpanded ? '▲' : '▼'}
+                      </span>
+                    </div>
                   </div>
                   
-                  {programMedicalAlerts.length > 0 ? (
-                    <ul className="space-y-3">
-                      {programMedicalAlerts.map((alert) => (
-                        <li key={alert.id} className="text-sm text-amber-900 flex items-start gap-2.5 bg-amber-100/50 p-2.5 rounded-xl border border-amber-100/80">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-2"></span>
-                          <div className="flex-1">
-                            <span className="font-bold text-amber-950">{alert.name}</span>
-                            <span className="text-amber-700/60 mx-1.5">•</span>
-                            <span className="font-semibold text-amber-800">{alert.issue}:</span> 
-                            <span className="text-amber-900 ml-1 block mt-0.5 text-[13px]">{alert.desc}</span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-xl bg-white/60 px-4 py-3 border border-amber-100/50">
-                      <span className="text-sm font-medium text-amber-700/80">
-                        No medical alerts reported for the enrolled participants.
-                      </span>
+                  {/* תוכן האקורדיון */}
+                  {isMedicalExpanded && (
+                    <div className="mt-4 animate-in fade-in duration-200">
+                      {groupedMedicalAlerts.length > 0 ? (
+                        <div className="space-y-4">
+                          {groupedMedicalAlerts.map((client) => (
+                            <div key={client.id} className="bg-white rounded-xl p-4 shadow-sm border border-amber-100/80">
+                              <h4 className="font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">{client.name}</h4>
+                              
+                              <div className="space-y-2">
+                                {client.alerts.map((alert, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`flex flex-col sm:flex-row sm:items-start gap-3 p-2.5 rounded-xl border w-full ${alert.color}`}
+                                  >
+                                    {/* תגית סוג ההתראה - מיושרת לחלק העליון עם sm:mt-0.5 כדי להיראות טוב לצד טקסט ארוך */}
+                                    <span className="text-[10px] font-bold tracking-wider uppercase bg-white/50 px-2 py-0.5 rounded-md w-fit shrink-0 opacity-70 sm:mt-0.5">
+                                      {alert.label}
+                                    </span>
+                                    
+                                    {/* פירוט ההתראה - ללא הגבלת שורות, שובר שורות ומילים ארוכות בצורה טבעית */}
+                                    <span className="text-xs sm:text-sm font-extrabold text-slate-900 leading-relaxed flex-1 break-words whitespace-normal">
+                                      {alert.desc}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 rounded-xl bg-white/60 px-4 py-3 border border-amber-100/50">
+                          <span className="text-sm font-medium text-amber-700/80">
+                            No active medical alerts for the enrolled participants.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {/* רשימת משתתפים */}
-                <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5">
-                  <div className="flex items-center justify-between gap-4">
+                {/* רשימת משתתפים - קורסת בלחיצה לחסכון בשטח */}
+                <div className="rounded-2xl border border-[#D7E3D5] bg-[#FFFDF8] p-5 shadow-sm transition-all">
+                  <div 
+                    onClick={() => setIsParticipantsExpanded(!isParticipantsExpanded)}
+                    className="flex items-center justify-between gap-4 cursor-pointer select-none"
+                  >
                     <div className="flex items-center gap-3">
                       <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#6A8589]">
                         <UsersRound className="h-4 w-4 text-[#6BB2A0]" />
@@ -882,38 +948,54 @@ const handleProgramCreated = async () => {
                         {registeredParticipants.length}
                       </span>
                     </div>
-                    {/* כפתור ייצוא נתונים רפואיים למשתתפים */}
-                    {registeredParticipants.length > 0 && (
-                      <button 
-                        onClick={exportProgramParticipantsCSV}
-                        className="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors border border-sky-200"
-                        title="Export Medical List to CSV"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Export CSV
-                      </button>
-                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      {registeredParticipants.length > 0 && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // מונע את סגירת הרשימה בזמן לחיצה על הורדה
+                            exportProgramParticipantsCSV();
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors border border-sky-200"
+                          title="Export Medical List to CSV"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Export CSV
+                        </button>
+                      )}
+                      <span className="text-xs font-bold text-slate-400">
+                        {isParticipantsExpanded ? '▲' : '▼'}
+                      </span>
+                    </div>
                   </div>
-                  {registeredParticipants.length === 0 ? (
-                    <p className="mt-4 text-sm text-[#6A8589]">No participants have been added yet.</p>
-                  ) : (
-                    <ul className="mt-4 space-y-2">
-                      {registeredParticipants.map((participant) => (
-                        <li key={participant.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-800">
-                          <span>{participant.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setParticipantToRemove(participant)}
-                            className="text-red-500 hover:text-red-700 transition"
-                            title="Remove participant"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+
+                  {isParticipantsExpanded && (
+                    <div className="mt-4 animate-in fade-in duration-200">
+                      {registeredParticipants.length === 0 ? (
+                        <p className="text-sm text-[#6A8589]">No participants have been added yet.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {registeredParticipants.map((participant) => (
+                            <li key={participant.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-800">
+                              <span>{participant.name}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // מונע טריגר לאקורדיון בזמן מחיקה
+                                  setParticipantToRemove(participant);
+                                }}
+                                className="text-red-500 hover:text-red-700 transition"
+                                title="Remove participant"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   )}
                 </div>
 
