@@ -19,21 +19,21 @@ import freeSpiritLogo from "../../../../docs/design-reference/image.png";
 
 const programAreas = [
   {
-    title: "Meaningful programs",
+    title: "Therapeutic programs",
     description:
-      "Thoughtful experiences that invite participation, discovery, and practical growth.",
+      "Structured support for teens and young adults navigating emotional, social, or developmental challenges.",
     icon: Compass,
   },
   {
-    title: "Supportive relationships",
+    title: "Experiential growth",
     description:
-      "A community where people can be known, encouraged, and supported without judgment.",
+      "Outdoor adventures, creative workshops, volunteering, and practical life-skills experiences.",
     icon: HeartHandshake,
   },
   {
-    title: "Room to grow",
+    title: "Community and care",
     description:
-      "Opportunities to build confidence, try something new, and move at a personal pace.",
+      "A supportive peer community guided by mentors, therapists, educators, and staff.",
     icon: Sprout,
   },
 ];
@@ -41,20 +41,22 @@ const programAreas = [
 const communityPillars = [
   {
     number: "01",
-    title: "Meet people where they are",
-    description: "Care begins with listening, patience, and genuine connection.",
+    title: "Meet each person where they are",
+    description: "Care begins with acceptance, compassion, and a pace that fits.",
     icon: Heart,
   },
   {
     number: "02",
-    title: "Grow through community",
-    description: "Shared experiences make room for confidence and belonging.",
+    title: "Build resilience through real life",
+    description:
+      "Growth takes shape through therapy, life skills, nature, community, and daily practice.",
     icon: UsersRound,
   },
   {
     number: "03",
-    title: "Make space for possibility",
-    description: "Every next step can hold purpose, discovery, and hope.",
+    title: "Move forward with purpose",
+    description:
+      "Each step can build confidence, independence, connection, and hope.",
     icon: Sparkles,
   },
 ];
@@ -62,22 +64,24 @@ const communityPillars = [
 const startingPoints = [
   {
     title: "Programs",
-    description: "Stay close to the experiences and activities you are part of.",
+    description: "Follow program details, timelines, and support plans.",
     icon: Sparkles,
   },
   {
     title: "Updates",
-    description: "Find important community information in one familiar place.",
+    description: "Find important program and community updates in one place.",
     icon: MessageCircleMore,
   },
   {
     title: "Meetings",
-    description: "Keep upcoming conversations and shared time within reach.",
+    description:
+      "Keep conversations, reminders, summaries, and follow-ups organized.",
     icon: CalendarDays,
   },
   {
     title: "Next steps",
-    description: "Return with a clear sense of where to continue from here.",
+    description:
+      "Turn each meeting into clear actions for continued care and growth.",
     icon: Route,
   },
 ];
@@ -142,15 +146,15 @@ function HomePageContent() {
 
               <div className="relative my-14 max-w-3xl">
                 <p className="mb-5 text-base font-semibold text-[#CDE0C9]">
-                  Welcome. We are glad you are here.
+                  Welcome to Free Spirit.
                 </p>
                 <h1 className="text-4xl font-bold leading-[1.04] tracking-[-0.04em] sm:text-5xl lg:text-[4.25rem]">
-                  A place to find your people and your next step.
+                  Where healing, growth, and purpose begin.
                 </h1>
                 <p className="mt-7 max-w-xl text-base leading-7 text-white/80 sm:text-lg">
-                  This community is built on real relationships, shared
-                  experiences, and the belief that everyone deserves room to
-                  grow in their own way.
+                  Free Spirit supports teens and young adults through
+                  therapeutic programs that bring together care, life skills,
+                  nature, and community.
                 </p>
               </div>
 
@@ -183,11 +187,11 @@ function HomePageContent() {
                   </div>
                   <div className="mt-7 border-t border-[#CDE0C9] pt-6 text-center">
                     <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2C6975]">
-                      Together, with purpose
+                      CARE, COURAGE, PURPOSE
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[#5C7478]">
-                      A community shaped by courage, care, and meaningful
-                      choice.
+                      Clinical insight, community, and real-world practice in
+                      one supportive journey.
                     </p>
                   </div>
                 </div>
@@ -205,7 +209,7 @@ function HomePageContent() {
                 How we show up
               </p>
               <h2 className="mt-3 text-2xl font-bold tracking-[-0.025em] text-[#15383E] sm:text-3xl">
-                Community is something we practice.
+                Support begins with meeting each person where they are.
               </h2>
             </div>
 
@@ -257,14 +261,14 @@ function HomePageContent() {
                 What we do
               </p>
               <h2 className="mt-4 text-3xl font-bold tracking-[-0.035em] text-[#15383E] sm:text-4xl">
-                We create experiences where connection can become growth.
+                We create therapeutic experiences where growth becomes part of
+                everyday life.
               </h2>
             </div>
             <p className="max-w-2xl text-base leading-7 text-[#4E6C70] sm:text-lg">
-              Free Spirit helps people connect, participate, and find momentum
-              through meaningful programs and community experiences. The work
-              is practical and personal: showing up, building trust, and
-              discovering what becomes possible together.
+              Free Spirit helps young people build resilience, rediscover joy,
+              and take meaningful steps through clinical support, experiential
+              learning, and community life.
             </p>
           </div>
 
@@ -296,17 +300,15 @@ function HomePageContent() {
               Your space to begin
             </p>
             <h2 className="mt-4 max-w-xl text-3xl font-bold tracking-[-0.035em] text-[#15383E] sm:text-4xl">
-              Come back to what matters, without having to start over.
+              Everything important, gathered in one place.
             </h2>
             <p className="mt-6 max-w-xl text-base leading-7 text-[#536F73] sm:text-lg">
-              This area is a steady home base for your connection to Free
-              Spirit. It helps you stay oriented to programs, updates,
-              meetings, and the next useful step in your journey.
+              Stay connected to programs, updates, meetings, forms, reminders,
+              and follow-ups so each care journey stays clear and supported.
             </p>
             <div className="mt-8 rounded-2xl border-l-4 border-[#6BB2A0] bg-white/70 px-5 py-4">
               <p className="text-sm font-semibold leading-6 text-[#315B62]">
-                Take what you need today. The rest will still be here when you
-                return.
+                Keep care organized. Keep every next step within reach.
               </p>
             </div>
           </div>
@@ -389,18 +391,19 @@ function HomePageContent() {
                 Community in action
               </p>
               <h2 className="mt-4 text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
-                Small moments of participation can change how a person feels
-                they belong.
+                Real change happens when care meets everyday life.
               </h2>
               <p className="mt-6 text-base leading-7 text-white/78">
-                Community comes alive when people are invited in, given room to
-                contribute, and supported as they try. A conversation, a shared
-                activity, or one brave next step can become the beginning of
-                something lasting.
+                Free Spirit brings therapy, mentorship, community, and
+                experiential learning together so young people can practice
+                resilience, connection, and independence in real time.
               </p>
               <div className="mt-9 flex items-center gap-3 border-t border-white/20 pt-7 text-sm font-semibold text-[#E0ECDE]">
                 <UsersRound aria-hidden="true" className="h-5 w-5" />
-                <span>Connection grows through participation.</span>
+                <span>
+                  Every conversation, program, and follow-up is part of the
+                  journey.
+                </span>
               </div>
             </div>
           </div>
