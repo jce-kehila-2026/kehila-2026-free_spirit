@@ -16,7 +16,6 @@ export const CUSTOM_FIELD_TABS = [
   "questionnaire",
   "legal_consents",
   "documents",
-  "financial_aid",
 ] as const;
 
 export const customFieldValueSchema = z.union([

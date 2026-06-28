@@ -6,7 +6,6 @@ import type { ClientDoc } from "@/components/clients/list/ClientList";
 import ProfileTab from "@/components/clients/tabs/ProfileTab";
 import MedicalTab from "@/components/clients/tabs/MedicalTab";
 import ContactsTab from "@/components/clients/tabs/ContactsTab";
-import FinancialAidTab from "@/components/clients/tabs/FinancialAidTab";
 import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
 
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
@@ -20,7 +19,6 @@ export const CLIENT_DATA_FORM_TABS = [
   { id: "questionnaire", label: "Questionnaire" },
   { id: "legal", label: "Legal Consents" },
   { id: "documents", label: "Documents" },
-  { id: "financial", label: "Financial Aid" },
 ] as const;
 
 export type ClientDataFormTabId = (typeof CLIENT_DATA_FORM_TABS)[number]["id"];
@@ -39,7 +37,6 @@ const TAB_COMPONENTS: Record<ClientDataFormTabId, ComponentType<BaseTabProps>> =
   questionnaire: QuestionnaireTab as ComponentType<BaseTabProps>,
   legal: LegalConsentsTab as ComponentType<BaseTabProps>,
   documents: DocumentsTab as ComponentType<BaseTabProps>,
-  financial: FinancialAidTab as ComponentType<BaseTabProps>,
 };
 
 const PROFILE_COMPLETION_KEYS = [
@@ -104,8 +101,6 @@ function isTabComplete(client: ClientDoc, tabId: ClientDataFormTabId): boolean {
       return hasFilledValue(client.legal_consents);
     case "documents":
       return hasFilledValue(client.client_documents);
-    case "financial":
-      return hasFilledValue(client.financial_aid_applications);
   }
 }
 

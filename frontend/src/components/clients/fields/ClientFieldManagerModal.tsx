@@ -25,7 +25,6 @@ const TAB_LABELS: Record<CustomFieldTab, string> = {
   questionnaire: "Questionnaire",
   legal_consents: "Legal Consents",
   documents: "Documents",
-  financial_aid: "Financial Aid",
 };
 
 interface ClientFieldManagerModalProps {

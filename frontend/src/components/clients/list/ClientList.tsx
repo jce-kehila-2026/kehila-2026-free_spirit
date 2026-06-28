@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { type Timestamp } from "firebase/firestore";
-import type { ClientFormInput, FinancialAidApplication, ClientDocument } from "@/schema/clientSchema";
+import type { ClientFormInput, ClientDocument } from "@/schema/clientSchema";
 import { IconArchive, IconExport } from "@/components/ui/Icons";
 import ClientRow from "./ClientRow";
 import FilterableHeaderCell from "./FilterableHeaderCell";
@@ -13,7 +13,7 @@ export interface ClientDoc extends ClientFormInput {
   id: string;
   created_at?: Timestamp;
   updated_at?: Timestamp;
-  financial_aid_applications?: FinancialAidApplication[];
+
   client_documents?: ClientDocument[];
 }
 

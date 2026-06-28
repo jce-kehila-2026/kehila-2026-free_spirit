@@ -153,7 +153,7 @@ export const basicInfoSchema = clientBaseSchema.pick({
 });
 export type BasicInfoFormData = z.infer<typeof basicInfoSchema>;
 
-export type { FinancialAidApplication } from "./financialAidSchema";
+
 export type { ClientDocument } from "./documentSchema";
 
 // ============================================================================
@@ -205,18 +205,7 @@ export type {
   MedicalProfileFormData 
 } from "../schema/medicalSchema";
 
-// From Financial Domain
-export { 
-  FINANCIAL_AID_STATUS, 
-  paymentInstallmentSchema, 
-  financialAidApplicationSchema, 
-  financialAidTabSchema 
-} from "../schema/financialAidSchema";
-export type { 
-  FinancialAidStatus, 
-  PaymentInstallment, 
-  FinancialAidTabFormData 
-} from "../schema/financialAidSchema";
+
 
 // From Document Domain
 export { 
