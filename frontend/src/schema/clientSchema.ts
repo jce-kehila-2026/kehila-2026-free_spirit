@@ -188,7 +188,6 @@ export type {
 // From Document Domain
 export { 
   DOCUMENT_TYPE_OPTIONS, 
-  DOCUMENT_STATUS_OPTIONS, 
   clientDocumentSchema, 
   uploadDocumentFormSchema 
 } from "../schema/documentSchema";
