@@ -3,6 +3,7 @@
 import { useFieldArray, Control, UseFormRegister, FieldErrors } from "react-hook-form";
 import { FINANCIAL_AID_STATUS, type FinancialAidTabFormData, type FinancialAidApplication, type PaymentInstallment } from "@/schema/financialAidSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our Tier 2 Controller
 import { useFinancialAidTabController, EMPTY_APPLICATION, EMPTY_INSTALLMENT } from "./controllers/FinancialAidTabController";
@@ -314,6 +315,10 @@ export default function FinancialAidTab({ client, isEditable }: FinancialAidTabP
         </div>
 
         {/* ── Sticky footer ── */}
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+          <CustomFieldsSection tab="financial_aid" client={client} isEditable={isEditable} />
+        </div>
+
         {isEditable && (
           <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
             {isDirty ? (

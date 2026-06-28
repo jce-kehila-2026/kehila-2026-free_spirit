@@ -4,6 +4,7 @@ import { nameRegex, nameError, CLIENT_STATUS, GENDER_OPTIONS, EDUCATION_STATUS_O
 import { medicalProfileSchema } from "./medicalSchema"
 import { contactSchema } from "./contactSchema"
 import { dependentSchema, logisticsSchema, questionnaireSchema, legalConsentsSchema } from "./supplementarySchema"
+import { customFieldsSchema } from "./customFieldSchema"
 
 // ============================================================================
 // Stays Schema
@@ -92,6 +93,7 @@ const clientBaseSchema = z.object({
   questionnaire: questionnaireSchema.optional().default({}),
   legal_consents: legalConsentsSchema.optional().default({}),
   stays: z.array(staySchema).default([]),
+  custom_fields: customFieldsSchema.optional().default({}),
 
   // Soft-delete flag
   is_archived: z.boolean().default(false).optional(),
@@ -138,7 +140,7 @@ export const basicInfoSchema = clientBaseSchema.pick({
   passport_id: true, gender: true, address: true, dob: true, referrer: true,
   education_status: true, program_ids: true, diagnosis: true, personal_notes: true,
   passport_number: true, passport_country: true, citizenship: true, home_address: true,
-  cohabitants: true, dependents: true,
+  cohabitants: true, dependents: true, custom_fields: true,
 });
 export type BasicInfoFormData = z.infer<typeof basicInfoSchema>;
 

@@ -9,6 +9,7 @@ import ClientIntakeForm from "@/components/clients/intake/ClientIntakeForm";
 import ClientProfileDashboard from "@/components/clients/dashboard/ClientProfileDashboard";
 import ClientPageHeader from "@/components/clients/list/ClientPageHeader";
 import ClientFilterBar from "@/components/clients/list/ClientFilterBar";
+import ClientFieldManagerModal from "@/components/clients/fields/ClientFieldManagerModal";
 
 // TIER 2 - APPLICATION LAYER
 import { useClientManagementService } from "@/application/ClientManagementService"; 
@@ -30,6 +31,7 @@ export default function ClientsPage() {
   const [view, setView] = useState<View>("list");
   const [editingClient, setEditingClient] = useState<ClientDoc | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [isFieldManagerOpen, setIsFieldManagerOpen] = useState(false);
 
   // Application Layer - Live Firestore Data Stream
   const { 
@@ -85,6 +87,12 @@ export default function ClientsPage() {
           editingClient={editingClient} 
           onAddNew={handleAddNew} 
           onBackToList={handleBackToList} 
+          onManageFields={() => setIsFieldManagerOpen(true)}
+        />
+
+        <ClientFieldManagerModal
+          isOpen={isFieldManagerOpen}
+          onClose={() => setIsFieldManagerOpen(false)}
         />
 
         {view === "list" && (

@@ -83,6 +83,7 @@ function pickClientEditableFields(payload: Record<string, any>): Record<string, 
     "logistics",
     "questionnaire",
     "legal_consents",
+    "custom_fields",
     "financial_aid_applications",
     "client_documents",
   ]);

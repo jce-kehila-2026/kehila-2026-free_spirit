@@ -4,6 +4,7 @@ import type { FieldErrors } from "react-hook-form";
 import { CONTACT_RELATIONSHIP } from "@/schema/constants";
 import type { Contact } from "@/schema/contactSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our Tier 2 Controller
 import { useContactsTabController, EMPTY_CONTACT } from "./controllers/ContactsTabController";
@@ -187,6 +188,10 @@ export default function ContactsTab({ client, isEditable }: ContactsTabProps) {
         </div>
 
         {/* ── Sticky footer ── */}
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+          <CustomFieldsSection tab="contacts" client={client} isEditable={isEditable} />
+        </div>
+
         {isEditable && (
           <div className="flex items-center justify-between rounded-b-xl border-t border-slate-100 bg-slate-50 px-6 py-4 sm:px-8">
             {isDirty ? (

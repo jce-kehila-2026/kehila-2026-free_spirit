@@ -4,6 +4,7 @@ import React, { useState } from "react";
 
 import { DOCUMENT_TYPE_OPTIONS, type ClientDocument } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
+import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
 // Import our Tier 2 Controller
 import { useDocumentsTabController } from "./controllers/DocumentsTabController";
@@ -14,6 +15,15 @@ interface DocumentsTabProps {
   client: ClientDoc;
 }
 
+const DOCUMENT_STATUS_OPTIONS = ["active", "expired", "pending_review", "rejected"] as const;
+type DocumentStatus = (typeof DOCUMENT_STATUS_OPTIONS)[number];
+
+const STATUS_BADGE: Record<DocumentStatus, { bg: string; text: string; border: string }> = {
+  active: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  expired: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
+  pending_review: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  rejected: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
+};
 
 // ─── Helpers (Pure UI) ────────────────────────────────────────────────────────
 
@@ -138,6 +148,21 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
         uploadState={uploadState}
         actions={actions}
       />
+
+      <CustomFieldsSection tab="documents" client={client} isEditable />
+
+      {/* ════ Section 3: Status legend ════ */}
+      <div className="flex flex-wrap gap-3 px-1">
+        <p className="w-full text-xs font-semibold text-slate-400 uppercase tracking-wide">Status legend</p>
+        {DOCUMENT_STATUS_OPTIONS.map((s) => {
+          const b = STATUS_BADGE[s];
+          return (
+            <span key={s} className={["rounded-full border px-2.5 py-0.5 text-xs font-semibold", b.bg, b.text, b.border].join(" ")}>
+              {humanize(s)}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
