@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/firebase/firebase";
@@ -317,6 +318,16 @@ export default function Login() {
       )}
 
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        <Link
+          aria-label="Back to home"
+          className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-[#2C6975] transition hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] focus-visible:ring-offset-2"
+          href="/"
+        >
+          {/* The public root is the safe exit from the standalone login flow. */}
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Link>
+
         <div className={styles.header}>
           <h1 className={styles.title}>Login</h1>
           <p className={styles.subtitle}>Welcome back. Please sign in.</p>
@@ -384,14 +395,6 @@ export default function Login() {
         <button className={styles.button} type="submit" disabled={isLoading}>
           {isLoading ? "Signing In..." : "Sign In"}
         </button>
-
-        {/* Public route for users who still need to create an account. */}
-        <p className="mt-5 text-center text-sm font-medium text-slate-600">
-          Don&apos;t have an account?{" "}
-          <Link className="font-bold text-[#2C6975] hover:text-[#173A40]" href="/signup">
-            Sign Up
-          </Link>
-        </p>
 
         {/* Separates email login from Google login. */}
         <div className={styles.divider}>

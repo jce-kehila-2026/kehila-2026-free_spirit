@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        {/* Wrap the global components inside the dynamic navigation context */}
+        {/* Retain the legacy navigation provider wrapper until the shell is fully verified without it. */}
         <NavigationProvider>
           {/* AppNavbar hides itself only on standalone client-facing flows. */}
           <AppNavbar />
