@@ -429,6 +429,7 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
           clientId={client.id}
           programIds={client.program_ids ?? []}
           onClose={() => setIsProgramModalOpen(false)}
+          onClientUpdated={onClientUpdated}
         />
       )}
 

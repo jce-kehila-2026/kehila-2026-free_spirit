@@ -1,4 +1,4 @@
-import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp, where } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, onSnapshot, query, orderBy, getDocs, writeBatch, arrayUnion, arrayRemove, addDoc, setDoc, getDoc, Timestamp, where, increment } from "firebase/firestore";
 import { auth, db, storage } from "@/firebase/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
@@ -399,6 +399,7 @@ export async function removeClientFromProgram(
 
   batch.update(doc(db, "programs", programId), {
     participant_ids: arrayRemove(clientId),
+    participant_count: increment(-1),
   });
 
   await batch.commit();

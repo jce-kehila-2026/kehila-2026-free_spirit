@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, doc, updateDoc, writeBatch, arrayRemove } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch, arrayRemove, onSnapshot } from "firebase/firestore";
 import { Plus, CalendarDays, UsersRound, CheckCircle2, X, Download } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 // Keep the manage-programs UI private to this route so it cannot register as a standalone URL.
@@ -484,16 +484,17 @@ export default function ProgramsPage() {
   };
 
   useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        if (!isFirebaseInitialized || !db) {
-          setError("Firebase is not initialized. Unable to load programs.");
-          setPrograms([]);
-          return;
-        }
+    if (!isFirebaseInitialized || !db) {
+      setTimeout(() => {
+        setError("Firebase is not initialized. Unable to load programs.");
+        setPrograms([]);
+      }, 0);
+      return;
+    }
 
-        const programsCol = collection(db, "programs");
-        const snapshot = await getDocs(programsCol);
+    const programsCol = collection(db, "programs");
+    const unsubscribe = onSnapshot(programsCol, (snapshot) => {
+      try {
         const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
         // מיון התוכניות - הקרובות ביותר (או מתקיימות) בראש, ואלו שעברו בתחתית.
@@ -518,15 +519,23 @@ export default function ProgramsPage() {
         });
 
         setPrograms(list);
-      } catch (fetchError) {
-        console.error("Error loading programs:", fetchError);
+        setSelectedProgram((prev) => {
+          if (!prev) return null;
+          return list.find((p) => p.id === prev.id) || prev;
+        });
+        setLoading(false);
+      } catch (err) {
+        console.error("Error processing programs snapshot:", err);
         setError("An error occurred while loading programs.");
-      } finally {
         setLoading(false);
       }
-    };
+    }, (fetchError) => {
+      console.error("Error loading programs:", fetchError);
+      setError("An error occurred while loading programs.");
+      setLoading(false);
+    });
 
-    fetchPrograms();
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
