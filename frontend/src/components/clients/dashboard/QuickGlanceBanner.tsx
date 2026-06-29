@@ -7,10 +7,9 @@ import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 interface QuickGlanceBannerProps {
   client: ClientDoc;
-  isEditMode?: boolean;
 }
 
-export default function QuickGlanceBanner({ client, isEditMode = false }: QuickGlanceBannerProps) {
+export default function QuickGlanceBanner({ client }: QuickGlanceBannerProps) {
   const profileProgress = calculateOverallProgress(client as unknown as Record<string, unknown>);
   const isProfileComplete = profileProgress >= 85;
 
@@ -30,14 +29,6 @@ export default function QuickGlanceBanner({ client, isEditMode = false }: QuickG
               : `Client profile is ${profileProgress}% complete. Please review missing information.`}
           </p>
         </div>
-        {!isProfileComplete && !isEditMode && (
-          <button
-            type="button"
-            className="hidden shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#8A6822] ring-1 ring-[#E5C97D] transition-colors hover:bg-[#F1E3BF] sm:inline-flex"
-          >
-            Review Missing Fields
-          </button>
-        )}
       </div>
       {/* Progress bar container (Masking Approach) */}
       <div className="relative mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">

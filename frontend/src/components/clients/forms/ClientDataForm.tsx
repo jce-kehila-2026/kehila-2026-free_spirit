@@ -102,7 +102,7 @@ export default function ClientDataForm({
 
   return (
     <>
-      <QuickGlanceBanner client={client} isEditMode={true} />
+      <QuickGlanceBanner client={client} />
 
       <nav
         aria-label="Client profile sections"
