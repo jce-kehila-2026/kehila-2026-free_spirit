@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { User } from "firebase/auth";
-import { IconCheck } from "@/components/ui/Icons";
 import { auth } from "@/firebase/firebase";
 
 import TimelineWidget from "@/components/clients/dashboard/TimelineWidget";
@@ -16,6 +15,7 @@ import { Pencil } from "lucide-react";
 import TodoListWidget from "@/components/todos/TodoListWidget";
 import ProgramAssignmentModal from "@/components/clients/dashboard/ProgramAssignmentModal";
 import StayHistoryModal from "@/components/clients/dashboard/StayHistoryModal";
+import QuickGlanceBanner from "@/components/clients/dashboard/QuickGlanceBanner";
 
 interface ProfileSummaryDashboardProps {
   client: ClientDoc;
@@ -173,21 +173,8 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
         {/* ── Alert banner (full-width) ── */}
-        <div className="flex items-center gap-4 rounded-[1.5rem] border border-[#C5DDC0] bg-[#E5F0E2] px-5 py-4 shadow-sm lg:col-span-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#3F7763]">
-            <IconCheck className="h-5 w-5" />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-[#31585F]">
-              Quick Glance Alerts &amp; Notifications
-            </p>
-            <p className="mt-1 text-xs leading-5 text-[#527078]">
-              All core client documents are currently up to date. No pending actions required.
-            </p>
-          </div>
-          <span className="hidden shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#3F7763] ring-1 ring-[#C5DDC0] sm:inline-flex">
-            All Clear
-          </span>
+        <div className="lg:col-span-3">
+          <QuickGlanceBanner client={client} />
         </div>
 
         {/* ── Timeline card (col-span-2) ── */}
