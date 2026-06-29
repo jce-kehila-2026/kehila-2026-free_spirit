@@ -142,22 +142,21 @@ service cloud.firestore {
           "education_status",
           "diagnosis",
           "personal_notes",
-          "passport_number",
           "passport_country",
           "citizenship",
           "date_of_entry",
           "purpose_of_visit",
           "home_address",
-          "cohabitants",
+          "household_members",
           "dependents",
           "medical_profile",
           "contacts",
-          "logistics",
           "questionnaire",
           "legal_consents",
           "custom_fields",
-          "financial_aid_applications",
-          "client_documents"
+          "client_documents",
+          "updated_at",
+          "status"
         ]);
     }
 
