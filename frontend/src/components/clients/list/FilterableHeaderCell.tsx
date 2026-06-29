@@ -4,16 +4,17 @@ import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { IconFunnel, IconSortAsc, IconSortDesc } from "@/components/ui/Icons";
 
 interface FilterableHeaderCellProps {
-  columnKey: "name" | "email" | "phone" | "status";
+  columnKey: "name" | "email" | "phone" | "status" | "programs";
   label: string;
   hideOnMobile?: boolean;
   openFilter: string | null;
-  setOpenFilter: (key: "name" | "email" | "phone" | "status" | null) => void;
+  setOpenFilter: (key: "name" | "email" | "phone" | "status" | "programs" | null) => void;
   columnFilters: Record<string, { text: string; values: string[] }> | undefined;
   baseDocs: ClientDoc[] | undefined;
   sortConfig: { key: string; direction: "asc" | "desc" } | null | undefined;
   onSortChange: ((config: { key: string; direction: "asc" | "desc" } | null) => void) | undefined;
   onColumnFilterChange: ((col: string, update: Partial<{ text: string; values: string[] }>) => void) | undefined;
+  customValues?: string[];
 }
 
 export default function FilterableHeaderCell({
@@ -27,12 +28,13 @@ export default function FilterableHeaderCell({
   sortConfig,
   onSortChange,
   onColumnFilterChange,
+  customValues,
 }: FilterableHeaderCellProps) {
   const isFilterOpen = openFilter === columnKey;
   const filterState = columnFilters?.[columnKey] || { text: "", values: [] };
   const iconActive = !!filterState.text || sortConfig?.key === columnKey;
 
-  const uniqueValues = Array.from(
+  const uniqueValues = customValues || Array.from(
     new Set(
       (baseDocs || []).map((c) => {
         if (columnKey === "name") return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();

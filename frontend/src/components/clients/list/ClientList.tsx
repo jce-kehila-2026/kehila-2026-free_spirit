@@ -6,6 +6,7 @@ import type { ClientFormInput, ClientDocument } from "@/schema/clientSchema";
 import { IconArchive, IconExport } from "@/components/ui/Icons";
 import ClientRow from "./ClientRow";
 import FilterableHeaderCell from "./FilterableHeaderCell";
+import { type ProgramSummary } from "@/firebase/clientDbService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,10 @@ interface ClientListProps {
   totalActiveCount?: number;
   onClearAllFilters?: () => void;
   hasActiveFilters?: boolean;
+  onClearAllFilters?: () => void;
+  hasActiveFilters?: boolean;
   onRestoreSelect: (client: ClientDoc) => void;
+  programMap: Record<string, ProgramSummary>;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -71,9 +75,10 @@ export default function ClientList({
   onClearAllFilters,
   hasActiveFilters,
   onRestoreSelect,
+  programMap,
 }: ClientListProps) {
 
-  const [openFilter, setOpenFilter] = useState<"name" | "email" | "phone" | "status" | null>(null);
+  const [openFilter, setOpenFilter] = useState<"name" | "email" | "phone" | "status" | "programs" | null>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
 
   useEffect(() => {
@@ -113,8 +118,11 @@ export default function ClientList({
     ? `Showing ${clients.length} of ${totalActiveCount} records`
     : `${clients.length} ${showArchived ? "archived" : "active"} record${clients.length !== 1 ? "s" : ""}`;
 
+  const uniqueProgramNames = Array.from(new Set(Object.values(programMap).map(p => p.name || "Unnamed Program"))).sort();
+  const programFilterOptions = ["(Has Program)", "(No Program Assigned)", ...uniqueProgramNames];
+
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+    <section className="overflow-visible rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
       {/* ── Table Action Utilities Header (Sitting flat on the page background) ── */}
       <div className="flex flex-col gap-3 border-b border-[#D7E3D5] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="flex items-center gap-3">
@@ -157,11 +165,11 @@ export default function ClientList({
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-left text-sm text-[#5C7478]">
             <thead ref={theadRef}>
               <tr className={["border-b", showArchived ? "border-[#E5C97D] bg-[#FBF5E8]" : "border-[#D7E3D5] bg-[#F7FAF5]"].join(" ")}>
-                {(["name", "email", "phone", "status"] as const).map((col) => (
+                {(["name", "email", "phone"] as const).map((col) => (
                   <FilterableHeaderCell
                     key={col}
                     columnKey={col}
@@ -176,6 +184,35 @@ export default function ClientList({
                     onColumnFilterChange={onColumnFilterChange}
                   />
                 ))}
+
+                <FilterableHeaderCell
+                  key="programs"
+                  columnKey="programs"
+                  label="Programs"
+                  hideOnMobile={false}
+                  openFilter={openFilter}
+                  setOpenFilter={setOpenFilter}
+                  columnFilters={columnFilters}
+                  baseDocs={baseDocs}
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                  onColumnFilterChange={onColumnFilterChange}
+                  customValues={programFilterOptions}
+                />
+
+                <FilterableHeaderCell
+                  key="status"
+                  columnKey="status"
+                  label="Status"
+                  hideOnMobile={false}
+                  openFilter={openFilter}
+                  setOpenFilter={setOpenFilter}
+                  columnFilters={columnFilters}
+                  baseDocs={baseDocs}
+                  sortConfig={sortConfig}
+                  onSortChange={onSortChange}
+                  onColumnFilterChange={onColumnFilterChange}
+                />
                 
                 {/* ── Minimalist Export Icon button rendered in both view modes ── */}
               <th className="w-12 py-3 pr-4 text-right vertical-middle">
@@ -215,6 +252,7 @@ export default function ClientList({
                     onEdit={onEdit}
                     onRestoreSelect={onRestoreSelect}
                     renderStatusBadge={(status: string) => <StatusBadge status={status} />}
+                    programMap={programMap}
                   />
                 ))
               )}

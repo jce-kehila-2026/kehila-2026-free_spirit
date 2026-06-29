@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch, arrayRemove, onSnapshot } from "firebase/firestore";
 import { Plus, CalendarDays, UsersRound, CheckCircle2, X, Download } from "lucide-react";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 // Keep the manage-programs UI private to this route so it cannot register as a standalone URL.
@@ -404,24 +404,28 @@ export default function ProgramsPage() {
       
       const updatedParticipantIds = currentParticipantIds.filter(id => id !== clientIdToRemove);
 
+      const batch = writeBatch(db);
+
       // 1. עדכון התוכנית
       const programRef = doc(db, "programs", selectedProgram.id);
-      await updateDoc(programRef, {
+      batch.update(programRef, {
         participant_ids: updatedParticipantIds,
         participant_count: updatedParticipantIds.length,
       });
 
       // 2. עדכון הלקוח (הסרת התוכנית ממנו)
+      const clientRef = doc(db, "clients", clientIdToRemove);
+      batch.update(clientRef, {
+        program_ids: arrayRemove(selectedProgram.id)
+      });
+      
+      await batch.commit();
+
       const clientToUpdate = allClients.find(c => c.id === clientIdToRemove);
       if (clientToUpdate) {
-        const clientRef = doc(db, "clients", clientIdToRemove);
         const currentClientProgramIds = Array.isArray(clientToUpdate.program_ids) ? clientToUpdate.program_ids : [];
         const updatedClientProgramIds = currentClientProgramIds.filter(id => id !== selectedProgram.id);
         
-        await updateDoc(clientRef, {
-          program_ids: updatedClientProgramIds
-        });
-
         setAllClients((prev) => 
           prev.map((client) => 
             client.id === clientIdToRemove ? { ...client, program_ids: updatedClientProgramIds } : client
@@ -450,8 +454,28 @@ export default function ProgramsPage() {
   const handleDeleteProgram = async () => {
     if (!programToRemove) return;
     try {
-      await deleteDoc(doc(db, "programs", programToRemove.id));
+      const batch = writeBatch(db);
+      batch.delete(doc(db, "programs", programToRemove.id));
+
+      if (Array.isArray(programToRemove.participant_ids)) {
+        programToRemove.participant_ids.forEach(clientId => {
+          batch.update(doc(db, "clients", clientId), {
+            program_ids: arrayRemove(programToRemove.id)
+          });
+        });
+      }
+
+      await batch.commit();
+
       setPrograms(prev => prev.filter(p => p.id !== programToRemove.id));
+      
+      setAllClients(prev => prev.map(client => {
+        if (Array.isArray(client.program_ids) && client.program_ids.includes(programToRemove.id)) {
+          return { ...client, program_ids: client.program_ids.filter(id => id !== programToRemove.id) };
+        }
+        return client;
+      }));
+      
       setProgramToRemove(null);
     } catch (err) {
       console.error("Error deleting program:", err);
@@ -460,16 +484,17 @@ export default function ProgramsPage() {
   };
 
   useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        if (!isFirebaseInitialized || !db) {
-          setError("Firebase is not initialized. Unable to load programs.");
-          setPrograms([]);
-          return;
-        }
+    if (!isFirebaseInitialized || !db) {
+      setTimeout(() => {
+        setError("Firebase is not initialized. Unable to load programs.");
+        setPrograms([]);
+      }, 0);
+      return;
+    }
 
-        const programsCol = collection(db, "programs");
-        const snapshot = await getDocs(programsCol);
+    const programsCol = collection(db, "programs");
+    const unsubscribe = onSnapshot(programsCol, (snapshot) => {
+      try {
         const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
         // מיון התוכניות - הקרובות ביותר (או מתקיימות) בראש, ואלו שעברו בתחתית.
@@ -494,15 +519,23 @@ export default function ProgramsPage() {
         });
 
         setPrograms(list);
-      } catch (fetchError) {
-        console.error("Error loading programs:", fetchError);
+        setSelectedProgram((prev) => {
+          if (!prev) return null;
+          return list.find((p) => p.id === prev.id) || prev;
+        });
+        setLoading(false);
+      } catch (err) {
+        console.error("Error processing programs snapshot:", err);
         setError("An error occurred while loading programs.");
-      } finally {
         setLoading(false);
       }
-    };
+    }, (fetchError) => {
+      console.error("Error loading programs:", fetchError);
+      setError("An error occurred while loading programs.");
+      setLoading(false);
+    });
 
-    fetchPrograms();
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

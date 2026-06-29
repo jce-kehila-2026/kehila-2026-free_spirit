@@ -4,6 +4,9 @@ import { Eye } from "lucide-react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { QuickCopy } from "@/components/ui/QuickCopy";
 import { IconRestore, IconPencil } from "@/components/ui/Icons";
+import { getPrimaryProgramDisplay } from "@/utils/clientUtils";
+
+import { type ProgramSummary } from "@/firebase/clientDbService";
 
 // Note: We can just use the status badge component from your list page or import it
 interface ClientRowProps {
@@ -12,6 +15,7 @@ interface ClientRowProps {
   onEdit: (client: ClientDoc) => void;
   onRestoreSelect: (client: ClientDoc) => void;
   renderStatusBadge: (status: string) => React.ReactNode;
+  programMap: Record<string, ProgramSummary>;
 }
 
 export default function ClientRow({
@@ -20,6 +24,7 @@ export default function ClientRow({
   onEdit,
   onRestoreSelect,
   renderStatusBadge,
+  programMap,
 }: ClientRowProps) {
   return (
     <tr
@@ -45,6 +50,33 @@ export default function ClientRow({
           <span>{client.phone}</span>
           {client.phone && <QuickCopy text={client.phone} label="Phone Number" />}
         </div>
+      </td>
+      <td className="px-5 py-4">
+        {(() => {
+          const programIds = Array.isArray(client.program_ids) ? client.program_ids : [];
+          const fullPrograms = programIds
+            .map(id => programMap[id])
+            .filter(Boolean); // Remove null or undefined
+
+          const { primaryProgram, additionalCount, allNames } = getPrimaryProgramDisplay(fullPrograms);
+          if (!primaryProgram) return <span className="text-sm text-[#A1B8BC]">—</span>;
+          
+          return (
+            <div 
+              className="flex items-center gap-1.5" 
+              title={allNames.join(', ')}
+            >
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                {primaryProgram.name || "Unnamed Program"}
+              </span>
+              {additionalCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                  +{additionalCount}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </td>
       <td className="px-5 py-4">
         {renderStatusBadge(client.status)}

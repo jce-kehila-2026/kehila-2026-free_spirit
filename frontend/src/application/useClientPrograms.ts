@@ -60,6 +60,19 @@ export function useClientPrograms(
       ? localProgramState.programIds
       : programIds;
 
+  // Immediately synchronize local state when database props change
+  useEffect(() => {
+    setTimeout(() => {
+      setLocalProgramState((prev) => {
+        // Prevent unnecessary state updates if they already match
+        if (prev.clientId === clientId && JSON.stringify(prev.programIds) === JSON.stringify(programIds)) {
+          return prev;
+        }
+        return { clientId, programIds };
+      });
+    }, 0);
+  }, [clientId, programIds]);
+
   // ── Load all programs once on mount ──────────────────────────────────────────
   useEffect(() => {
     let isCancelled = false;
