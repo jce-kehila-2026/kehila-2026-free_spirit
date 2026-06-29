@@ -122,7 +122,7 @@ export default function ClientList({
   const programFilterOptions = ["(Has Program)", "(No Program Assigned)", ...uniqueProgramNames];
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
+    <section className="overflow-visible rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] shadow-[0_14px_34px_rgba(44,105,117,0.08)]">
       {/* ── Table Action Utilities Header (Sitting flat on the page background) ── */}
       <div className="flex flex-col gap-3 border-b border-[#D7E3D5] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export default function ClientList({
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full text-left text-sm text-[#5C7478]">
             <thead ref={theadRef}>
               <tr className={["border-b", showArchived ? "border-[#E5C97D] bg-[#FBF5E8]" : "border-[#D7E3D5] bg-[#F7FAF5]"].join(" ")}>
