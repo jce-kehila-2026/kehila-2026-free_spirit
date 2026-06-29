@@ -17,6 +17,8 @@ import { useClientManagementService } from "@/application/ClientManagementServic
 // TIER 3 - BUSINESS RULES LAYER
 import { useClientFilters } from "@/application/useClientFilters";
 import RestoreModal from "@/components/clients/list/RestoreModal";
+import { getFirestoreDb } from "@/firebase/clientDbService";
+import { doc, getDoc } from "firebase/firestore";
 
 type View = "list" | "form" | "dashboard";
 
@@ -76,6 +78,19 @@ export default function ClientsPage() {
   function handleBackToList() {
     setEditingClient(null);
     setView("list");
+  }
+
+  async function handleRefreshClient() {
+    if (!editingClient?.id) return;
+    try {
+      const db = getFirestoreDb();
+      const snap = await getDoc(doc(db, "clients", editingClient.id));
+      if (snap.exists()) {
+        setEditingClient({ id: snap.id, ...snap.data() } as ClientDoc);
+      }
+    } catch (err) {
+      console.error("Failed to refresh client data", err);
+    }
   }
 // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -138,6 +153,7 @@ export default function ClientsPage() {
           <ClientProfileDashboard
             client={editingClient}
             onBack={handleBackToList}
+            onRefreshClient={handleRefreshClient}
           />
         )}
 

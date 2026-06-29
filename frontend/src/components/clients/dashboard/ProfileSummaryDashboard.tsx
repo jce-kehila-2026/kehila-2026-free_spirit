@@ -11,7 +11,6 @@ import { createNoteEvent } from "@/firebase/clientEventsService";
 import { getTodayString, getCurrentTimeString } from "@/utils/dateUtils";
 import { trackClientArrival, trackClientDeparture } from "@/application/ClientManagementService";
 
-// Import Noa's existing form component
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import { Pencil } from "lucide-react";
 import TodoListWidget from "@/components/todos/TodoListWidget";
@@ -22,6 +21,7 @@ interface ProfileSummaryDashboardProps {
   client: ClientDoc;
   isArchived: boolean;
   onCreateMeeting?: () => void; // We keep this for backward compatibility, but we won't use it for the button anymore
+  onClientUpdated?: () => void;
 }
 
 type AuthUserWithProfile = User & {
@@ -29,7 +29,7 @@ type AuthUserWithProfile = User & {
   last_name?: string;
 };
 
-export default function ProfileSummaryDashboard({ client, isArchived }: ProfileSummaryDashboardProps) {
+export default function ProfileSummaryDashboard({ client, isArchived, onClientUpdated }: ProfileSummaryDashboardProps) {
   // ── UI State (Tier 1) ────────────────────────────────────────────────────────
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -130,6 +130,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
       setIsTrackArrivalModalOpen(false);
       setArrivalDate("");
       setTimelineRefreshKey((k) => k + 1);
+      onClientUpdated?.();
     } catch (err) {
       console.error(err);
     } finally {
@@ -157,6 +158,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
       setIsTrackDepartureModalOpen(false);
       setDepartureDate("");
       setTimelineRefreshKey((k) => k + 1);
+      onClientUpdated?.();
     } catch (err) {
       console.error(err);
     } finally {
@@ -536,6 +538,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
         onSuccess={() => {
           setIsStayHistoryModalOpen(false);
           setTimelineRefreshKey((k) => k + 1);
+          onClientUpdated?.();
         }}
       />
     </>
