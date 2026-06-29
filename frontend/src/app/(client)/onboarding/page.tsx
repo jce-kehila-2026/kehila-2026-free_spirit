@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -9,7 +10,6 @@ import ClientDataForm from "@/components/clients/forms/ClientDataForm";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { auth, db } from "@/firebase/firebase";
 import {
-  CLIENT_EMAIL_VERIFICATION_PATH,
   ACCESS_DENIED_PATH,
   getAccountForUser,
   isArchivedClientRecord,
@@ -75,16 +75,23 @@ export default function ClientOnboardingPage() {
         return;
       }
 
+      let debugAccount: AuthAccount | null = null;
+      let debugClientId: string | null = null;
+      let debugEmailVerified = false;
+
       try {
         await user.reload();
         const refreshedUser = activeAuth.currentUser || user;
-
-        if (!refreshedUser.emailVerified) {
-          router.replace(CLIENT_EMAIL_VERIFICATION_PATH);
-          return;
-        }
+        debugEmailVerified = refreshedUser.emailVerified;
 
         const account = (await getAccountForUser(user)) as AuthAccount | null;
+        debugAccount = account
+          ? {
+              id: account.id,
+              role: account.role,
+              clientId: account.clientId,
+            }
+          : null;
 
         if (!account || !isClientRole(account.role)) {
           router.replace("/home");
@@ -95,6 +102,7 @@ export default function ClientOnboardingPage() {
           throw new Error("Your account is not linked to a client profile yet.");
         }
 
+        debugClientId = account.clientId;
         const clientSnapshot = await getDoc(
           doc(activeDb, "clients", account.clientId),
         );
@@ -128,6 +136,16 @@ export default function ClientOnboardingPage() {
         if (shouldIgnore) {
           return;
         }
+
+        console.error("DEBUG - Onboarding failed initialization:", error);
+        console.log("DEBUG - Current user account data:", debugAccount);
+        console.log("DEBUG - Onboarding resolved state metadata:", {
+          authUid: user.uid,
+          emailVerified: debugEmailVerified,
+          clientId: debugClientId,
+          attemptedClientPath: debugClientId ? `clients/${debugClientId}` : null,
+          shouldIgnore,
+        });
 
         if (
           error &&
@@ -193,7 +211,11 @@ export default function ClientOnboardingPage() {
           <div className="hidden sm:block" aria-hidden="true" />
 
           <div className="flex flex-col items-center gap-3 text-center">
-            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-2 ring-1 ring-[#D7E3D5]">
+            <Link
+              href="/"
+              aria-label="Free Spirit home"
+              className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-2 ring-1 ring-[#D7E3D5]"
+            >
               <Image
                 src={freeSpiritLogo}
                 alt="Free Spirit"
@@ -201,7 +223,7 @@ export default function ClientOnboardingPage() {
                 priority
                 sizes="64px"
               />
-            </span>
+            </Link>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6A8589]">
                 Free Spirit

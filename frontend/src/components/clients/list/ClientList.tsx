@@ -33,8 +33,6 @@ interface ClientListProps {
   totalActiveCount?: number;
   onClearAllFilters?: () => void;
   hasActiveFilters?: boolean;
-  onClearAllFilters?: () => void;
-  hasActiveFilters?: boolean;
   onRestoreSelect: (client: ClientDoc) => void;
   programMap: Record<string, ProgramSummary>;
 }

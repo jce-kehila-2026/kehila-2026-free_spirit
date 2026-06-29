@@ -36,12 +36,6 @@ export default function ProtectedRoute({ children }) {
       try {
         const currentAuthUser = auth.currentUser || user;
         await currentAuthUser.reload();
-        const refreshedUser = auth.currentUser || currentAuthUser;
-
-        if (!refreshedUser.emailVerified) {
-          redirectTo("/login?emailNotVerified=1");
-          return;
-        }
 
         const accountRef = doc(db, "accounts", user.uid);
         const accountSnapshot = await getDoc(accountRef);

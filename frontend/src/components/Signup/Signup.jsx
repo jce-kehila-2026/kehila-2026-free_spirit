@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/firebase/firebase";
 import {
-  CLIENT_EMAIL_VERIFICATION_PATH,
   ACCESS_DENIED_PATH,
   claimClientInviteForUser,
   getInviteTokenFromCurrentUrl,
@@ -84,6 +83,7 @@ function RequirementStatusIcon({ isMet }) {
 
 export default function Signup() {
   const router = useRouter();
+  const isRegistrationInFlightRef = useRef(false);
 
   // Holds the controlled form values that are submitted to Firebase and Firestore.
   const [formData, setFormData] = useState({
@@ -110,17 +110,14 @@ export default function Signup() {
         return;
       }
 
-      await user.reload();
-      const refreshedUser = auth.currentUser || user;
-
-      if (!refreshedUser.emailVerified) {
-        setSignupError(
-          "Please verify your email address before continuing to onboarding.",
-        );
+      if (isRegistrationInFlightRef.current) {
         return;
       }
 
-      // A verified user refreshing /signup should leave the auth surface and
+      await user.reload();
+      const refreshedUser = auth.currentUser || user;
+
+      // A signed-in user refreshing /signup should leave the auth surface and
       // land wherever their Firestore account role allows.
       router.replace(await getPostLoginRedirect(refreshedUser));
     });
@@ -185,6 +182,7 @@ export default function Signup() {
 
     try {
       setIsLoading(true);
+      isRegistrationInFlightRef.current = true;
 
       const inviteToken = getInviteTokenFromCurrentUrl();
 
@@ -209,18 +207,7 @@ export default function Signup() {
 
       if (inviteToken) {
         await claimClientInviteForUser(userCredential.user, inviteToken);
-        if (!userCredential.user.emailVerified) {
-          setSignupError(
-            "Account created. Please verify your email address before continuing to onboarding.",
-          );
-          return;
-        }
-
-        const redirectPath = await getPostLoginRedirect(userCredential.user);
-        if (redirectPath === ACCESS_DENIED_PATH) {
-          await signOut(auth);
-        }
-        router.push(redirectPath);
+        router.push(await getPostLoginRedirect(userCredential.user));
         return;
       }
 
@@ -229,6 +216,7 @@ export default function Signup() {
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {
+      isRegistrationInFlightRef.current = false;
       setIsLoading(false);
     }
   };
@@ -240,6 +228,7 @@ export default function Signup() {
 
     try {
       setIsLoading(true);
+      isRegistrationInFlightRef.current = true;
 
       const inviteToken = getInviteTokenFromCurrentUrl();
 
@@ -253,9 +242,7 @@ export default function Signup() {
 
       if (inviteToken) {
         await claimClientInviteForUser(result.user, inviteToken);
-        const redirectPath = result.user.emailVerified
-          ? await getPostLoginRedirect(result.user)
-          : CLIENT_EMAIL_VERIFICATION_PATH;
+        const redirectPath = await getPostLoginRedirect(result.user);
         if (redirectPath === ACCESS_DENIED_PATH) {
           await signOut(auth);
         }
@@ -268,6 +255,7 @@ export default function Signup() {
     } catch (error) {
       setSignupError(getFirebaseErrorMessage(error));
     } finally {
+      isRegistrationInFlightRef.current = false;
       setIsLoading(false);
     }
   };

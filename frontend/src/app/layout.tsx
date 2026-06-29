@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import EmailVerificationGate from "@/components/Auth/EmailVerificationGate";
 import AppNavbar from "@/components/Navbar/AppNavbar";
 import "./globals.css";
 import { NavigationProvider } from "@/components/NavigationProvider/NavigationContext";
@@ -22,6 +23,7 @@ export default function RootLayout({
           {/* AppNavbar hides itself only on standalone client-facing flows. */}
           <AppNavbar />
           <Toaster />
+          <EmailVerificationGate />
           {children}
         </NavigationProvider>
       </body>
