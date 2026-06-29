@@ -126,36 +126,25 @@ export async function getPostLoginRedirect(user) {
         // During invite signup, Auth can observe the new user before the
         // Firestore claim transaction is fully readable. Do not sign out or
         // redirect unless an explicit archived client document was read above.
-        return user.emailVerified
-          ? CLIENT_ONBOARDING_PATH
-          : CLIENT_EMAIL_VERIFICATION_PATH;
+        return CLIENT_ONBOARDING_PATH;
       }
 
       throw error;
     }
   }
 
-  // Client onboarding is blocked until Firebase Auth confirms the email.
-  return user.emailVerified
-    ? CLIENT_ONBOARDING_PATH
-    : CLIENT_EMAIL_VERIFICATION_PATH;
+  // Email verification is enforced by the global blocking gate after routing.
+  return CLIENT_ONBOARDING_PATH;
 }
 
 /**
- * Supports invite links such as /signup?inviteToken=abc, /signup?invite=abc, or
- * /signup?token=abc without committing to one URL shape before the email-link
- * flow is finalized.
+ * Reads the unified invitation token query parameter used by signup links.
  */
 export function getInviteTokenFromCurrentUrl() {
   if (typeof window === "undefined") return "";
 
   const params = new URLSearchParams(window.location.search);
-  return (
-    params.get("inviteToken") ||
-    params.get("invite") ||
-    params.get("token") ||
-    ""
-  ).trim();
+  return (params.get("token") || "").trim();
 }
 
 function getInviteExpiryMillis(invite) {
@@ -182,6 +171,10 @@ function assertInviteCanBeClaimed(invite) {
     throw new Error("This invite link has already been used.");
   }
 
+  if (invite.role === ROLE.ADMIN) {
+    return;
+  }
+
   if (!invite.clientId || typeof invite.clientId !== "string") {
     throw new Error("This invite link is missing a client record.");
   }
@@ -201,6 +194,8 @@ export async function validateClientInviteToken(inviteToken) {
   if (!inviteToken) return null;
 
   const activeDb = requireFirestore();
+  // Invitation tokens are stored as client_invites document IDs, so validation
+  // must read the exact token document rather than querying by a field.
   const inviteSnapshot = await getDoc(doc(activeDb, "client_invites", inviteToken));
 
   if (!inviteSnapshot.exists()) {
@@ -210,7 +205,7 @@ export async function validateClientInviteToken(inviteToken) {
   const invite = inviteSnapshot.data();
   assertInviteCanBeClaimed(invite);
 
-  return invite.clientId;
+  return invite;
 }
 
 /**
@@ -235,6 +230,29 @@ export async function claimClientInviteForUser(user, inviteToken) {
 
     const invite = inviteSnapshot.data();
     assertInviteCanBeClaimed(invite);
+
+    if (invite.role === ROLE.ADMIN) {
+      transaction.set(
+        accountRef,
+        {
+          account_id: user.uid,
+          email: user.email || invite.email || "",
+          role: ROLE.ADMIN,
+          staffInviteToken: inviteToken,
+          last_login: serverTimestamp(),
+          updated_at: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      transaction.update(inviteRef, {
+        status: "claimed",
+        claimedByUid: user.uid,
+        claimedAt: serverTimestamp(),
+      });
+
+      return { role: ROLE.ADMIN };
+    }
 
     const clientRef = doc(activeDb, "clients", invite.clientId);
     transaction.set(

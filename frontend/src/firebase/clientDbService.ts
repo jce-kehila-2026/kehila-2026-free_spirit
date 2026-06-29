@@ -121,10 +121,13 @@ export async function updateClientDoc(
   const isClientUpdate = await isCurrentUserClientRole();
 
   if (isClientUpdate) {
-    // Client onboarding writes must be strict patches. Do not send manager-owned
-    // fields or metadata such as status, program_ids, uid, or timestamps because
-    // Firestore rules require those values to remain unchanged for client roles.
-    await updateDoc(docRef, sanitizeFirestorePayload(pickClientEditableFields(payload)));
+    // Client onboarding writes must be strict patches. Only append updated_at
+    // after filtering so manager-owned fields like status, program_ids, and uid
+    // can never be forwarded from a browser-controlled client payload.
+    await updateDoc(docRef, {
+      ...sanitizeFirestorePayload(pickClientEditableFields(payload)),
+      updated_at: serverTimestamp(),
+    });
     return;
   }
 
@@ -184,6 +187,42 @@ export async function createClientInviteEmailNotification(
     message: {
       subject: "Welcome to Free Spirit! Complete your registration",
       html: `Hello, <br/><br/>Please click the following link to complete your secure onboarding process: <a href="${inviteUrl}">${inviteUrl}</a><br/><br/>Thank you!`,
+    },
+    createdAt: serverTimestamp(),
+    status: "pending",
+  });
+}
+
+/**
+ * Creates a pending administrator invitation token document in client_invites.
+ * The signup validator reads this same collection by document ID, so staff and
+ * client invite links share one token lookup path while preserving role intent.
+ */
+export async function createStaffAdminInviteDoc(
+  inviteToken: string,
+  emailAddress: string
+): Promise<void> {
+  await setDoc(doc(getFirestoreDb(), "client_invites", inviteToken), {
+    email: emailAddress,
+    status: "pending",
+    role: "admin",
+    createdAt: new Date(),
+  });
+}
+
+/**
+ * Queues a staff invitation email through the same Firestore-backed delivery
+ * channel used by client onboarding invitations.
+ */
+export async function createStaffAdminInviteEmailNotification(
+  emailAddress: string,
+  inviteUrl: string
+): Promise<void> {
+  await addDoc(collection(getFirestoreDb(), "automatic_notifications"), {
+    to: emailAddress,
+    message: {
+      subject: "Free Spirit admin invitation",
+      html: `Hello, <br/><br/>You have been invited to join Free Spirit as an administrator. Please use this secure invitation link to continue: <a href="${inviteUrl}">${inviteUrl}</a><br/><br/>Thank you!`,
     },
     createdAt: serverTimestamp(),
     status: "pending",

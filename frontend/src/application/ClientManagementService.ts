@@ -214,7 +214,7 @@ export async function createClientInviteLink(
   const inviteToken = createSecureInviteToken();
   await createClientInviteDoc(clientId, inviteToken);
 
-  return `${origin}/signup?inviteToken=${inviteToken}`;
+  return `${origin}/signup?token=${inviteToken}`;
 }
 
 /**

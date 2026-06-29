@@ -7,6 +7,11 @@ const adminSections = [
     title: "Account Management",
     description: "Review user accounts, update roles, and remove accounts.",
   },
+  {
+    href: "/admin/invite",
+    title: "Staff Management",
+    description: "Invite new administrators and manage staff roles.",
+  },
 ];
 
 export default function AdminDashboardPage() {
@@ -28,7 +33,7 @@ export default function AdminDashboardPage() {
           </div>
         </header>
 
-        <div className="grid max-w-xl gap-5">
+        <div className="grid max-w-4xl gap-5 md:grid-cols-2">
           {adminSections.map((section) => (
             <Link
               className="group flex min-h-36 flex-col rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-5 shadow-[0_14px_34px_rgba(44,105,117,0.08)] transition hover:-translate-y-0.5 hover:border-[#B9CFCA] hover:shadow-[0_18px_40px_rgba(44,105,117,0.12)] focus:outline-none focus:ring-4 focus:ring-[#B9D4CC] sm:p-6"
