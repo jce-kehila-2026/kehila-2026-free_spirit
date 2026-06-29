@@ -136,7 +136,7 @@ export default function StatisticsPage() {
     const unassignedClientsList = [];
     let fullyCompliant = 0;
     let missingForms = 0;
-    let statusCounts = { draft: 0, interested: 0, registered: 0 };
+    let statusCounts = { invitedinvited: 0, interested: 0, registered: 0 };
     let genderCounts = { male: 0, female: 0, other: 0, unknown: 0 };
     
     const sourceCounts = {};
@@ -316,7 +316,7 @@ export default function StatisticsPage() {
     }));
 
     const statusFunnelData = [
-      { name: 'Draft', value: statusCounts.draft },
+      { name: 'Invited', value: statusCounts.invited },
       { name: 'Interested', value: statusCounts.interested },
       { name: 'Registered', value: statusCounts.registered }
     ];

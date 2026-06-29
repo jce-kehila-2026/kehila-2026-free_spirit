@@ -261,6 +261,30 @@ export default function ProgramsPage() {
         setIsUpdating(false);
         return;
       }
+
+      // --- תוספת הבדיקה למינימום ומקסימום ---
+      
+      // אם אנחנו עורכים את המינימום, נוודא שהוא לא עובר את המקסימום הקיים (בתנאי שיש מקסימום מוגדר - כלומר גדול מ-0)
+      if (editingField === 'min_members') {
+        const currentMax = selectedProgram.max_members || 0;
+        if (currentMax > 0 && newValue > currentMax) {
+          setUpdateError(`Minimum members cannot be greater than the maximum (${currentMax}).`);
+          setIsUpdating(false);
+          return;
+        }
+      }
+
+      // אם אנחנו עורכים את המקסימום, נוודא שהוא לא קטן מהמינימום הקיים (שוב, רק אם המקסימום החדש שונה מ-0 שמשמעותו "ללא הגבלה")
+      if (editingField === 'max_members') {
+        const currentMin = selectedProgram.min_members || 0;
+        if (newValue > 0 && newValue < currentMin) {
+          setUpdateError(`Maximum members cannot be less than the minimum (${currentMin}).`);
+          setIsUpdating(false);
+          return;
+        }
+      }
+      
+      // ----------------------------------------
     }
 
     const programRef = doc(db, "programs", selectedProgram.id);
