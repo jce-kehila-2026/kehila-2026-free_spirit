@@ -155,9 +155,18 @@ service cloud.firestore {
           "legal_consents",
           "custom_fields",
           "client_documents",
-          "updated_at",
-          "status"
+          "updated_at"
         ]);
+    }
+
+    function isClientOwnDocumentUpdate(clientId) {
+      // Onboarding profile saves are authorized by the verified account mapping.
+      // Do not depend on clients/{clientId}.uid because legacy invited records
+      // may not have that field stamped yet.
+      return signedIn()
+        && !isArchivedClientData(resource.data)
+        && hasAccount()
+        && accountData().clientId == clientId;
     }
 
     function isClientUidClaim(clientId) {
@@ -199,14 +208,33 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      // Mapped clients may read their own profile so the app can explicitly
-      // detect archived records and end the session without guessing from a
-      // permission-denied race. Profile writes still require isMappedClient().
-      allow get: if isAdmin() || isMappedClientAccount(clientId);
+      // Client reads are scoped to the authenticated account linked through
+      // uid, account_id, or accounts/{uid}.clientId. The archive helper is
+      // intentionally not evaluated here so sparse new client docs can load.
+      allow get: if isAdmin()
+        || (
+          signedIn()
+          && (
+            resource.data.uid == request.auth.uid
+            || resource.data.account_id == request.auth.uid
+            || get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.clientId == clientId
+          )
+        );
       allow list: if isAdmin();
       allow create, delete: if isAdmin();
+      // Client writes accept either existing ownership stamps, incoming ownership
+      // stamps, or the canonical accounts/{uid}.clientId mapping.
       allow update: if (isAdmin() && isOneWayAdminClientUpdate())
-        || isClientProfileUpdate(clientId)
+        || (
+          request.auth != null
+          && (
+            resource.data.uid == request.auth.uid
+            || resource.data.account_id == request.auth.uid
+            || request.resource.data.uid == request.auth.uid
+            || request.resource.data.account_id == request.auth.uid
+            || get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.clientId == clientId
+          )
+        )
         || isClientUidClaim(clientId);
     }
 
