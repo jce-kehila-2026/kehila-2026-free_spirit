@@ -10,6 +10,8 @@ import DocumentsTab from "@/components/clients/tabs/DocumentsTab";
 
 import QuestionnaireTab from "@/components/clients/tabs/QuestionnaireTab";
 import LegalConsentsTab from "@/components/clients/tabs/LegalConsentsTab";
+import { calculateTabProgress } from "@/utils/profileValidation";
+import QuickGlanceBanner from "@/components/clients/dashboard/QuickGlanceBanner";
 
 export const CLIENT_DATA_FORM_TABS = [
   { id: "profile", label: "Profile & Demographics" },
@@ -39,25 +41,6 @@ const TAB_COMPONENTS: Record<ClientDataFormTabId, ComponentType<BaseTabProps>> =
   documents: DocumentsTab as ComponentType<BaseTabProps>,
 };
 
-const PROFILE_COMPLETION_KEYS = [
-  "first_name",
-  "last_name",
-  "email",
-  "phone",
-  "passport_id",
-  "gender",
-  "address",
-  "dob",
-  "referrer",
-  "education_status",
-  "diagnosis",
-  "passport_country",
-  "citizenship",
-  "home_address",
-  "household_members",
-  "dependents",
-] as const;
-
 interface ClientDataFormProps {
   client: ClientDoc;
   isEditable: boolean;
@@ -66,42 +49,11 @@ interface ClientDataFormProps {
   onBack?: () => void;
 }
 
-function hasFilledValue(value: unknown): boolean {
-  if (typeof value === "string") {
-    return value.trim().length > 0;
-  }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  if (value && typeof value === "object") {
-    return Object.values(value).some(hasFilledValue);
-  }
-
-  return false;
-}
-
-function isTabComplete(client: ClientDoc, tabId: ClientDataFormTabId): boolean {
-  switch (tabId) {
-    case "profile":
-      return PROFILE_COMPLETION_KEYS.some((key) => hasFilledValue(client[key]));
-    case "medical":
-      return hasFilledValue(client.medical_profile);
-    case "contacts":
-      return hasFilledValue(client.contacts);
-
-    case "questionnaire":
-      return hasFilledValue(client.questionnaire);
-    case "legal":
-      return hasFilledValue(client.legal_consents);
-    case "documents":
-      return hasFilledValue(client.client_documents);
-  }
+function getTabProgressColor(percentage: number): string {
+  if (percentage < 30) return "#ef4444";
+  if (percentage < 60) return "#f97316";
+  if (percentage < 85) return "#eab308";
+  return "#22c55e";
 }
 
 /**
@@ -126,12 +78,6 @@ export default function ClientDataForm({
     (tab) => tab.id === resolvedActiveTab,
   );
   const ActiveTabContent = TAB_COMPONENTS[resolvedActiveTab];
-  const completedTabCount = CLIENT_DATA_FORM_TABS.filter((tab) =>
-    isTabComplete(client, tab.id),
-  ).length;
-  const completionPercentage = Math.round(
-    (completedTabCount / CLIENT_DATA_FORM_TABS.length) * 100,
-  );
   const isFirstTab = activeTabIndex <= 0;
   const isLastTab = activeTabIndex === CLIENT_DATA_FORM_TABS.length - 1;
 
@@ -156,28 +102,7 @@ export default function ClientDataForm({
 
   return (
     <>
-      <section
-        aria-label="Client data completion"
-        className="rounded-2xl border border-white/80 bg-[#FFFDF8] p-4 shadow-[0_10px_25px_rgba(44,105,117,0.06)]"
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-bold text-[#15383E]">
-              {completedTabCount} of {CLIENT_DATA_FORM_TABS.length} Tabs Completed
-            </p>
-            <p className="mt-1 text-xs font-medium text-[#607B80]">
-              Completion is calculated from saved client profile data.
-            </p>
-          </div>
-          <p className="text-sm font-bold text-[#2C6975]">{completionPercentage}%</p>
-        </div>
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#E4ECE2]">
-          <div
-            className="h-full rounded-full bg-[#2C6975] transition-[width] duration-300 ease-out"
-            style={{ width: `${completionPercentage}%` }}
-          />
-        </div>
-      </section>
+      <QuickGlanceBanner client={client} />
 
       <nav
         aria-label="Client profile sections"
@@ -186,6 +111,13 @@ export default function ClientDataForm({
         <ol role="tablist" className="flex min-w-max gap-1.5">
           {CLIENT_DATA_FORM_TABS.map((tab) => {
             const isActive = tab.id === resolvedActiveTab;
+            
+            const progressCategory = tab.id === "profile" ? "profileAndDemographics" :
+                                     tab.id === "legal" ? "legalConsents" :
+                                     tab.id;
+            
+            const progress = calculateTabProgress(client as unknown as Record<string, unknown>, progressCategory);
+            
             return (
               <li key={tab.id} role="presentation">
                 <button
@@ -196,13 +128,21 @@ export default function ClientDataForm({
                   type="button"
                   onClick={() => handleTabChange(tab.id)}
                   className={[
-                    "whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]",
+                    "whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0] flex items-center gap-2",
                     isActive
                       ? "bg-[#DCEBEF] text-[#245C66] ring-1 ring-[#C9DDE1]"
                       : "text-[#607B80] hover:bg-[#EEF4EC] hover:text-[#31585F]",
                   ].join(" ")}
                 >
                   {tab.label}
+                  {progressCategory !== "documents" && (
+                    <span 
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${isActive ? 'bg-white/50' : 'bg-[#E4ECE2]'}`}
+                      style={{ color: getTabProgressColor(progress) }}
+                    >
+                      {progress}%
+                    </span>
+                  )}
                 </button>
               </li>
             );
