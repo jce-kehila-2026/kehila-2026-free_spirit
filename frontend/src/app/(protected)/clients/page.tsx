@@ -55,7 +55,8 @@ export default function ClientsPage() {
     handleClearAllFilters,
     hasActiveFilters,
     totalActiveCount,
-    filteredClients
+    filteredClients,
+    programMap
   } = useClientFilters(allDocs);
 
   // -- Actions --
@@ -135,6 +136,7 @@ export default function ClientsPage() {
               onClearAllFilters={handleClearAllFilters}
               hasActiveFilters={hasActiveFilters}
               onRestoreSelect={setRestoreTarget}
+              programMap={programMap}
             />
 
             {/* Render the modal at the page view-controller root level */}

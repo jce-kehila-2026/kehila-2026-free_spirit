@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
+import { fetchAllPrograms, type ProgramSummary } from "@/firebase/clientDbService";
 
 export const useClientFilters = (allDocs: ClientDoc[]) => {
   // ── Search & filter state ─────────────────────────────────────────────
@@ -7,11 +8,33 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "registered" | "invited" | "interested" | "draft"
   >("all");
+  const [programMap, setProgramMap] = useState<Record<string, ProgramSummary>>({});
+
+  useEffect(() => {
+    let isCancelled = false;
+    fetchAllPrograms()
+      .then((programs) => {
+        if (isCancelled) return;
+        const map: Record<string, ProgramSummary> = {};
+        programs.forEach((p) => {
+          map[p.id] = p;
+        });
+        setProgramMap(map);
+      })
+      .catch((err) => {
+        console.error("Failed to load programs for client list filters", err);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const [columnFilters, setColumnFilters] = useState<Record<string, { text: string; values: string[] }>>({
     name: { text: "", values: [] },
     email: { text: "", values: [] },
     phone: { text: "", values: [] },
     status: { text: "", values: [] },
+    programs: { text: "", values: [] },
   });
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
@@ -30,6 +53,7 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
       email: { text: "", values: [] },
       phone: { text: "", values: [] },
       status: { text: "", values: [] },
+      programs: { text: "", values: [] },
     });
     setSortConfig(null);
   }
@@ -69,6 +93,26 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
       if (columnFilters.status.text && !statusVal.toLowerCase().includes(columnFilters.status.text.toLowerCase())) return false;
       if (columnFilters.status.values.length > 0 && !columnFilters.status.values.includes(statusVal)) return false;
 
+      if (columnFilters.programs && columnFilters.programs.values.length > 0) {
+        const clientProgramIds = Array.isArray(client.program_ids) ? client.program_ids : [];
+        const validProgramIds = clientProgramIds.filter(id => !!programMap[id]);
+        let match = false;
+        
+        if (columnFilters.programs.values.includes("(No Program Assigned)") && validProgramIds.length === 0) {
+          match = true;
+        }
+        if (columnFilters.programs.values.includes("(Has Program)") && validProgramIds.length > 0) {
+          match = true;
+        }
+        
+        if (!match) {
+          const assignedNames = validProgramIds.map(id => programMap[id].name).filter(Boolean);
+          match = columnFilters.programs.values.some(v => assignedNames.includes(v));
+        }
+        
+        if (!match) return false;
+      }
+
       if (!q) return true;
       return [
         client.first_name,
@@ -91,6 +135,9 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
           valA = (a.phone || "").toLowerCase(); valB = (b.phone || "").toLowerCase();
         } else if (sortConfig.key === "status") {
           valA = (a.status || "").toLowerCase(); valB = (b.status || "").toLowerCase();
+        } else if (sortConfig.key === "programs") {
+          valA = (Array.isArray(a.program_ids) && a.program_ids[0] ? (programMap[a.program_ids[0]]?.name || "") : "").toLowerCase();
+          valB = (Array.isArray(b.program_ids) && b.program_ids[0] ? (programMap[b.program_ids[0]]?.name || "") : "").toLowerCase();
         }
 
         if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
@@ -100,7 +147,7 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
     }
 
     return result;
-  }, [allDocs, searchQuery, statusFilter, columnFilters, sortConfig]);
+  }, [allDocs, searchQuery, statusFilter, columnFilters, sortConfig, programMap]);
 
   // Return everything the UI needs
   return {
@@ -111,6 +158,7 @@ export const useClientFilters = (allDocs: ClientDoc[]) => {
     handleClearAllFilters,
     hasActiveFilters,
     totalActiveCount,
-    filteredClients
+    filteredClients,
+    programMap
   };
 };

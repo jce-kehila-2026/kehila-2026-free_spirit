@@ -322,9 +322,13 @@ export async function uploadClientDocumentFile(
  * A lightweight snapshot of a program document — only what the
  * ClientProgramsWidget needs to populate the dropdown and enrolled list.
  */
+export type FirestoreDateValue = Date | string | number | { toDate: () => Date } | null | undefined;
+
 export interface ProgramSummary {
   id: string;
   name: string;
+  start_date?: FirestoreDateValue;
+  end_date?: FirestoreDateValue;
 }
 
 /**
@@ -334,10 +338,15 @@ export interface ProgramSummary {
  */
 export async function fetchAllPrograms(): Promise<ProgramSummary[]> {
   const snapshot = await getDocs(collection(getFirestoreDb(), "programs"));
-  return snapshot.docs.map((d) => ({
-    id: d.id,
-    name: (d.data().name as string) ?? "Unnamed Program",
-  }));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      name: (data.name as string) ?? "Unnamed Program",
+      start_date: data.start_date,
+      end_date: data.end_date,
+    };
+  });
 }
 
 /**
