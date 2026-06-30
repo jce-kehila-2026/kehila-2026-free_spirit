@@ -212,43 +212,43 @@ export default function ClientProfileDashboard({ client: initialClient, onBack, 
 
       {/* ── MAIN CONTENT ── */}
       <div className="space-y-5">
-        <button
-          type="button"
-          id="btn-back-to-clients"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#31585F] shadow-sm ring-1 ring-[#D7E3D5] transition-colors hover:bg-[#EEF4EC] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6BB2A0]"
-        >
-          ← Back to Clients
-        </button>
-
         {/* ── Hero Card ── */}
-        <div className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)]">
-          <div className="flex flex-col gap-5 px-5 py-6 sm:flex-row sm:items-center sm:px-8 sm:py-7">
-            <div className="flex h-16 w-16 shrink-0 select-none items-center justify-center rounded-2xl bg-white/15 text-xl font-bold text-white ring-1 ring-white/25 shadow-sm">
-              {initials}
-            </div>
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#245C66] text-white shadow-[0_18px_45px_rgba(36,92,102,0.16)]">
+          <button
+            type="button"
+            id="btn-back-to-clients"
+            onClick={onBack}
+            className="absolute left-4 top-1/2 z-10 inline-flex -translate-y-1/2 items-center gap-2 rounded-full border border-white/30 bg-white px-3 py-1.5 text-xs font-bold text-[#245C66] shadow-sm transition-colors hover:bg-[#EEF4EC] hover:text-[#173A40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:left-8"
+          >
+            &larr; Clients
+          </button>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="mt-1 truncate text-3xl font-bold leading-tight tracking-[-0.04em]">
-                {client.first_name} {client.last_name}
-              </h1>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
-                {client.email && (
-                  <div className="flex items-center gap-1">
-                    {client.email}
-                    <QuickCopy text={client.email} label="Email" />
-                  </div>
-                )}
-                {client.phone && (
-                  <div className="flex items-center gap-1">
-                    {client.phone}
-                    <QuickCopy text={client.phone} label="Phone Number" />
-                  </div>
-                )}
+          <div className="flex flex-col gap-5 px-5 py-6 pl-24 sm:flex-row sm:items-center sm:px-8 sm:py-7 sm:pl-36">
+              <div className="flex h-16 w-16 shrink-0 select-none items-center justify-center rounded-2xl bg-white/15 text-xl font-bold text-white ring-1 ring-white/25 shadow-sm">
+                {initials}
               </div>
-            </div>
 
-            <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+              <div className="min-w-0 flex-1">
+                <h1 className="mt-1 truncate text-3xl font-bold leading-tight tracking-[-0.04em]">
+                  {client.first_name} {client.last_name}
+                </h1>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
+                  {client.email && (
+                    <div className="flex items-center gap-1">
+                      {client.email}
+                      <QuickCopy text={client.email} label="Email" />
+                    </div>
+                  )}
+                  {client.phone && (
+                    <div className="flex items-center gap-1">
+                      {client.phone}
+                      <QuickCopy text={client.phone} label="Phone Number" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
               {/* ── Status badge (active clients only) ── */}
               {!isArchived && (
                 <button
@@ -342,9 +342,9 @@ export default function ClientProfileDashboard({ client: initialClient, onBack, 
                   {showDetailedTabs ? "Back to Overview" : "View Detailed Records"}
                 </button>
               )}
+              </div>
             </div>
           </div>
-        </div>
 
         {/* ── View Switcher ── */}
         {showDetailedTabs ? (
