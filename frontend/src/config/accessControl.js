@@ -13,7 +13,8 @@ export const navigationLinks = [
     href: "/dashboard",
     label: "Personal Area",
     visibility: "authenticated",
-    allowedRoles: [ROLE.ADMIN],
+    allowedRoles: [ROLE.ADMIN], 
+    showInNavigation: false,   
   },
   {
     href: "/programs",
