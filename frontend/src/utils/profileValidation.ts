@@ -176,14 +176,18 @@ export function calculateTabProgress(clientData: Record<string, unknown> | null 
   if (fields.length === 0) return 100;
   
   let filledCount = 0;
+  let totalFields = 0;
   fields.forEach((fieldPath) => {
     const value = resolveNestedField(clientData, fieldPath);
+    if (typeof value === "boolean") return;
+    
+    totalFields++;
     if (hasMeaningfulData(value)) {
       filledCount++;
     }
   });
   
-  return Math.round((filledCount / fields.length) * 100);
+  return totalFields === 0 ? 100 : Math.round((filledCount / totalFields) * 100);
 }
 
 export function calculateOverallProgress(clientData: Record<string, unknown> | null | undefined): number {
@@ -193,12 +197,16 @@ export function calculateOverallProgress(clientData: Record<string, unknown> | n
   if (allFields.length === 0) return 100;
   
   let filledCount = 0;
+  let totalFields = 0;
   allFields.forEach((fieldPath) => {
     const value = resolveNestedField(clientData, fieldPath);
+    if (typeof value === "boolean") return;
+    
+    totalFields++;
     if (hasMeaningfulData(value)) {
       filledCount++;
     }
   });
   
-  return Math.round((filledCount / allFields.length) * 100);
+  return totalFields === 0 ? 100 : Math.round((filledCount / totalFields) * 100);
 }
