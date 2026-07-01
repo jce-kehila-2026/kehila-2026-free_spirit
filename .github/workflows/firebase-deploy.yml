@@ -39,6 +39,6 @@ jobs:
       - name: Deploy Firebase hosting and rules
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only firestore:rules,hosting
+          args: deploy --only firestore:rules,hosting --project ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
