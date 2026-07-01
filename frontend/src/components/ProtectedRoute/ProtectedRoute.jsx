@@ -5,7 +5,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/firebase/firebase";
-import { isAdminRole, isClientRole } from "@/firebase/authRoleService";
+
+const CANONICAL_ADMIN_ROLE = "admin";
+const CANONICAL_CLIENT_ROLE = "client";
 
 // Wraps protected route groups and blocks rendering until Firebase confirms auth.
 export default function ProtectedRoute({ children }) {
@@ -25,8 +27,18 @@ export default function ProtectedRoute({ children }) {
       router.replace(href);
     };
 
+    if (!auth || !db) {
+      redirectTo("/login");
+      return () => {
+        shouldIgnore = true;
+      };
+    }
+
+    const activeAuth = auth;
+    const activeDb = db;
+
     // onAuthStateChanged fires after Firebase finishes checking persisted auth.
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(activeAuth, async (user) => {
       if (!user) {
         // Unauthenticated users are sent to the canonical login page.
         redirectTo("/login");
@@ -34,10 +46,10 @@ export default function ProtectedRoute({ children }) {
       }
 
       try {
-        const currentAuthUser = auth.currentUser || user;
+        const currentAuthUser = activeAuth.currentUser || user;
         await currentAuthUser.reload();
 
-        const accountRef = doc(db, "accounts", user.uid);
+        const accountRef = doc(activeDb, "accounts", user.uid);
         const accountSnapshot = await getDoc(accountRef);
 
         if (!accountSnapshot.exists()) {
@@ -51,14 +63,14 @@ export default function ProtectedRoute({ children }) {
           return;
         }
 
-        if (isClientRole(userRole)) {
+        if (userRole === CANONICAL_CLIENT_ROLE) {
           // Client accounts are isolated from this protected manager route group.
           // Their own allowed surface is the standalone /onboarding route.
           redirectTo("/onboarding");
           return;
         }
 
-        if (!isAdminRole(userRole)) {
+        if (userRole !== CANONICAL_ADMIN_ROLE) {
           // Legacy, missing, or unsupported roles fail closed instead of falling
           // through to a manager page with only client-side data-load failures.
           redirectTo("/login");
