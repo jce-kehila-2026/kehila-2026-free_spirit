@@ -114,7 +114,11 @@ export default function Signup() {
       return;
     }
 
-    setHasCheckedInviteToken(true);
+    const timeoutId = window.setTimeout(() => {
+      setHasCheckedInviteToken(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [router]);
 
   useEffect(() => {
