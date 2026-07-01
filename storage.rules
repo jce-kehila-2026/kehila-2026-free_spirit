@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      let accountDoc = firestore.get(/databases/(default)/documents/accounts/$(request.auth.uid));
+      return signedIn() 
+        && accountDoc != null 
+        && accountDoc.data.role == "admin";
+    }
+
+    function isMatchingClient(clientId) {
+      let accountDoc = firestore.get(/databases/(default)/documents/accounts/$(request.auth.uid));
+      return signedIn() 
+        && accountDoc != null 
+        && accountDoc.data.role == "client"
+        && accountDoc.data.clientId == clientId;
+    }
+
+    function isNotArchived(clientId) {
+      let clientDoc = firestore.get(/databases/(default)/documents/clients/$(clientId));
+      
+      // 1. If the client document doesn't exist yet, they cannot be archived.
+      // 2. If it DOES exist, safely check for keys using the 'in' operator to prevent crashes.
+      return clientDoc == null || (
+        !('is_archived' in clientDoc.data && clientDoc.data.is_archived == true)
+        && !('status' in clientDoc.data && clientDoc.data.status == "Archived")
+        && !('status' in clientDoc.data && clientDoc.data.status == "archived")
+      );
+    }
+
+    // Explicit path structure for client documents
+    match /clients/{clientId}/{allFiles=**} {
+      allow read, write: if isAdmin() || (isMatchingClient(clientId) && isNotArchived(clientId));
+    }
+    
+    // Catch-all safety net rule for any unexpected directories
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

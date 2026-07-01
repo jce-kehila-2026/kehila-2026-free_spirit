@@ -326,7 +326,7 @@ export async function uploadClientDocumentFile(
   const timestamp = Date.now();
   const storageRef = ref(
     getFirebaseStorage(),
-    `clients/${clientId}/documents/${timestamp}_${file.name}`
+    `clients/${clientId}/${timestamp}_${file.name}`
   );
   
   const uploadTask = uploadBytesResumable(storageRef, file);
