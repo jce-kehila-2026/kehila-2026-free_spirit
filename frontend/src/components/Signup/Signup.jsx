@@ -84,6 +84,7 @@ function RequirementStatusIcon({ isMet }) {
 export default function Signup() {
   const router = useRouter();
   const isRegistrationInFlightRef = useRef(false);
+  const [hasCheckedInviteToken, setHasCheckedInviteToken] = useState(false);
 
   // Holds the controlled form values that are submitted to Firebase and Firestore.
   const [formData, setFormData] = useState({
@@ -103,6 +104,22 @@ export default function Signup() {
   const passwordRequirementResults = getPasswordRequirementResults(
     formData.password,
   );
+
+  useEffect(() => {
+    const inviteToken = getInviteTokenFromCurrentUrl();
+
+    // Public account creation remains disabled; only explicit invitation links may render this form.
+    if (!inviteToken) {
+      router.replace("/login");
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHasCheckedInviteToken(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [router]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -259,6 +276,10 @@ export default function Signup() {
       setIsLoading(false);
     }
   };
+
+  if (!hasCheckedInviteToken) {
+    return null;
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(185,217,210,0.62),transparent_34%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">

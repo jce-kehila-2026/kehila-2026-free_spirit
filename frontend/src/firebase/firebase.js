@@ -15,12 +15,6 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENTID
 };
 
-// Helpful debug logs (only on client)
-if (typeof window !== "undefined") {
-  console.log("Firebase API key exists:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-  console.log("Firebase project:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-}
-
 // Initialize Firebase only on the client and only when an API key is provided.
 let app = null;
 let isInitialized = false;
@@ -31,8 +25,6 @@ if (typeof window !== "undefined" && firebaseConfig.apiKey) {
     app = getApps()[0];
   }
   isInitialized = true;
-} else if (typeof window !== "undefined") {
-  console.warn("Firebase not initialized: missing NEXT_PUBLIC_FIREBASE_API_KEY or running on server.");
 }
 
 export const isFirebaseInitialized = isInitialized;
