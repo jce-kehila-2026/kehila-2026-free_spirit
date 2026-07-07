@@ -315,6 +315,29 @@ export function subscribeToClients(
 }
 
 /**
+ * Subscribes to a single client document and fires callbacks on data changes.
+ * Designed for the client-facing portal where only one document is relevant.
+ * Returns the unsubscribe function to clean up the listener.
+ */
+export function subscribeToClientDoc(
+  clientId: string,
+  onData: (client: ClientDoc) => void,
+  onError: (error: Error) => void
+) {
+  const docRef = doc(getFirestoreDb(), "clients", clientId);
+
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        onData({ id: snapshot.id, ...snapshot.data() } as ClientDoc);
+      }
+    },
+    (err) => onError(err)
+  );
+}
+
+/**
  * Uploads a client document to Firebase Storage and reports progress.
  * Returns the final download URL.
  */

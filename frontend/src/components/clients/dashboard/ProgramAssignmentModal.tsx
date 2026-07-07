@@ -6,7 +6,6 @@ interface ProgramAssignmentModalProps {
   clientId: string;
   programIds: string[];
   onClose: () => void;
-  onClientUpdated?: () => void;
 }
 
 /**
@@ -17,7 +16,6 @@ export default function ProgramAssignmentModal({
   clientId,
   programIds,
   onClose,
-  onClientUpdated,
 }: ProgramAssignmentModalProps) {
   return (
     <div
@@ -50,7 +48,6 @@ export default function ProgramAssignmentModal({
           <ClientProgramsWidget
             clientId={clientId}
             programIds={programIds}
-            onClientUpdated={onClientUpdated}
           />
         </div>
 

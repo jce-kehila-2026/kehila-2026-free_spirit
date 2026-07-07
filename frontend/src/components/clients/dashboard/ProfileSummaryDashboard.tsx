@@ -21,7 +21,6 @@ interface ProfileSummaryDashboardProps {
   client: ClientDoc;
   isArchived: boolean;
   onCreateMeeting?: () => void; // We keep this for backward compatibility, but we won't use it for the button anymore
-  onClientUpdated?: () => void;
 }
 
 type AuthUserWithProfile = User & {
@@ -29,7 +28,7 @@ type AuthUserWithProfile = User & {
   last_name?: string;
 };
 
-export default function ProfileSummaryDashboard({ client, isArchived, onClientUpdated }: ProfileSummaryDashboardProps) {
+export default function ProfileSummaryDashboard({ client, isArchived }: ProfileSummaryDashboardProps) {
   // ── UI State (Tier 1) ────────────────────────────────────────────────────────
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -130,7 +129,6 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
       setIsTrackArrivalModalOpen(false);
       setArrivalDate("");
       setTimelineRefreshKey((k) => k + 1);
-      onClientUpdated?.();
     } catch (err) {
       console.error(err);
     } finally {
@@ -158,7 +156,6 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
       setIsTrackDepartureModalOpen(false);
       setDepartureDate("");
       setTimelineRefreshKey((k) => k + 1);
-      onClientUpdated?.();
     } catch (err) {
       console.error(err);
     } finally {
@@ -416,7 +413,6 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
           clientId={client.id}
           programIds={client.program_ids ?? []}
           onClose={() => setIsProgramModalOpen(false)}
-          onClientUpdated={onClientUpdated}
         />
       )}
 
@@ -526,7 +522,6 @@ export default function ProfileSummaryDashboard({ client, isArchived, onClientUp
         onSuccess={() => {
           setIsStayHistoryModalOpen(false);
           setTimelineRefreshKey((k) => k + 1);
-          onClientUpdated?.();
         }}
       />
     </>

@@ -17,6 +17,22 @@ const legalConsentsTabSchema = z.object({
 });
 export type LegalConsentsTabFormData = z.infer<typeof legalConsentsTabSchema>;
 
+function getLegalConsentsDefaultValues(client: ClientDoc): LegalConsentsTabFormData {
+  const lc = client.legal_consents;
+  return {
+    legal_consents: {
+      release_authorizing_person: lc?.release_authorizing_person ?? "",
+      authorized_agencies:        (lc?.authorized_agencies ?? []).map((a) => a),
+      info_to_disclose:           lc?.info_to_disclose           ?? "",
+      release_reason:             lc?.release_reason             ?? "",
+      release_expiration_date:    lc?.release_expiration_date    ?? "",
+      release_expiration_event:   lc?.release_expiration_event   ?? "",
+      visit_waiver_child_name:    lc?.visit_waiver_child_name    ?? "",
+      visit_waiver_signatures:    (lc?.visit_waiver_signatures ?? []).map((s) => s),
+    },
+  };
+}
+
 /**
  * Tier 2: Application Controller for the Legal Consents Tab.
  * Manages form state, string arrays, validation side-effects, and DB saves.
@@ -29,25 +45,19 @@ export function useLegalConsentsTabController(client: ClientDoc) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const lc = client.legal_consents;
-
   // 1. Initialize Form Engine
   const form = useForm<LegalConsentsTabFormData>({
     resolver: zodResolver(legalConsentsTabSchema),
     mode: "onTouched",
-    defaultValues: {
-      legal_consents: {
-        release_authorizing_person: lc?.release_authorizing_person ?? "",
-        authorized_agencies:        (lc?.authorized_agencies ?? []).map((a) => a),
-        info_to_disclose:           lc?.info_to_disclose           ?? "",
-        release_reason:             lc?.release_reason             ?? "",
-        release_expiration_date:    lc?.release_expiration_date    ?? "",
-        release_expiration_event:   lc?.release_expiration_event   ?? "",
-        visit_waiver_child_name:    lc?.visit_waiver_child_name    ?? "",
-        visit_waiver_signatures:    (lc?.visit_waiver_signatures ?? []).map((s) => s),
-      },
-    },
+    defaultValues: getLegalConsentsDefaultValues(client),
   });
+
+  // 1.5 Sync External Updates (from other tabs)
+  useEffect(() => {
+    if (!form.formState.isDirty) {
+      form.reset(getLegalConsentsDefaultValues(client));
+    }
+  }, [client, form, form.formState.isDirty]);
 
   // 2. Dynamic Arrays (React Hook Form requires 'as never' for primitive arrays)
   const agenciesArray = useFieldArray({

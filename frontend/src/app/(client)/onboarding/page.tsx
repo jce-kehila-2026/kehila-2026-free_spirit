@@ -9,6 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 import ClientDataForm from "@/components/clients/forms/ClientDataForm";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import { auth, db } from "@/firebase/firebase";
+import { subscribeToClientDoc } from "@/firebase/clientDbService";
 import {
   ACCESS_DENIED_PATH,
   getAccountForUser,
@@ -66,10 +67,18 @@ export default function ClientOnboardingPage() {
     }
 
     let shouldIgnore = false;
+    let unsubscribeDoc: (() => void) | null = null;
     const activeAuth = auth;
     const activeDb = db;
 
-    const unsubscribe = onAuthStateChanged(activeAuth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(activeAuth, async (user) => {
+      // Clean up any previous document listener when auth state changes
+      // (e.g. user logs out then back in, or hot-reload)
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = null;
+      }
+
       if (!user) {
         router.replace("/login");
         return;
@@ -103,6 +112,9 @@ export default function ClientOnboardingPage() {
         }
 
         debugClientId = account.clientId;
+
+        // One-time guard read: verify the document exists and is not archived
+        // before starting the real-time listener.
         const clientSnapshot = await getDoc(
           doc(activeDb, "clients", account.clientId),
         );
@@ -122,16 +134,27 @@ export default function ClientOnboardingPage() {
           return;
         }
 
-        // The clientId comes from accounts/{uid}; Firestore rules then verify
-        // the same mapping before allowing this clients/{clientId} read.
-        setState({
-          status: "ready",
-          client: {
-            id: clientSnapshot.id,
-            ...clientSnapshot.data(),
-          } as ClientDoc,
-          message: "",
-        });
+        // Start the real-time listener — keeps state.client in sync after
+        // every tab save without threading callbacks through child components.
+        const unsub = subscribeToClientDoc(
+          account.clientId,
+          (client) => {
+            if (!shouldIgnore) {
+              setState({ status: "ready", client, message: "" });
+            }
+          },
+          (err) => {
+            if (!shouldIgnore) {
+              console.error("[ClientOnboarding] Document listener error:", err);
+            }
+          },
+        );
+
+        if (shouldIgnore) {
+          unsub();
+        } else {
+          unsubscribeDoc = unsub;
+        }
       } catch (error) {
         if (shouldIgnore) {
           return;
@@ -177,7 +200,10 @@ export default function ClientOnboardingPage() {
 
     return () => {
       shouldIgnore = true;
-      unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+      }
     };
   }, [isMounted, router]);
 

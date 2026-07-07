@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -20,6 +20,18 @@ export const EMPTY_CONTACT: Contact = {
   is_emergency_contact: false,
 };
 
+function getContactsDefaultValues(client: ClientDoc): ContactsFormData {
+  return {
+    contacts: (client.contacts ?? []).map((c) => ({
+      contact_name: c.contact_name ?? "",
+      relationship: c.relationship ?? "",
+      phone: c.phone ?? "",
+      email: c.email ?? "",
+      is_emergency_contact: c.is_emergency_contact ?? false,
+    })),
+  };
+}
+
 /**
  * Tier 2: Application Controller for the Contacts Tab.
  * Manages form state, array validation, and database submissions.
@@ -34,16 +46,15 @@ export function useContactsTabController(client: ClientDoc) {
     // This ensures fields the user never touched are still caught when
     // the Save button is pressed on a card that was added but left blank.
     mode: "all",
-    defaultValues: {
-      contacts: (client.contacts ?? []).map((c) => ({
-        contact_name: c.contact_name ?? "",
-        relationship: c.relationship ?? "",
-        phone: c.phone ?? "",
-        email: c.email ?? "",
-        is_emergency_contact: c.is_emergency_contact ?? false,
-      })),
-    },
+    defaultValues: getContactsDefaultValues(client),
   });
+
+  // 1.5 Sync External Updates (from other tabs)
+  useEffect(() => {
+    if (!form.formState.isDirty) {
+      form.reset(getContactsDefaultValues(client));
+    }
+  }, [client, form, form.formState.isDirty]);
 
   // 2. Initialize Main Contacts Array
   const { fields, append, remove } = useFieldArray({
