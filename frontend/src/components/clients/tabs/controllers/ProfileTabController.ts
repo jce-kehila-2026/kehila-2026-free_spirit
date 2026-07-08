@@ -17,6 +17,35 @@ export const EMPTY_DEPENDENT: Dependent = {
   dob: "",
 };
 
+function getProfileDefaultValues(client: ClientDoc): BasicInfoFormData {
+  return {
+    first_name: client.first_name ?? "",
+    last_name: client.last_name ?? "",
+    email: client.email ?? "",
+    phone: client.phone ?? "",
+    status: client.status ?? "draft",
+    passport_id: client.passport_id ?? "",
+    gender: client.gender ?? undefined,
+    address: client.address ?? "",
+    dob: client.dob ?? "",
+    referrer: client.referrer ?? "",
+    education_status: client.education_status ?? undefined,
+    program_ids: client.program_ids ?? [],
+    diagnosis: client.diagnosis ?? "",
+    personal_notes: client.personal_notes ?? "",
+    passport_country: client.passport_country ?? "",
+    citizenship: client.citizenship ?? "",
+    home_address: client.home_address ?? "",
+    household_members: client.household_members ?? "",
+    dependents: (client.dependents ?? []).map((d) => ({
+      name: d.name ?? "",
+      relationship: d.relationship ?? "",
+      dob: d.dob ?? "",
+    })),
+    custom_fields: client.custom_fields ?? {},
+  };
+}
+
 /**
  * Tier 2: Application Controller for the Profile Tab.
  * Manages all form state, validation side-effects, and database submissions.
@@ -33,35 +62,17 @@ export function useProfileTabController(client: ClientDoc) {
   const form = useForm<BasicInfoFormData>({
     resolver: zodResolver(basicInfoSchema),
     mode: "onTouched",
-    defaultValues: {
-      first_name: client.first_name ?? "",
-      last_name: client.last_name ?? "",
-      email: client.email ?? "",
-      phone: client.phone ?? "",
-      status: client.status ?? "draft",
-      passport_id: client.passport_id ?? "",
-      gender: client.gender ?? undefined,
-      address: client.address ?? "",
-      dob: client.dob ?? "",
-      referrer: client.referrer ?? "",
-      education_status: client.education_status ?? undefined,
-      program_ids: client.program_ids ?? [],
-      diagnosis: client.diagnosis ?? "",
-      personal_notes: client.personal_notes ?? "",
-      passport_country: client.passport_country ?? "",
-      citizenship: client.citizenship ?? "",
-      home_address: client.home_address ?? "",
-      household_members: client.household_members ?? "",
-      dependents: (client.dependents ?? []).map((d) => ({
-        name: d.name ?? "",
-        relationship: d.relationship ?? "",
-        dob: d.dob ?? "",
-      })),
-      custom_fields: client.custom_fields ?? {},
-    },
+    defaultValues: getProfileDefaultValues(client),
   });
 
-  // 2. Initialize Field Arrays
+  // 2. Sync External Updates (from other tabs)
+  useEffect(() => {
+    if (!form.formState.isDirty) {
+      form.reset(getProfileDefaultValues(client));
+    }
+  }, [client, form, form.formState.isDirty]);
+
+  // 3. Initialize Field Arrays
   const {
     fields: dependentFields,
     append: appendDependent,
@@ -73,7 +84,7 @@ export function useProfileTabController(client: ClientDoc) {
 
   const { errors } = form.formState;
 
-  // 3. Error Listeners (Auto-open accordions if a field fails validation)
+  // 4. Error Listeners (Auto-open accordions if a field fails validation)
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (errors.first_name || errors.last_name || errors.email || errors.phone || errors.status) {
@@ -100,7 +111,7 @@ export function useProfileTabController(client: ClientDoc) {
     errors.diagnosis, errors.personal_notes, errors.dependents,
   ]);
 
-  // 4. Save Handler (Bridges to Tier 4)
+  // 5. Save Handler (Bridges to Tier 4)
   async function onSubmit(data: BasicInfoFormData) {
     setIsSaving(true);
     try {
@@ -122,7 +133,7 @@ export function useProfileTabController(client: ClientDoc) {
     }
   }
 
-  // 5. Expose strictly what the UI Layer needs
+  // 6. Expose strictly what the UI Layer needs
   return {
     form,
     dependents: {

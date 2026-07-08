@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { exportToCSV } from "@/components/clients/list/csvExport";
 
 // TIER 1 - PRESENTATION LAYER WIDGETS
@@ -17,8 +17,7 @@ import { useClientManagementService } from "@/application/ClientManagementServic
 // TIER 3 - BUSINESS RULES LAYER
 import { useClientFilters } from "@/application/useClientFilters";
 import RestoreModal from "@/components/clients/list/RestoreModal";
-import { getFirestoreDb } from "@/firebase/clientDbService";
-import { doc, getDoc } from "firebase/firestore";
+
 
 type View = "list" | "form" | "dashboard";
 
@@ -31,7 +30,7 @@ type View = "list" | "form" | "dashboard";
 
 export default function ClientsPage() {
   const [view, setView] = useState<View>("list");
-  const [editingClient, setEditingClient] = useState<ClientDoc | null>(null);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [isFieldManagerOpen, setIsFieldManagerOpen] = useState(false);
 
@@ -44,6 +43,12 @@ export default function ClientsPage() {
   isRestoring, 
   handleRestore 
 } = useClientManagementService();
+
+  // Derive the live client from the real-time allDocs stream — never stale.
+  const editingClient = useMemo(
+    () => (editingClientId ? allDocs.find((c) => c.id === editingClientId) ?? null : null),
+    [editingClientId, allDocs],
+  );
 
   // Pass that data into the Business Rules Layer to get the filtered results
   // Business Rules Layer - Client Filtering & Sorting Policies
@@ -67,32 +72,21 @@ export default function ClientsPage() {
   */
 
   function handleAddNew() {
-    setEditingClient(null);
+    setEditingClientId(null);
     setView("form");
   }
 
   function handleEdit(client: ClientDoc) {
-    setEditingClient(client);
+    setEditingClientId(client.id);
     setView("dashboard");
   }
 
   function handleBackToList() {
-    setEditingClient(null);
+    setEditingClientId(null);
     setView("list");
   }
 
-  async function handleRefreshClient() {
-    if (!editingClient?.id) return;
-    try {
-      const db = getFirestoreDb();
-      const snap = await getDoc(doc(db, "clients", editingClient.id));
-      if (snap.exists()) {
-        setEditingClient({ id: snap.id, ...snap.data() } as ClientDoc);
-      }
-    } catch (err) {
-      console.error("Failed to refresh client data", err);
-    }
-  }
+
 // ─────────────────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(220,234,214,0.72),_transparent_30%),linear-gradient(180deg,_#F7FAF5_0%,_#EEF5F7_100%)] px-4 py-8 sm:px-6 sm:py-10">
@@ -155,7 +149,6 @@ export default function ClientsPage() {
           <ClientProfileDashboard
             client={editingClient}
             onBack={handleBackToList}
-            onRefreshClient={handleRefreshClient}
           />
         )}
 

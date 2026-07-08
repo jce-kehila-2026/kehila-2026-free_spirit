@@ -17,6 +17,25 @@ const questionnaireTabSchema = z.object({
 });
 export type QuestionnaireTabFormData = z.infer<typeof questionnaireTabSchema>;
 
+function getQuestionnaireDefaultValues(client: ClientDoc): QuestionnaireTabFormData {
+  return {
+    questionnaire: {
+      talents_and_skills:     client.questionnaire?.talents_and_skills     ?? "",
+      community_contribution: client.questionnaire?.community_contribution ?? "",
+      ideal_roommate:         client.questionnaire?.ideal_roommate         ?? "",
+      favorite_foods:         client.questionnaire?.favorite_foods         ?? "",
+      desired_activities:     client.questionnaire?.desired_activities     ?? "",
+      program_worries:        client.questionnaire?.program_worries        ?? "",
+      main_goals:             client.questionnaire?.main_goals             ?? "",
+      personal_challenge:     client.questionnaire?.personal_challenge     ?? "",
+      staff_assistance:       client.questionnaire?.staff_assistance       ?? "",
+      main_strengths:         client.questionnaire?.main_strengths         ?? "",
+      passions:               client.questionnaire?.passions               ?? "",
+      dream_jobs:             client.questionnaire?.dream_jobs             ?? "",
+    },
+  };
+}
+
 /**
  * Tier 2: Application Controller for the Questionnaire Tab.
  * Manages form state, validation side-effects, and database submissions.
@@ -33,23 +52,15 @@ export function useQuestionnaireTabController(client: ClientDoc) {
   const form = useForm<QuestionnaireTabFormData>({
     resolver: zodResolver(questionnaireTabSchema),
     mode: "onTouched",
-    defaultValues: {
-      questionnaire: {
-        talents_and_skills:     client.questionnaire?.talents_and_skills     ?? "",
-        community_contribution: client.questionnaire?.community_contribution ?? "",
-        ideal_roommate:         client.questionnaire?.ideal_roommate         ?? "",
-        favorite_foods:         client.questionnaire?.favorite_foods         ?? "",
-        desired_activities:     client.questionnaire?.desired_activities     ?? "",
-        program_worries:        client.questionnaire?.program_worries        ?? "",
-        main_goals:             client.questionnaire?.main_goals             ?? "",
-        personal_challenge:     client.questionnaire?.personal_challenge     ?? "",
-        staff_assistance:       client.questionnaire?.staff_assistance       ?? "",
-        main_strengths:         client.questionnaire?.main_strengths         ?? "",
-        passions:               client.questionnaire?.passions               ?? "",
-        dream_jobs:             client.questionnaire?.dream_jobs             ?? "",
-      },
-    },
+    defaultValues: getQuestionnaireDefaultValues(client),
   });
+
+  // 1.5 Sync External Updates (from other tabs)
+  useEffect(() => {
+    if (!form.formState.isDirty) {
+      form.reset(getQuestionnaireDefaultValues(client));
+    }
+  }, [client, form, form.formState.isDirty]);
 
   const { errors } = form.formState;
   const qe = errors.questionnaire;

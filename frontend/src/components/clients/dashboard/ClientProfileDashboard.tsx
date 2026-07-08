@@ -25,7 +25,6 @@ import {
 interface ClientProfileDashboardProps {
   client: ClientDoc;
   onBack: () => void;
-  onRefreshClient?: () => void;
 }
 
 type AuthUserWithProfile = User & {
@@ -35,7 +34,7 @@ type AuthUserWithProfile = User & {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClientProfileDashboard({ client: initialClient, onBack, onRefreshClient }: ClientProfileDashboardProps) {
+export default function ClientProfileDashboard({ client: initialClient, onBack }: ClientProfileDashboardProps) {
   const [statusOverride, setStatusOverride] = useState<{
     clientId: string;
     status: ClientDoc["status"];
@@ -360,7 +359,6 @@ export default function ClientProfileDashboard({ client: initialClient, onBack, 
              client={client} 
              isArchived={isArchived} 
              onCreateMeeting={handleCreateMeetingNavigation} 
-             onClientUpdated={onRefreshClient}
           />
         )}
         {/* ── Advanced Settings ── */}

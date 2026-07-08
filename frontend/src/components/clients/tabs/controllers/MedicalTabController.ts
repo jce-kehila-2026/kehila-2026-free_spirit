@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -72,14 +72,61 @@ function coerceMedications(raw: unknown): Medication[] {
   return [];
 }
 
+function getMedicalDefaultValues(client: ClientDoc): MedicalProfile {
+  const mp = client.medical_profile ?? {};
+  return {
+    // Seasickness Medications object
+    seasickness_meds: {
+      ...DEFAULT_SEASICKNESS_MEDS,
+      ...(mp as MedicalProfile).seasickness_meds,
+    },
+
+    // Dynamic arrays — coerced from either legacy string or new array shape
+    allergies:   coerceAllergies((mp as MedicalProfile).allergies),
+    medications: coerceMedications((mp as MedicalProfile).medications),
+    hospitalization_history: (mp.hospitalization_history ?? []).map((h) => ({
+      type: h.type ?? undefined,
+      date: h.date ?? "",
+      description: h.description ?? "",
+    })),
+    healthcare_providers: (mp.healthcare_providers ?? []).map((p) => ({
+      name: p.name ?? "", specialty: p.specialty ?? "", phone: p.phone ?? "",
+      email: p.email ?? "", facility: p.facility ?? "", last_appt: p.last_appt ?? "",
+    })),
+
+    // Hardcoded vaccination object
+    vaccination_history: {
+      ...DEFAULT_VACCINATION_HISTORY,
+      ...(mp as MedicalProfile).vaccination_history,
+    },
+
+    // Developmental history object
+    developmental_history: {
+      ...DEFAULT_DEVELOPMENTAL_HISTORY,
+      ...(mp as MedicalProfile).developmental_history,
+    },
+
+    // Past medical history
+    past_medical_history: {
+      ...DEFAULT_PAST_MEDICAL_HISTORY,
+      ...(mp as MedicalProfile).past_medical_history,
+    },
+
+    // Preserved free-text fields
+    dietary_restrictions:      mp.dietary_restrictions      ?? "",
+    psychiatric_history:       mp.psychiatric_history       ?? "",
+    treatment_history_details: (mp as MedicalProfile).treatment_history_details ?? "",
+    physical_accommodations:   (mp as MedicalProfile).physical_accommodations   ?? "",
+    general_accommodations:    (mp as MedicalProfile).general_accommodations    ?? "",
+  };
+}
+
 /**
  * Tier 2: Application Controller for the Medical Tab.
  * Manages field arrays, accordion state, and DB saves.
  */
 export function useMedicalTabController(client: ClientDoc) {
   const [isSaving, setIsSaving] = useState(false);
-
-  const mp = client.medical_profile ?? {};
 
   // 1. Accordion State
   const [open, setOpen] = useState({
@@ -102,52 +149,15 @@ export function useMedicalTabController(client: ClientDoc) {
   const form = useForm<MedicalProfile>({
     resolver: zodResolver(medicalProfileSchema),
     mode: "onTouched",
-    defaultValues: {
-      // Seasickness Medications object
-      seasickness_meds: {
-        ...DEFAULT_SEASICKNESS_MEDS,
-        ...(mp as MedicalProfile).seasickness_meds,
-      },
-
-      // Dynamic arrays — coerced from either legacy string or new array shape
-      allergies:   coerceAllergies((mp as MedicalProfile).allergies),
-      medications: coerceMedications((mp as MedicalProfile).medications),
-      hospitalization_history: (mp.hospitalization_history ?? []).map((h) => ({
-        type: h.type ?? undefined,
-        date: h.date ?? "",
-        description: h.description ?? "",
-      })),
-      healthcare_providers: (mp.healthcare_providers ?? []).map((p) => ({
-        name: p.name ?? "", specialty: p.specialty ?? "", phone: p.phone ?? "",
-        email: p.email ?? "", facility: p.facility ?? "", last_appt: p.last_appt ?? "",
-      })),
-
-      // Hardcoded vaccination object
-      vaccination_history: {
-        ...DEFAULT_VACCINATION_HISTORY,
-        ...(mp as MedicalProfile).vaccination_history,
-      },
-
-      // Developmental history object
-      developmental_history: {
-        ...DEFAULT_DEVELOPMENTAL_HISTORY,
-        ...(mp as MedicalProfile).developmental_history,
-      },
-
-      // Past medical history
-      past_medical_history: {
-        ...DEFAULT_PAST_MEDICAL_HISTORY,
-        ...(mp as MedicalProfile).past_medical_history,
-      },
-
-      // Preserved free-text fields
-      dietary_restrictions:      mp.dietary_restrictions      ?? "",
-      psychiatric_history:       mp.psychiatric_history       ?? "",
-      treatment_history_details: (mp as MedicalProfile).treatment_history_details ?? "",
-      physical_accommodations:   (mp as MedicalProfile).physical_accommodations   ?? "",
-      general_accommodations:    (mp as MedicalProfile).general_accommodations    ?? "",
-    },
+    defaultValues: getMedicalDefaultValues(client),
   });
+
+  // 2.5 Sync External Updates (from other tabs)
+  useEffect(() => {
+    if (!form.formState.isDirty) {
+      form.reset(getMedicalDefaultValues(client));
+    }
+  }, [client, form, form.formState.isDirty]);
 
   // 3. Field Arrays
   const providersArray = useFieldArray({ control: form.control, name: "healthcare_providers" });

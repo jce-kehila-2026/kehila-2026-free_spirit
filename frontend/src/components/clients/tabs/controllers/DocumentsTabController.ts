@@ -29,8 +29,7 @@ const ACCEPTED_TYPES = [
  * Manages file validation, upload progress streams, and optimistic UI updates.
  */
 export function useDocumentsTabController(client: ClientDoc) {
-  // Local copy for optimistic UI updates (no page refresh needed)
-  const [docs, setDocs] = useState<ClientDocument[]>(client.client_documents ?? []);
+  const docs = client.client_documents ?? [];
   
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -92,15 +91,14 @@ export function useDocumentsTabController(client: ClientDoc) {
         manager_notes: formData.manager_notes ?? "",
       };
 
-      const updatedDocs = [...docs, newDoc];
+      const updatedDocs = [...(client.client_documents ?? []), newDoc];
 
       // Tier 2 calling Tier 4: Save Metadata to Firestore
       await updateClientDoc(client.id, {
         client_documents: updatedDocs,
       });
 
-      // Update local state & reset UI
-      setDocs(updatedDocs);
+      // Reset UI
       setSelectedFile(null);
       form.reset();
       toast.success(`"${file.name}" uploaded successfully.`);
@@ -111,23 +109,22 @@ export function useDocumentsTabController(client: ClientDoc) {
       setIsLoading(false);
       setUploadProgress(null);
     }
-  }, [client.id, docs, form, selectedFile]);
+  }, [client.id, client.client_documents, form, selectedFile]);
 
   // 4. Delete Handler (Bridges to Tier 4)
   const handleDelete = useCallback(async (index: number) => {
-    const updated = docs.filter((_, i) => i !== index);
+    const updated = (client.client_documents ?? []).filter((_, i) => i !== index);
     try {
       await updateClientDoc(client.id, {
         client_documents: updated,
       });
       
-      setDocs(updated);
       toast.success("Document removed.");
     } catch (err) {
       console.error("[DocumentsTabController] Delete failed:", err);
       toast.error("Could not remove the document. Please try again.");
     }
-  }, [client.id, docs]);
+  }, [client.id, client.client_documents]);
 
   // 5. Expose strictly what the UI Layer needs
   return {

@@ -14,8 +14,6 @@ interface ClientProgramsWidgetProps {
    * Defaults to `[]` so legacy client docs without this field don't crash.
    */
   programIds?: string[];
-  /** Callback to trigger parent component data refresh */
-  onClientUpdated?: () => void;
 }
 
 // ─── Inline SVG Icons ─────────────────────────────────────────────────────────
@@ -101,7 +99,6 @@ function IconGridSquares() {
 export default function ClientProgramsWidget({
   clientId,
   programIds = [],
-  onClientUpdated,
 }: ClientProgramsWidgetProps) {
   const { enrolledPrograms, availablePrograms, isLoading, error, assign, remove } =
     useClientPrograms(clientId, programIds);
@@ -145,9 +142,6 @@ export default function ClientProgramsWidget({
     await assign(selectedProgramId);
     setSelectedProgramId("");
     setIsAssigning(false);
-    if (onClientUpdated) {
-      onClientUpdated();
-    }
   };
 
   /** First click: enter confirming state. Does NOT trigger deletion yet. */
@@ -161,9 +155,6 @@ export default function ClientProgramsWidget({
     await remove(programId);
     if (selectedProgramId === programId) {
       setSelectedProgramId("");
-    }
-    if (onClientUpdated) {
-      onClientUpdated();
     }
   };
 
