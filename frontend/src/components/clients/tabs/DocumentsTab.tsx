@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-import { DOCUMENT_TYPE_OPTIONS, type ClientDocument } from "@/schema/documentSchema";
+import { DOCUMENT_TYPE_OPTIONS, type ClientDocument, type GlobalDocumentTemplate } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
 
@@ -34,6 +34,17 @@ function fileIcon(fileName: string) {
   if (ext === "pdf") return "📄";
   if (["jpg", "jpeg", "png", "webp", "heic"].includes(ext ?? "")) return "🖼️";
   return "📎";
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function humanizeCategory(cat: string) {
+  return cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function selectCls(hasError: boolean) {
@@ -98,38 +109,126 @@ function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelet
   );
 }
 
+// ─── GlobalTemplateRow ────────────────────────────────────────────────────────
+
+function GlobalTemplateRow({ template }: { template: GlobalDocumentTemplate }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-[#D0E8EC] bg-[#F0F8FB] px-4 py-4 shadow-sm sm:flex-row sm:items-center">
+      <span className="text-xl" aria-hidden="true">{fileIcon(template.file_name)}</span>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-[#173A40]">{template.title}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span className="rounded-full bg-[#DCEBEF] px-2 py-0.5 text-xs font-semibold text-[#2C6975]">
+            {humanizeCategory(template.category)}
+          </span>
+          <span className="text-xs text-slate-400">{formatBytes(template.file_size)}</span>
+        </div>
+        {template.description && (
+          <p className="mt-1 truncate text-xs text-slate-400 italic">{template.description}</p>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <a
+          href={template.file_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className="rounded-full bg-[#245C66] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#173A40]"
+        >
+          Download ⬇
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component (Tier 1: Dumb View) ───────────────────────────────────────
 
 export default function DocumentsTab({ client }: DocumentsTabProps) {
-  const { form, docs, uploadState, actions } = useDocumentsTabController(client);
+  const { form, docs, globalTemplates, uploadState, actions } = useDocumentsTabController(client);
   const { formState: { errors, isSubmitting } } = form;
 
   const isUploading = uploadState.isLoading || isSubmitting || uploadState.uploadProgress !== null;
 
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(true);
+  const [isUploadsOpen, setIsUploadsOpen] = useState(true);
+
   return (
     <div className="space-y-6">
-      {/* ════ Section 1: Existing documents ════ */}
-      <div className="overflow-hidden rounded-[1.5rem] border border-[#D7E3D5] bg-white shadow-sm">
-        <div className="border-b border-[#D7E3D5] bg-[#F7FAF5] px-6 py-4 sm:px-8">
-          <h2 className="text-base font-bold text-[#173A40]">Uploaded Documents</h2>
-          <p className="mt-1 text-sm text-[#6A8589]">
-            {docs.length === 0 ? "No documents on file yet." : `${docs.length} document${docs.length === 1 ? "" : "s"} on file.`}
-          </p>
-        </div>
-
-        <div className="p-6 sm:p-8">
-          {docs.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-slate-400">No documents uploaded yet. Use the form below to add one.</p>
+      {/* ════ Section 0: Global templates (collapsible, read-only) ════ */}
+      {globalTemplates.length > 0 && (
+        <div className="overflow-hidden rounded-[1.5rem] border border-[#C4DFE6] bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setIsTemplatesOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between border-b border-[#C4DFE6] bg-[#EEF7FA] px-6 py-4 sm:px-8 hover:bg-[#E3F2F6] transition-colors"
+            aria-expanded={isTemplatesOpen}
+          >
+            <div className="text-left">
+              <h2 className="text-base font-bold text-[#173A40]">Official Documents &amp; Templates</h2>
+              <p className="mt-0.5 text-sm text-[#4A7A82]">
+                {globalTemplates.length} template{globalTemplates.length === 1 ? "" : "s"} available · Download, fill out, and re-upload below
+              </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {docs.map((d, i) => (
-                <DocumentRow key={`${d.file_name}-${i}`} doc={d} onDelete={() => actions.handleDelete(i)} />
-              ))}
+            <span
+              className="ml-4 shrink-0 text-lg text-[#2C6975] transition-transform duration-200"
+              style={{ transform: isTemplatesOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </button>
+          {isTemplatesOpen && (
+            <div className="p-6 sm:p-8">
+              <div className="space-y-3">
+                {globalTemplates.map((t) => (
+                  <GlobalTemplateRow key={t.id} template={t} />
+                ))}
+              </div>
             </div>
           )}
         </div>
+      )}
+
+      {/* ════ Section 1: Uploaded client documents (collapsible) ════ */}
+      <div className="overflow-hidden rounded-[1.5rem] border border-[#D7E3D5] bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsUploadsOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between border-b border-[#D7E3D5] bg-[#F7FAF5] px-6 py-4 sm:px-8 hover:bg-[#EEF4EC] transition-colors"
+          aria-expanded={isUploadsOpen}
+        >
+          <div className="text-left">
+            <h2 className="text-base font-bold text-[#173A40]">Uploaded Documents</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {docs.length === 0 ? "No documents on file yet." : `${docs.length} document${docs.length === 1 ? "" : "s"} on file`}
+            </p>
+          </div>
+          <span
+            className="ml-4 shrink-0 text-lg text-[#2C6975] transition-transform duration-200"
+            style={{ transform: isUploadsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            aria-hidden="true"
+          >
+            ▾
+          </span>
+        </button>
+        {isUploadsOpen && (
+          <div className="p-6 sm:p-8">
+            {docs.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-slate-400">No documents uploaded yet. Use the form below to add one.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {docs.map((d, i) => (
+                  <DocumentRow key={`${d.file_name}-${i}`} doc={d} onDelete={() => actions.handleDelete(i)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ════ Section 2: Collapsible upload form ════ */}
@@ -142,7 +241,6 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
       />
 
       <CustomFieldsSection tab="documents" client={client} isEditable />
-
 
     </div>
   );

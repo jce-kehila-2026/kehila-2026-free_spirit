@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -7,12 +7,14 @@ import { toast } from "sonner";
 import { 
   uploadDocumentFormSchema, 
   type UploadDocumentFormData, 
-  type ClientDocument 
+  type ClientDocument,
+  type GlobalDocumentTemplate,
 } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
 // Tier 4 Imports (Database / Storage Layer)
 import { updateClientDoc, uploadClientDocumentFile } from "@/firebase/clientDbService";
+import { subscribeToActiveGlobalTemplates } from "@/firebase/globalDocumentService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -35,6 +37,16 @@ export function useDocumentsTabController(client: ClientDoc) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [globalTemplates, setGlobalTemplates] = useState<GlobalDocumentTemplate[]>([]);
+
+  // Subscribe to active global templates for the read-only section
+  useEffect(() => {
+    const unsubscribe = subscribeToActiveGlobalTemplates(
+      (templates) => setGlobalTemplates(templates),
+      (err) => console.error("[DocumentsTabController] global templates error:", err)
+    );
+    return unsubscribe;
+  }, []);
 
   // 1. Initialize Form Engine
   const form = useForm<UploadDocumentFormData>({
@@ -130,6 +142,7 @@ export function useDocumentsTabController(client: ClientDoc) {
   return {
     form,
     docs,
+    globalTemplates,
     uploadState: {
       isLoading,
       uploadProgress,

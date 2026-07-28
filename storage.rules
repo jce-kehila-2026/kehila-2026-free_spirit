@@ -38,6 +38,12 @@ service firebase.storage {
     match /clients/{clientId}/{allFiles=**} {
       allow read, write: if isAdmin() || (isMatchingClient(clientId) && isNotArchived(clientId));
     }
+
+    // Global template documents — all signed-in users may read, only admins may write
+    match /global_templates/{allFiles=**} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
     
     // Catch-all safety net rule for any unexpected directories
     match /{allPaths=**} {
