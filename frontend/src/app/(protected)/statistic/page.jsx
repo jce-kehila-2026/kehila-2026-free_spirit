@@ -7,7 +7,6 @@ import {
   AlertCircle,
   Activity,
   UserX,
-  ClipboardCheck,
   Megaphone,
   MapPin,
   HeartHandshake,
@@ -42,6 +41,7 @@ export default function StatisticsPage() {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProgram, setSelectedProgram] = useState(null);
+  const [selectedProgramYear, setSelectedProgramYear] = useState(null);
   const [activeAlertRules, setActiveAlertRules] = useState(['passport_id', 'dob']);
   const [isAlertMenuOpen, setIsAlertMenuOpen] = useState(false);
   const [isDisplayMenuOpen, setIsDisplayMenuOpen] = useState(false);
@@ -86,6 +86,31 @@ export default function StatisticsPage() {
       localStorage.setItem("dashboard_widgets_v1", JSON.stringify(visibleWidgets));
     }
   }, [visibleWidgets, isWidgetsConfigLoaded]);
+
+  const availableProgramYears = useMemo(() => {
+    const years = programs
+      .map((program) => {
+        const date = program.start_date?.toDate ? program.start_date.toDate() : new Date(program.start_date);
+        return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getFullYear() : null;
+      })
+      .filter((year) => year !== null && year > 1900);
+    return [...new Set(years)].sort((a, b) => b - a);
+  }, [programs]);
+
+  const activeProgramYear = useMemo(() => {
+    if (selectedProgramYear !== null && availableProgramYears.includes(selectedProgramYear)) {
+      return selectedProgramYear;
+    }
+    if (availableProgramYears.length === 0) return null;
+
+    const currentYear = new Date().getFullYear();
+    if (availableProgramYears.includes(currentYear)) {
+      return currentYear;
+    }
+    return availableProgramYears.reduce((prev, curr) =>
+      Math.abs(curr - currentYear) < Math.abs(prev - currentYear) ? curr : prev
+    );
+  }, [selectedProgramYear, availableProgramYears]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -349,15 +374,21 @@ export default function StatisticsPage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    const programOccupancyData = programs.map(p => {
-      const enrolled = Array.isArray(p.participant_ids) ? p.participant_ids.length : 0;
-      const capacity = p.capacity || p.max_participants || p.min_members || 50; 
-      return {
-        name: p.name || 'Unnamed Program',
-        capacity: capacity,
-        enrolled: enrolled
-      };
-    }).filter(p => p.enrolled > 0 || p.capacity > 0);
+    const programOccupancyData = programs
+      .map(p => {
+        const enrolled = Array.isArray(p.participant_ids) ? p.participant_ids.length : 0;
+        const capacity = p.capacity || p.max_participants || p.min_members || 50;
+        const startDate = p.start_date?.toDate ? p.start_date.toDate() : new Date(p.start_date);
+        const startYear = startDate instanceof Date && !isNaN(startDate.getTime()) ? startDate.getFullYear() : null;
+        return {
+          name: p.name || 'Unnamed Program',
+          capacity,
+          enrolled,
+          year: startYear,
+        };
+      })
+      .filter(p => p.enrolled > 0 || p.capacity > 0)
+      .filter(p => activeProgramYear === null || p.year === activeProgramYear);
 
     const activeProgramsList = programs.filter(p => {
       if (!p.start_date || !p.end_date) return false;
@@ -391,7 +422,7 @@ export default function StatisticsPage() {
       statusFunnelData, 
       genderData
     };
-  }, [clients, programs, activeAlertRules]);
+  }, [clients, programs, activeAlertRules, activeProgramYear]);
 
   const {
     kpiData = [],
@@ -399,7 +430,6 @@ export default function StatisticsPage() {
     growthData = [],
     programOccupancyData = [],
     actionItems = [],
-    complianceData = [],
     referralData = [],
     retentionData = [],
     lengthOfStayData = [],
@@ -757,10 +787,30 @@ export default function StatisticsPage() {
 
           {visibleWidgets.occupancy && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-              <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-                <CalendarCheck className="text-[#3F7763]" />
-                Program Occupancy
-              </h2>
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="flex items-center gap-2 text-xl font-bold text-[#15383E]">
+                  <CalendarCheck className="text-[#3F7763]" />
+                  Program Occupancy
+                </h2>
+                {availableProgramYears.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-[#5C7478]">
+                    <label htmlFor="program-year" className="font-semibold">Year:</label>
+                    <select
+                      id="program-year"
+                      value={selectedProgramYear ?? ''}
+                      onChange={(e) => setSelectedProgramYear(e.target.value ? Number(e.target.value) : null)}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-[#2C6975] focus:outline-none"
+                    >
+                      <option value="">All years</option>
+                      {availableProgramYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="min-h-[300px] w-full flex-1">
                 {programOccupancyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
