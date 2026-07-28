@@ -136,7 +136,7 @@ export default function StatisticsPage() {
     const unassignedClientsList = [];
     let fullyCompliant = 0;
     let missingForms = 0;
-    let statusCounts = { invitedinvited: 0, interested: 0, registered: 0 };
+    let statusCounts = { invited: 0, interested: 0, registered: 0 };
     let genderCounts = { male: 0, female: 0, other: 0, unknown: 0 };
     
     const sourceCounts = {};
@@ -538,7 +538,6 @@ export default function StatisticsPage() {
                         { key: 'gender', label: 'Gender Distribution (Pie)' },    
                         { key: 'lengthOfStay', label: 'Length of Stay (Pie)' },    
                         { key: 'intake', label: 'Intake Status Pipeline (Bar)' },
-                        { key: 'compliance', label: 'Compliance Status (Pie)' },
                         { key: 'engagement', label: 'Client Engagement (Pie)' },
                         { key: 'referrals', label: 'Referral Sources (List)' },
                         { key: 'locations', label: 'Top Locations (List)' },
@@ -643,47 +642,60 @@ export default function StatisticsPage() {
                   )}
 
                   {isPendingActions && (
-                    <div className="absolute top-4 right-4 z-50">
-                      <button 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsAlertMenuOpen(!isAlertMenuOpen); }}
-                        className="p-1.5 bg-black/10 hover:bg-black/20 rounded-md transition-colors text-white/80 hover:text-white"
-                        title="Alert Settings"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                      </button>
-                      
-                      {isAlertMenuOpen && (
-                        <div onClick={(e) => e.stopPropagation()} className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-100 text-slate-700 text-sm font-medium z-[60]">
-                          <p className="text-xs text-slate-400 mb-2 pb-1.5 border-b border-slate-100 uppercase tracking-wider">Alert Rules</p>
-                          {[
-                            { id: 'passport_id', label: 'Missing ID / Passport' },
-                            { id: 'dob', label: 'Missing Date of Birth' },
-                            { id: 'phone', label: 'Missing Phone Number' },
-                            { id: 'email', label: 'Missing Email Address' },
-                            { id: 'address', label: 'Missing Home Address' },
-                            { id: 'contacts', label: 'Missing Emergency Contacts' },
-                            { id: 'medical', label: 'Missing Medical Clearance' }
-                          ].map(rule => (
-                            <label key={rule.id} className="flex items-center gap-2.5 py-2 cursor-pointer hover:bg-slate-50 rounded-lg px-2 -mx-1 transition-colors">
-                              <input 
-                                type="checkbox" 
-                                checked={activeAlertRules.includes(rule.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setActiveAlertRules([...activeAlertRules, rule.id]);
-                                  } else {
-                                    setActiveAlertRules(activeAlertRules.filter(r => r !== rule.id));
-                                  }
-                                }}
-                                className="w-4 h-4 rounded border-slate-300 text-[#2C6975] focus:ring-[#2C6975]"
-                              />
-                              <span className="text-[13px]">{rule.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+  /* שינוי ה-z-index של כפתור גלגל השיניים והתפריט ל-z-[100] כדי לעקוף את כרטיס האב */
+  <div className="absolute top-4 right-4 z-[100]">
+    <button 
+      onClick={(e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+        setIsAlertMenuOpen(!isAlertMenuOpen); 
+      }}
+      className="p-1.5 bg-black/10 hover:bg-black/20 rounded-md transition-colors text-white/80 hover:text-white"
+      title="Alert Settings"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+    </button>
+    
+    {isAlertMenuOpen && (
+      <div 
+        onClick={(e) => e.stopPropagation()} 
+        onMouseEnter={(e) => e.stopPropagation()} 
+        className="fixed md:absolute top-16 right-4 md:top-full md:right-0 mt-2 w-56 bg-white rounded-xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-100 text-slate-700 text-sm font-medium z-[110]"
+      >
+        <p className="text-xs text-slate-400 mb-2 pb-1.5 border-b border-slate-100 uppercase tracking-wider">Alert Rules</p>
+        {[
+          { id: 'passport_id', label: 'Missing ID / Passport' },
+          { id: 'dob', label: 'Missing Date of Birth' },
+          { id: 'phone', label: 'Missing Phone Number' },
+          { id: 'email', label: 'Missing Email Address' },
+          { id: 'address', label: 'Missing Home Address' },
+          { id: 'contacts', label: 'Missing Emergency Contacts' },
+          { id: 'medical', label: 'Missing Medical Clearance' }
+        ].map(rule => (
+          <label key={rule.id} className="flex items-center gap-2.5 py-2 cursor-pointer hover:bg-slate-50 rounded-lg px-2 -mx-1 transition-colors">
+            <input 
+              type="checkbox" 
+              checked={activeAlertRules.includes(rule.id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setActiveAlertRules([...activeAlertRules, rule.id]);
+                } else {
+                  setActiveAlertRules(activeAlertRules.filter(r => r !== rule.id));
+                }
+              }}
+              className="w-4 h-4 rounded border-slate-300 text-[#2C6975] focus:ring-[#2C6975]"
+            />
+            <span className="text-[13px]">{rule.label}</span>
+          </label>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+
 
                   {isPendingActions && actionItems.length > 0 && (
                     <div className="absolute top-full left-0 mt-2 w-full z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
@@ -801,34 +813,7 @@ export default function StatisticsPage() {
             </section>
           )}
 
-          {/* 2. Compliance Status */}
-          {visibleWidgets.compliance && (
-            <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
-              <div className="mb-2 flex items-center gap-2">
-                <ClipboardCheck className="text-[#6BB2A0]" size={20} />
-                <h2 className="text-lg font-bold text-[#15383E]">Compliance Status</h2>
-              </div>
-              <p className="mb-4 text-xs text-[#6A8589]">Medical & Legal form completion</p>
-              <div className="min-h-[250px] w-full flex-1">
-                {complianceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie data={complianceData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={5} dataKey="value" isAnimationActive={false} label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
-                        {complianceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.name === 'Fully Compliant' ? '#6BB2A0' : '#E58A7A'} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-[250px] items-center justify-center text-sm text-[#6A8589]">No data available</div>
-                )}
-              </div>
-            </section>
-          )}
-
+         
           {/* 3. Client Engagement */}
           {visibleWidgets.engagement && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
