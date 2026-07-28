@@ -338,6 +338,14 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /global_document_templates/{templateId} {
+      // All signed-in users (managers and clients) may read active templates so they
+      // can download blank forms from the client-facing Documents Tab.
+      allow read: if signedIn();
+      // Only admins may create, modify or remove global template records.
+      allow create, update, delete: if isAdmin();
+    }
+
     match /locations/{document=**} {
       allow read, write: if isAdmin();
     }
