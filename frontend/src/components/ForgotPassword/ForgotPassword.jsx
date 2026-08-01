@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { auth } from "@/firebase/firebase";
+import { IconMail } from "@/components/ui/Icons";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -79,20 +80,7 @@ export default function ForgotPassword() {
       <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(205,224,201,0.82),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(185,217,210,0.62),transparent_34%),linear-gradient(135deg,#F7FAF5_0%,#EEF5F7_100%)] px-6 py-8">
         <section className="w-full max-w-[420px] rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-8 text-center shadow-[0_24px_60px_rgba(36,92,102,0.14)]">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#DCEBEF] text-[#2C6975]">
-            <svg
-              aria-hidden="true"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M4 6h16v12H4V6Zm0 1 8 6 8-6"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </svg>
+            <IconMail className="h-6 w-6" />
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-[-0.03em] text-[#15383E]">
             Check your email

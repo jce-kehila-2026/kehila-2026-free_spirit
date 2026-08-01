@@ -6,15 +6,15 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import {
-  CalendarDays,
-  CalendarSync,
-  Check,
-  Clock3,
-  ExternalLink,
-  Pencil,
-  Trash2,
-  X,
-} from "lucide-react";
+  IconCalendarDays as CalendarDays,
+  IconCalendarSync as CalendarSync,
+  IconCheck as Check,
+  IconClock3 as Clock3,
+  IconExternalLink as ExternalLink,
+  IconPencil as Pencil,
+  IconTrash2 as Trash2,
+  IconXMark as X,
+} from "@/components/ui/Icons";
 import { getCalendarEvents, updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
 

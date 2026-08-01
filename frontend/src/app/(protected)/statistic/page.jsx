@@ -2,18 +2,20 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Users, 
-  CalendarCheck, 
-  AlertCircle,
-  Activity,
-  UserX,
-  Megaphone,
-  MapPin,
-  HeartHandshake,
-  Download,
-  Settings2,
-  Clock
-} from 'lucide-react';
+  IconUsers as Users, 
+  IconCalendarCheck as CalendarCheck, 
+  IconAlertCircle as AlertCircle,
+  IconActivity as Activity,
+  IconUserX as UserX,
+  IconMegaphone as Megaphone,
+  IconMapPin as MapPin,
+  IconHeartHandshake as HeartHandshake,
+  IconDownload as Download,
+  IconSettings2 as Settings2,
+  IconClock as Clock,
+  IconSettings,
+  IconXMark
+} from '@/components/ui/Icons';
 import { 
   PieChart, 
   Pie, 
@@ -552,7 +554,7 @@ export default function StatisticsPage() {
                   onClick={() => setIsDisplayMenuOpen(!isDisplayMenuOpen)}
                   className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus:outline-none"
                 >
-                  <Settings2 size={18} />
+                  <Settings2 className="w-4 h-4 text-slate-600" />
                   Customize
                 </button>
                 
@@ -591,7 +593,7 @@ export default function StatisticsPage() {
                 onClick={exportToCSV}
                 className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white/90 px-3.5 py-2 text-sm font-bold text-[#15383E] shadow-sm transition hover:brightness-95 focus:outline-none"
               >
-                <Download size={18} />
+                <Download className="w-4 h-4 text-slate-600" />
                 Export CSV
               </button>
             </div>
@@ -617,7 +619,7 @@ export default function StatisticsPage() {
                       <h3 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[#15383E]">{kpi.value}</h3>
                     </div>
                     <div className={`p-3 rounded-xl ${kpi.bgColor} ${kpi.color}`}>
-                      <Icon size={24} />
+                      <Icon className="w-6 h-6" />
                     </div>
                   </div>
                   <div className="mt-4 text-sm text-[#5C7478]">
@@ -683,10 +685,7 @@ export default function StatisticsPage() {
       className="p-1.5 bg-black/10 hover:bg-black/20 rounded-md transition-colors text-white/80 hover:text-white"
       title="Alert Settings"
     >
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-      </svg>
+      <IconSettings className="w-5 h-5" />
     </button>
     
     {isAlertMenuOpen && (
@@ -764,7 +763,7 @@ export default function StatisticsPage() {
           {visibleWidgets.growth && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-                <Activity className="text-[#2C6975]" />
+                <Activity className="w-5 h-5 text-[#2C6975]" />
                 Growth Trends
               </h2>
               <div className="min-h-[300px] w-full flex-1">
@@ -789,7 +788,7 @@ export default function StatisticsPage() {
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="flex items-center gap-2 text-xl font-bold text-[#15383E]">
-                  <CalendarCheck className="text-[#3F7763]" />
+                  <CalendarCheck className="w-5 h-5 text-[#3F7763]" />
                   Program Occupancy
                 </h2>
                 {availableProgramYears.length > 0 && (
@@ -839,7 +838,7 @@ export default function StatisticsPage() {
           {visibleWidgets.demographics && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <div className="mb-2 flex items-center gap-2">
-                <Users className="text-[#7FA7B2]" size={20} />
+                <Users className="w-5 h-5 text-[#7FA7B2]" />
                 <h2 className="text-lg font-bold text-[#15383E]">Client Demographics</h2>
               </div>
               <p className="mb-4 text-xs text-[#6A8589]">Age distribution across all clients</p>
@@ -868,7 +867,7 @@ export default function StatisticsPage() {
           {visibleWidgets.engagement && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <div className="mb-2 flex items-center gap-2">
-                <HeartHandshake className="text-[#2C6975]" size={20} />
+                <HeartHandshake className="w-5 h-5 text-[#2C6975]" />
                 <h2 className="text-lg font-bold text-[#15383E]">Client Engagement</h2>
               </div>
               <p className="mb-4 text-xs text-[#6A8589]">Number of programs participated in</p>
@@ -896,7 +895,7 @@ export default function StatisticsPage() {
           {visibleWidgets.lengthOfStay && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <div className="mb-2 flex items-center gap-2">
-                <Clock className="text-[#D2A94F]" size={20} />
+                <Clock className="w-5 h-5 text-[#D2A94F]" />
                 <h2 className="text-lg font-bold text-[#15383E]">Length of Stay</h2>
               </div>
               <p className="mb-4 text-xs text-[#6A8589]">Total accumulated time in programs</p>
@@ -926,7 +925,7 @@ export default function StatisticsPage() {
           {visibleWidgets.referrals && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] lg:col-span-2 flex flex-col">
               <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-                <Megaphone className="text-[#D2A94F]" />
+                <Megaphone className="w-5 h-5 text-[#D2A94F]" />
                 Referral Sources
               </h2>
               <p className="mb-6 text-sm text-[#6A8589]">Where clients are discovering the platform</p>
@@ -951,7 +950,7 @@ export default function StatisticsPage() {
           {visibleWidgets.locations && (
             <section className="rounded-[1.75rem] border border-white/80 bg-[#FFFDF8] p-6 shadow-[0_14px_34px_rgba(44,105,117,0.08)] flex flex-col">
               <h2 className="mb-2 flex items-center gap-2 text-xl font-bold text-[#15383E]">
-                <MapPin className="text-[#3F7763]" />
+                <MapPin className="w-5 h-5 text-[#3F7763]" />
                 Top Locations
               </h2>
               <p className="mb-6 text-sm text-[#6A8589]">Geographic segmentation of clients</p>
@@ -1045,9 +1044,7 @@ export default function StatisticsPage() {
               onClick={() => setSelectedProgram(null)}
               className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-red-50 hover:text-red-500 rounded-full text-slate-400 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
+              <IconXMark className="w-5 h-5" />
             </button>
             
             <div className="mb-6 pr-8">

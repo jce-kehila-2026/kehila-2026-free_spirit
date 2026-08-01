@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { DOCUMENT_TYPE_OPTIONS, type ClientDocument, type GlobalDocumentTemplate } from "@/schema/documentSchema";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 import CustomFieldsSection from "@/components/clients/fields/CustomFieldsSection";
+import { IconTrash } from "@/components/ui/Icons";
 
 // Import our Tier 2 Controller
 import { useDocumentsTabController } from "./controllers/DocumentsTabController";
@@ -77,9 +78,27 @@ function FieldWrapper({
 
 // ─── DocumentRow ──────────────────────────────────────────────────────────────
 
-function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelete: () => void; }) {
+function DocumentRow({
+  doc: document,
+  isPendingDelete,
+  onInitiateDelete,
+  onCancelDelete,
+  onConfirmDelete,
+}: {
+  doc: ClientDocument;
+  isPendingDelete: boolean;
+  onInitiateDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[#D7E3D5] bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center">
+    <div
+      data-pending-delete={isPendingDelete ? "true" : undefined}
+      className={[
+        "flex flex-col gap-3 rounded-2xl border px-4 py-4 shadow-sm sm:flex-row sm:items-center transition-colors",
+        isPendingDelete ? "border-red-300 bg-red-50/50" : "border-[#D7E3D5] bg-white",
+      ].join(" ")}
+    >
       <span className="text-xl" aria-hidden="true">{fileIcon(document.file_name)}</span>
 
       <div className="min-w-0 flex-1">
@@ -91,19 +110,42 @@ function DocumentRow({ doc: document, onDelete }: { doc: ClientDocument; onDelet
         {document.manager_notes && <p className="mt-1 truncate text-xs text-slate-400 italic">{document.manager_notes}</p>}
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <a
           href={document.file_url} target="_blank" rel="noopener noreferrer"
           className="rounded-full bg-[#DCEBEF] px-3 py-1.5 text-xs font-bold text-[#2C6975] transition-colors hover:bg-[#C9DDE1]"
         >
           View ↗
         </a>
-        <button
-          type="button" onClick={onDelete}
-          className="rounded-md px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-        >
-          ✕
-        </button>
+        {isPendingDelete ? (
+          <div className="flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-1 shadow-sm">
+            <span className="text-xs font-bold text-red-600">Delete?</span>
+            <button
+              type="button"
+              onClick={onConfirmDelete}
+              className="rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={onCancelDelete}
+              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onInitiateDelete}
+            className="rounded-full p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
+            title="Delete document"
+            aria-label="Delete document"
+          >
+            <IconTrash className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -147,13 +189,33 @@ function GlobalTemplateRow({ template }: { template: GlobalDocumentTemplate }) {
 // ─── Main Component (Tier 1: Dumb View) ───────────────────────────────────────
 
 export default function DocumentsTab({ client }: DocumentsTabProps) {
-  const { form, docs, globalTemplates, uploadState, actions } = useDocumentsTabController(client);
+  const { form, docs, globalTemplates, pendingDeleteId, setPendingDeleteId, uploadState, actions } = useDocumentsTabController(client);
   const { formState: { errors, isSubmitting } } = form;
 
   const isUploading = uploadState.isLoading || isSubmitting || uploadState.uploadProgress !== null;
 
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(true);
   const [isUploadsOpen, setIsUploadsOpen] = useState(true);
+
+  // Click outside listener to clear pending delete confirmation state
+  useEffect(() => {
+    if (pendingDeleteId === null) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node;
+      const container = document.querySelector('[data-pending-delete="true"]');
+      if (container && !container.contains(target)) {
+        setPendingDeleteId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [pendingDeleteId, setPendingDeleteId]);
 
   return (
     <div className="space-y-6">
@@ -222,9 +284,20 @@ export default function DocumentsTab({ client }: DocumentsTabProps) {
               </div>
             ) : (
               <div className="space-y-3">
-                {docs.map((d, i) => (
-                  <DocumentRow key={`${d.file_name}-${i}`} doc={d} onDelete={() => actions.handleDelete(i)} />
-                ))}
+                {docs.map((d, i) => {
+                  const docId = d.file_url || `${d.file_name}-${i}`;
+                  const isPendingDelete = pendingDeleteId === docId;
+                  return (
+                    <DocumentRow
+                      key={`${d.file_name}-${i}`}
+                      doc={d}
+                      isPendingDelete={isPendingDelete}
+                      onInitiateDelete={() => setPendingDeleteId(docId)}
+                      onCancelDelete={() => setPendingDeleteId(null)}
+                      onConfirmDelete={() => actions.handleDelete(i)}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

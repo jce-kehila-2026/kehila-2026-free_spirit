@@ -38,6 +38,7 @@ export function useDocumentsTabController(client: ClientDoc) {
   const [fileError, setFileError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [globalTemplates, setGlobalTemplates] = useState<GlobalDocumentTemplate[]>([]);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | number | null>(null);
 
   // Subscribe to active global templates for the read-only section
   useEffect(() => {
@@ -135,6 +136,8 @@ export function useDocumentsTabController(client: ClientDoc) {
     } catch (err) {
       console.error("[DocumentsTabController] Delete failed:", err);
       toast.error("Could not remove the document. Please try again.");
+    } finally {
+      setPendingDeleteId(null);
     }
   }, [client.id, client.client_documents]);
 
@@ -143,6 +146,8 @@ export function useDocumentsTabController(client: ClientDoc) {
     form,
     docs,
     globalTemplates,
+    pendingDeleteId,
+    setPendingDeleteId,
     uploadState: {
       isLoading,
       uploadProgress,

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { manageClientStay } from "@/application/ClientManagementService";
-import { Pencil } from "lucide-react";
+import { IconPencil } from "@/components/ui/Icons";
 
 interface StayHistoryModalProps {
   client: ClientDoc;
@@ -209,7 +209,7 @@ export default function StayHistoryModal({ client, isOpen, onClose, onSuccess }:
                       className="flex items-center justify-center rounded p-2 text-[#6A8589] transition hover:bg-[#EEF4EC] hover:text-[#2C6975] disabled:cursor-not-allowed disabled:opacity-50"
                       title="Edit Stay"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <IconPencil className="h-4 w-4" />
                     </button>
                   </div>
                 );

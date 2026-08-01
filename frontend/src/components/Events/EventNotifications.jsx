@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BellRing, Clock3, RefreshCw } from "lucide-react";
+import { IconBellRing as BellRing, IconClock3 as Clock3, IconRefresh as RefreshCw } from "@/components/ui/Icons";
 import { getUpcomingNotificationsWithinDays } from "@/firebase/notificationsService";
 
 export default function EventNotifications({

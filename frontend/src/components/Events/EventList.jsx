@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, RefreshCw, X } from "lucide-react";
+import { IconCalendarDays as CalendarDays, IconRefresh as RefreshCw, IconXMark as X } from "@/components/ui/Icons";
 
 import { getEventsWithinDays } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";

@@ -6,7 +6,7 @@ import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
 import { getEventsByClientId, updateNoteEvent, archiveNoteEvent, getEventSortKey, type ClientEvent } from "@/firebase/clientEventsService";
 import { updateEvent } from "@/firebase/eventsService";
 import useEventActions from "@/hooks/useEventActions";
-import { IconPencil, IconArchive, IconRefresh } from "@/components/ui/Icons";
+import { IconPencil, IconTrash, IconRefresh } from "@/components/ui/Icons";
 import { getTodayString, resolveFirestoreDate, toLocalDateString, toLocalTimeString } from "@/utils/dateUtils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -326,7 +326,7 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                   <p className="text-sm leading-relaxed">
                     {renderSystemContent(event.content)}
                   </p>
-                  {/* Archive (delete) — minimal icon button, no Edit */}
+                  {/* Delete — minimal icon button, no Edit */}
                   <button
                     type="button"
                     disabled={archivingNoteId === event.id}
@@ -337,15 +337,16 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                         await archiveNoteEvent(event.id);
                         await fetchData();
                       } catch (err) {
-                        console.error("Failed to archive system event:", err);
+                        console.error("Failed to delete system event:", err);
                       } finally {
                         setArchivingNoteId(null);
                       }
                     }}
-                    aria-label="Remove system event"
+                    aria-label="Delete system event"
+                    title="Delete system event"
                     className="shrink-0 rounded p-1 text-gray-300 transition hover:bg-red-50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <IconArchive className="h-3.5 w-3.5" />
+                    <IconTrash className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ) : (
@@ -531,21 +532,21 @@ export default function TimelineWidget({ clientId, refreshTrigger }: TimelineTab
                               type="button"
                               disabled={archivingNoteId === event.id}
                               onClick={async () => {
-                                if (!window.confirm("Are you sure you want to archive this note?")) return;
+                                if (!window.confirm("Are you sure you want to delete this note?")) return;
                                 try {
                                   setArchivingNoteId(event.id);
                                   await archiveNoteEvent(event.id);
                                   await fetchData();
                                 } catch (err) {
-                                  console.error("Failed to archive note:", err);
+                                  console.error("Failed to delete note:", err);
                                 } finally {
                                   setArchivingNoteId(null);
                                 }
                               }}
                               className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-700 transition disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <IconArchive className="h-3.5 w-3.5" />
-                              {archivingNoteId === event.id ? "Archiving..." : "Archive"}
+                              <IconTrash className="h-3.5 w-3.5" />
+                              {archivingNoteId === event.id ? "Deleting..." : "Delete"}
                             </button>
                             <button
                               type="button"

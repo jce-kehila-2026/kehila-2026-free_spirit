@@ -1,9 +1,8 @@
 "use client";
 
-import { Eye } from "lucide-react";
 import { type ClientDoc } from "@/components/clients/list/ClientList";
 import { QuickCopy } from "@/components/ui/QuickCopy";
-import { IconRestore, IconPencil } from "@/components/ui/Icons";
+import { IconRestore, IconPencil, IconEye } from "@/components/ui/Icons";
 import { getPrimaryProgramDisplay } from "@/utils/clientUtils";
 
 import { type ProgramSummary } from "@/firebase/clientDbService";
@@ -92,7 +91,7 @@ export default function ClientRow({
               aria-label={`View ${client.first_name} ${client.last_name}`}
               className="inline-flex items-center justify-center rounded-full p-2 text-[#6A8589] transition-colors hover:bg-[#DCEBEF] hover:text-[#2C6975] focus:outline-none focus:ring-2 focus:ring-[#6BB2A0]"
             >
-              <Eye className="h-4 w-4" />
+              <IconEye className="h-4 w-4" />
             </button>
             <button
               type="button"

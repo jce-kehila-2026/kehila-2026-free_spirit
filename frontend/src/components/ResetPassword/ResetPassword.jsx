@@ -10,33 +10,10 @@ import {
   getPasswordRequirementResults,
   isPasswordValid,
 } from "@/utils/passwordValidation";
+import { IconCheckSmall, IconDot } from "@/components/ui/Icons";
 
 function RequirementStatusIcon({ isMet }) {
-  return isMet ? (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      viewBox="0 0 20 20"
-    >
-      <path
-        d="m5 10 3 3 7-7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  ) : (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      viewBox="0 0 20 20"
-    >
-      <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
+  return isMet ? <IconCheckSmall /> : <IconDot />;
 }
 
 function getResetErrorMessage(error) {

@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { collection, getDocs, doc, updateDoc, writeBatch, arrayRemove, onSnapshot } from "firebase/firestore";
-import { Plus, CalendarDays, UsersRound, CheckCircle2, X, Download } from "lucide-react";
+import {
+  IconPlus as Plus,
+  IconCalendarDays as CalendarDays,
+  IconUsersRound as UsersRound,
+  IconCheckCircle2 as CheckCircle2,
+  IconXMark as X,
+  IconDownload as Download,
+  IconTrash2,
+} from "@/components/ui/Icons";
 import { db, isFirebaseInitialized } from "@/firebase/firebase";
 // Keep the manage-programs UI private to this route so it cannot register as a standalone URL.
 import ManagePrograms from "./_components/ManagePrograms";
@@ -794,9 +802,7 @@ const handleProgramCreated = async () => {
                             className="rounded-full bg-white/80 p-2 text-red-500 opacity-0 shadow-sm ring-1 ring-red-100 transition hover:bg-red-50 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                             title="Delete Program"
                           >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
+                            <IconTrash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -1077,9 +1083,7 @@ const handleProgramCreated = async () => {
                                 className="text-red-500 hover:text-red-700 transition"
                                 title="Remove participant"
                               >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
+                                <IconTrash2 className="w-5 h-5" />
                               </button>
                             </li>
                           ))}
