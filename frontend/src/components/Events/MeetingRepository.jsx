@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays,
-  CalendarSync,
-  Clock3,
-  ExternalLink,
-  Search,
-  UserRound,
-  X,
-} from "lucide-react";
+  IconCalendarDays as CalendarDays,
+  IconCalendarSync as CalendarSync,
+  IconClock3 as Clock3,
+  IconExternalLink as ExternalLink,
+  IconSearch as Search,
+  IconUserRound as UserRound,
+  IconXMark as X,
+} from "@/components/ui/Icons";
 
 import {
   getMeetingRepositoryEvents,

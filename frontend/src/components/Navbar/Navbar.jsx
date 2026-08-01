@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { LogOut, Menu, UserRound, X } from "lucide-react";
+import { IconLogOut, IconMenu, IconUserRound, IconXMark } from "@/components/ui/Icons";
 
 import NotificationBell from "@/components/Events/NotificationBell";
 import freeSpiritLogo from "../../../docs/design-reference/image.png";
@@ -252,9 +252,9 @@ export default function Navbar() {
           onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
 >
           {isMobileMenuOpen ? (
-            <X aria-hidden="true" className="h-5 w-5" />
+            <IconXMark aria-hidden="true" className="h-5 w-5" />
           ) : (
-            <Menu aria-hidden="true" className="h-5 w-5" />
+            <IconMenu aria-hidden="true" className="h-5 w-5" />
           )}
 </button>
  
@@ -285,7 +285,7 @@ export default function Navbar() {
               {/* Your User Profile Tag */}
 <div className="flex max-w-[235px] items-center gap-2.5 rounded-full bg-[#EEF4EC] py-1.5 pl-1.5 pr-3 ring-1 ring-[#D7E3D5]">
 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C6975] text-white">
-  <UserRound aria-hidden="true" className="h-4 w-4" />
+  <IconUserRound aria-hidden="true" className="h-4 w-4" />
 </span>
 <span className="min-w-0">
 <span className="block truncate text-xs font-bold text-[#244B52]">
@@ -315,7 +315,7 @@ export default function Navbar() {
                 disabled={isLoggingOut}
 >
 
-                <LogOut aria-hidden="true" className="h-4 w-4" />
+                <IconLogOut aria-hidden="true" className="h-4 w-4" />
                 {isLoggingOut ? "Logging out..." : "Log out"}
 </button>
 </div>
@@ -373,7 +373,7 @@ export default function Navbar() {
                   disabled={isLoggingOut}
 >
 
-                  <LogOut aria-hidden="true" className="h-4 w-4" />
+                  <IconLogOut aria-hidden="true" className="h-4 w-4" />
                   {isLoggingOut ? "Logging out..." : "Log out"}
 </button>
 </div>

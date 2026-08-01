@@ -11,7 +11,7 @@ import { getTodayString, getCurrentTimeString } from "@/utils/dateUtils";
 import { trackClientArrival, trackClientDeparture } from "@/application/ClientManagementService";
 
 import ScheduleMeetingForm from "@/components/Events/ScheduleMeetingForm";
-import { Pencil } from "lucide-react";
+import { IconPencil } from "@/components/ui/Icons";
 import TodoListWidget from "@/components/todos/TodoListWidget";
 import ProgramAssignmentModal from "@/components/clients/dashboard/ProgramAssignmentModal";
 import StayHistoryModal from "@/components/clients/dashboard/StayHistoryModal";
@@ -241,7 +241,7 @@ export default function ProfileSummaryDashboard({ client, isArchived }: ProfileS
                     className="flex items-center justify-center rounded p-1 text-[#6A8589] transition hover:bg-slate-100 hover:text-[#173A40]"
                     title="Manage Stay"
                   >
-                    <Pencil className="h-3 w-3" />
+                    <IconPencil className="h-3 w-3" />
                   </button>
                 </div>
               )}

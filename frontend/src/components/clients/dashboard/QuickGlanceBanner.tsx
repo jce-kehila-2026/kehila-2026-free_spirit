@@ -1,7 +1,6 @@
 "use client";
 
-import { IconCheck } from "@/components/ui/Icons";
-import { AlertTriangle } from "lucide-react";
+import { IconCheck, IconAlertTriangle } from "@/components/ui/Icons";
 import { calculateOverallProgress } from "@/utils/profileValidation";
 import type { ClientDoc } from "@/components/clients/list/ClientList";
 
@@ -17,7 +16,7 @@ export default function QuickGlanceBanner({ client }: QuickGlanceBannerProps) {
     <div className={`flex flex-col gap-3 rounded-[1.5rem] border px-5 py-4 shadow-sm w-full ${isProfileComplete ? "border-[#C5DDC0] bg-[#E5F0E2]" : "border-[#E5C97D] bg-[#F7EED8]"}`}>
       <div className="flex items-center gap-4">
         <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white ${isProfileComplete ? "text-[#3F7763]" : "text-[#8A6822]"}`}>
-          {isProfileComplete ? <IconCheck className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+          {isProfileComplete ? <IconCheck className="h-5 w-5" /> : <IconAlertTriangle className="h-5 w-5" />}
         </span>
         <div className="flex-1">
           <p className={`text-sm font-bold ${isProfileComplete ? "text-[#31585F]" : "text-[#785B20]"}`}>

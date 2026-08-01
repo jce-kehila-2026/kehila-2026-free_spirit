@@ -1,12 +1,12 @@
 import {
-  CalendarDays,
-  CalendarSync,
-  Check,
-  Clock3,
-  Pencil,
-  Trash2,
-  X,
-} from "lucide-react";
+  IconCalendarDays as CalendarDays,
+  IconCalendarSync as CalendarSync,
+  IconCheck as Check,
+  IconClock3 as Clock3,
+  IconPencil as Pencil,
+  IconTrash2 as Trash2,
+  IconXMark as X,
+} from "@/components/ui/Icons";
 
 export default function EventCard({
   event,

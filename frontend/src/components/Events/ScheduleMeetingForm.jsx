@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarPlus, Check, Cloud, Clock3 } from "lucide-react";
+import { IconCalendarPlus as CalendarPlus, IconCheck as Check, IconCloud as Cloud, IconClock3 as Clock3 } from "@/components/ui/Icons";
 
 import { createEvent } from "@/firebase/eventsService";
 import { createNotifications } from "@/firebase/notificationsService";
